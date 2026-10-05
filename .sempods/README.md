@@ -8,7 +8,8 @@ it here; your apps and `apps.json` stay yours.
 - `scripts/new-app.mjs`: `npm run new-app -- <id>` creates `apps/<id>`.
 - `scripts/dev.mjs`: `npm run dev -- <id>` starts that app.
 - `scripts/check.mjs`: `npm run check` checks all apps and this tooling;
-  `-- --standalone all` also installs, builds and tests each app on its own.
+  `-- --standalone all` also installs, lints, builds and tests each app
+  on its own.
 - `scripts/self-test.mjs`: tests this tooling in an isolated copy of the
   repository; your apps are not touched.
 - `scripts/sdk-snapshot.mjs`: refreshes `reference/sempods-sdk/` for an SDK

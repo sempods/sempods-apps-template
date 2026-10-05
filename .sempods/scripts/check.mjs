@@ -165,10 +165,11 @@ function standalone(root, id) {
         !/[\\/](node_modules|dist)([\\/]|$)/.test(src.slice(root.length)),
     });
     cpSync(join(root, '.npmrc'), join(work, '.npmrc'));
-    // Installs, builds and tests without the workspace, so a package that
+    // Installs, lints, builds and tests without the workspace, so a package that
     // only another app or the root tooling provides fails here.
     return (
       npm(['install', '--no-audit', '--no-fund'], work) &&
+      npm(['run', 'lint'], work) &&
       npm(['run', 'build'], work) &&
       npm(['run', 'test'], work)
     );
@@ -223,7 +224,7 @@ function main() {
         : [];
   for (const id of isolated)
     step(
-      `apps/${id}: standalone install, build and tests`,
+      `apps/${id}: standalone install, lint, build and tests`,
       apps.includes(id) && standalone(root, id),
     );
 
