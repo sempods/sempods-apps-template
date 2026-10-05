@@ -55,7 +55,15 @@ On resumed setup, completed adaptations are inspected, not reset to defaults.
 
 ## Create the first app and open it
 
-Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm. From
+Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm. Check
+`node --version` first. If it differs, switch with the owner's version manager,
+naming the version from `.node-version` explicitly (for example `nvm install
+24.15.0`, `fnm use --install-if-missing 24.15.0`, or with mise prefix each
+command: `mise exec node@24.15.0 -- npm ci`; not every manager reads
+`.node-version` by default). Do not write a version-manager config into the
+repository (for example with `mise use`): `.node-version` stays the only source.
+Otherwise ask the owner to install that version; do not work around it. `.npmrc`
+sets `engine-strict`, so `npm ci` stops with `EBADENGINE` on an older Node. From
 the repository root, install the committed dependencies:
 
 ```sh

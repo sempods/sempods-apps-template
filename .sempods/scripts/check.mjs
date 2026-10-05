@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { staleGenerated } from './lib/generate.mjs';
+import { checkLinks } from './lib/links.mjs';
 
 const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
@@ -178,7 +179,7 @@ function standalone(root, id) {
   }
 }
 
-function main() {
+async function main() {
   const { values } = parseArgs({ options: { standalone: { type: 'string' } } });
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
   const failures = staticProblems(root);
@@ -194,15 +195,10 @@ function main() {
   step('script tests', node(['--test', '.sempods/scripts/test/*.test.mjs']));
   step(
     'Markdown links',
-    node([
-      join(root, 'node_modules', 'remark-cli', 'cli.js'),
-      '.',
-      '--rc-path',
-      '.sempods/remarkrc.json',
-      '--quiet',
-      '--frail',
-      '--no-stdout',
-    ]),
+    await checkLinks(root).catch((error) => {
+      console.error(error.message);
+      return false;
+    }),
   );
   for (const app of readAppsSafe(root)) {
     const ws = ['--workspace', `apps/${app.id}`];
@@ -247,4 +243,4 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 )
-  main();
+  await main();

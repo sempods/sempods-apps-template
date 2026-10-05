@@ -1,3 +1,0 @@
-{
-  "plugins": [["remark-validate-links", { "repository": false }]]
-}
