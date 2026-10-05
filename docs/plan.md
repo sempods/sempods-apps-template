@@ -72,7 +72,10 @@ slice using the local app-workflow skill and the pinned SDK references. Until
 the SDK entry pages are reorganized, its
 [AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md)
 is part of those references. INIT also adapts inherited repository ownership and
-maintainer settings (for example CODEOWNERS) to the instance, records the
+maintainer settings (for example CODEOWNERS) to the instance. The template's own
+contribution checks, such as the DCO sign-off workflow, stay in the template:
+an instance keeps them only if its owner asks, so assistant commits in a
+personal repository are not rejected for a missing sign-off. INIT records the
 template revision, and marks setup done. Repeating setup must preserve existing
 apps. A later app is one prompt: "New app: a shopping list with …".
 
@@ -90,8 +93,12 @@ Scripts (deterministic, tested in CI):
 
 - `new-app`: copies the app skeleton, sets the Vite and router base to `/<id>/`,
   the callback route, a free development port and the identity configuration,
-  and adds the app to `apps.json`. IDs, paths and ports are validated for
-  collisions; rerunning must not overwrite an existing app. Generate PWA
+  and adds the app to `apps.json`. Before copying anything, it rejects an ID
+  that is not one lowercase segment (`^[a-z][a-z0-9-]{0,39}$`), because the ID
+  becomes a directory, a URL path and a `did:web` component; names reserved by
+  the site (for example the overview page's assets) are rejected too. IDs, paths
+  and ports are validated for collisions; rerunning must not overwrite an
+  existing app. Generate PWA
   configuration by default, with a documented per-app opt-out; registration runs
   only from the production app entry.
 - `configure-app` (M3): an idempotent command applies explicit local, production
