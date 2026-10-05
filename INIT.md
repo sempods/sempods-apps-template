@@ -55,8 +55,12 @@ On resumed setup, completed adaptations are inspected, not reset to defaults.
 
 ## Create the first app and open it
 
-Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm. From
-the repository root, install the committed dependencies:
+Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm.
+Check `node --version` first. If it differs, switch with the owner's version
+manager (for example fnm, mise or nvm, which read `.node-version`) or ask the
+owner to install that version; do not work around it. `.npmrc` sets
+`engine-strict`, so `npm ci` stops with `EBADENGINE` on an older Node. From the
+repository root, install the committed dependencies:
 
 ```sh
 npm ci

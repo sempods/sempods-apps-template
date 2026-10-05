@@ -5,14 +5,11 @@ assistant. Try the first version, then ask for the next change. Your
 [sempods](https://www.sempods.org/) Pod keeps the data; the app gives it a
 screen.
 
-You need a coding assistant that can work with local files and a Pod account for
-trying real saves. Your assistant helps with the local setup. No hosting account
+You need a coding assistant that can work with local files, Node.js 24.15 or
+newer, and a Pod account for trying real saves. Your assistant helps with the local setup. No hosting account
 is needed yet.
 
-**M1a is being assembled:** use this entry once the
-[skeleton](https://github.com/sempods/sempods-apps-template/issues/2) and
-[instructions](https://github.com/sempods/sempods-apps-template/issues/3) are
-integrated. Local apps come first; publishing and automatic updates come later.
+Local apps come first; publishing and automatic updates come later.
 
 ## Start with your idea
 

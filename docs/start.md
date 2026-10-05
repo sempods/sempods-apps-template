@@ -2,6 +2,10 @@
 
 ## Start
 
+You need Node.js 24.15 or newer. Your copy names the exact version in
+`.node-version`; a version manager such as fnm, mise or nvm can switch to it,
+and the installation stops with a clear message on an older Node.
+
 [Create your own copy and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.
