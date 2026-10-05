@@ -46,8 +46,10 @@ Keep the screen consistent with the SDK's UI:
   "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
   browsers and webviews may block them and silently answer "cancel".
 - Give app controls labels that differ from AppShell's own. A list reload next
-  to AppShell's "Erneut prüfen" (access recheck) needs another label, or none:
-  the SDK lists refresh after the app's own confirmed writes.
+  to AppShell's "Erneut prüfen" (access recheck) needs another label. A `useList`
+  view refreshes by itself only after confirmed creation, row mutation or
+  bound-editor writes on that exact view; keep an explicit reload for anything
+  else, such as other clients, another view, raw client calls or another Pod.
 
 For a new app, run the root command with the chosen values:
 
