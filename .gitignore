@@ -7,3 +7,4 @@ netlify-dist/
 .env.*
 !.env.example
 .DS_Store
+dev-dist/

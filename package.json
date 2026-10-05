@@ -1,0 +1,21 @@
+{
+  "name": "my-sempods-apps",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "new-app": "node .sempods/scripts/new-app.mjs",
+    "dev": "node .sempods/scripts/dev.mjs",
+    "check": "node .sempods/scripts/check.mjs"
+  },
+  "devDependencies": {
+    "remark-cli": "12.0.1",
+    "remark-validate-links": "13.1.0",
+    "typescript": "6.0.3"
+  }
+}
