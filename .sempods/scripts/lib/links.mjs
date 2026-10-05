@@ -2,6 +2,7 @@
 // locally and without network access. It drives remark-validate-links through
 // unified-engine directly, the engine behind remark's CLI, without the CLI's
 // file watcher and its dependencies.
+import markdownExtensions from 'markdown-extensions';
 import { remark } from 'remark';
 import remarkValidateLinks from 'remark-validate-links';
 import { engine } from 'unified-engine';
@@ -14,7 +15,8 @@ export function checkLinks(root) {
         processor: remark(),
         cwd: root,
         files: ['.'],
-        extensions: ['md'],
+        // The same suffixes remark's CLI expands: .md, .markdown, .mdown and more.
+        extensions: markdownExtensions,
         ignoreName: '.remarkignore',
         // Without a repository, links are checked as local files only; the
         // engine does not ask git for a remote.
