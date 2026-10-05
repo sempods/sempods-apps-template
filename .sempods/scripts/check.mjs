@@ -2,7 +2,7 @@
 // Checks the whole repository: manifest, generated configuration, the shared
 // SDK version and its reference snapshot, declared dependencies, Markdown
 // links, script tests, and lint, typecheck, build and tests of every app.
-// Usage: npm run check [-- --standalone <id>]
+// Usage: npm run check [-- --standalone <id|all>]
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -212,10 +212,19 @@ function main() {
     );
     step(`apps/${app.id}: tests`, npm(['run', 'test', ...ws], root));
   }
-  if (values.standalone)
+  // Outside the workspace, an app finds only what its own package.json
+  // declares, including CLIs its scripts call.
+  const apps = readAppsSafe(root).map((app) => app.id);
+  const isolated =
+    values.standalone === 'all'
+      ? apps
+      : values.standalone
+        ? [values.standalone]
+        : [];
+  for (const id of isolated)
     step(
-      `apps/${values.standalone}: standalone install, build and tests`,
-      standalone(root, values.standalone),
+      `apps/${id}: standalone install, build and tests`,
+      apps.includes(id) && standalone(root, id),
     );
 
   if (failures.length > 0) {

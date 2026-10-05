@@ -1,4 +1,4 @@
-# **APP_TITLE**: development notes
+# __APP_TITLE__: development notes
 
 Your assistant keeps these notes up to date so the next session can continue.
 

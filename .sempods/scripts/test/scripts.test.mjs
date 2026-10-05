@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -148,6 +149,22 @@ describe('new-app', () => {
     assert.match(html, /<html lang="de">/);
     assert.match(html, /<title>Einkaufs&#60;liste&#62;<\/title>/);
     assert.deepEqual(staleGenerated(dir, app), []);
+    assert.match(
+      readFileSync(join(dir, 'NOTES.md'), 'utf8'),
+      /^# Einkaufs<liste>: development notes$/m,
+    );
+    // No placeholder survives, in any spelling a formatter might produce.
+    const leftovers = (path) =>
+      readdirSync(path, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? leftovers(join(path, entry.name))
+          : /APP_(ID|TITLE|LANGUAGE)/.test(
+                readFileSync(join(path, entry.name), 'latin1'),
+              )
+            ? [entry.name]
+            : [],
+      );
+    assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
     assert.deepEqual(manifest.apps, [app]);
     assert.equal(createApp(root, { id: 'second' }).devPort, 5175);
