@@ -3,5 +3,8 @@
 
 *                                      @haed
 
+# Licensing stays with the maintainer.
+/LICENSE                               @haed
+
 # CI and this file: a change here can weaken every other guard.
 /.github/                              @haed
