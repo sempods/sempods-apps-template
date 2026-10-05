@@ -14,15 +14,17 @@ happens once: instructions for the coding assistant, tooling, checks, hosting
 and one domain. After that, a new app is a folder and a conversation: describe
 the idea, let the assistant build it with the SDK, try it on your Pod.
 
-**Clear responsibilities.** This template owns the guided vibe-coding journey:
-short user introductions, starter prompts, setup, agent instructions and
-reusable skill entry points for creating, changing and preparing an app for
-deployment. The TypeScript SDK focuses on direct, code-first use: public APIs,
-technical guides, contracts and executable examples for apps, widgets and
-libraries. Its agent instructions remain useful for SDK maintenance and
-technical reference; the template consumes those contracts rather than copying
-their explanations. This is the intended division; moving existing SDK entry
-guidance is coordinated separately, preserving working links.
+**Playground and foundation.** This template is everyone's personal
+playground for coding apps quickly: short user introductions, starter prompts,
+setup, agent instructions and skill entry points for creating, changing and
+publishing small apps. The TypeScript SDK is the more deliberate foundation:
+public APIs, contracts, technical guides and examples from which demanding apps,
+modules and services are built, where the implementation needs some thought
+first. Vibe-coding works there too, including its single-app AI app-builder
+guide, but the project is set up more by hand. The template consumes the SDK's
+contracts and pinned documentation rather than copying their explanations; the
+SDK keeps its single-app guidance and points to this template as the quick
+start for personal apps.
 
 **Same app, either way.** A single app built with the SDK's
 [quickstart](https://github.com/sempods/sempods-typescript/blob/main/docs/quickstart.md)

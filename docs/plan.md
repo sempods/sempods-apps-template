@@ -7,8 +7,10 @@ issues own later scope.
 ## Decisions
 
 Owner direction, 2026-10-05: vibe-coding is the standard user journey here;
-production apps are PWAs by default. The SDK focuses on direct code-first use
-and owns technical contracts. These decisions survive retirement of this plan in
+production apps are PWAs by default. This template is the personal playground
+for quick apps; the SDK is the deliberate foundation for demanding apps, modules
+and services, owns the technical contracts and keeps its single-app guidance,
+including the AI app-builder guide. These decisions survive retirement of this plan in
 the maintained vision and workflow guides.
 
 | #   | Question              | Decision / proposal                                                                                                                                                                                                                                                                                                                                             | Needed for |
@@ -19,7 +21,7 @@ the maintained vision and workflow guides.
 | D4  | Package manager       | **Decided: npm workspaces.** Matches the SDK quickstart and ships with Node. Declare dependencies in each app; verify standalone installation/build. Set `ignore-scripts=true` and `save-exact=true`; M1 verifies the selected stack works with those settings. A later tool change needs fresh install/build checks as well as updated commands and lockfiles. | M1         |
 | D5  | Instructions          | Root AGENTS.md serves the instance owner's assistant. Thin skill/tool entries route to one maintained app workflow. Template-maintainer rules live in `docs/maintaining.md`, linked only for that role.                                                                                                                                                         | M1         |
 | D6  | Template updates      | No automatic instance updates in M1–M4. Record the starting template revision and keep template-owned logic small. Decide a later update path from real instances.                                                                                                                                                                                              | later      |
-| D7  | Standard user journey | **Decided: vibe-coding.** Short user guidance and copyable prompts lead into a complete assistant workflow. SDK guides remain the technical source for direct code-first use; coordinate later entry-page changes without breaking existing links.                                                                                                              | M1         |
+| D7  | Standard user journey | **Decided: vibe-coding.** Short user guidance and copyable prompts lead into a complete assistant workflow. The SDK remains the foundation for demanding apps, modules and services and keeps its single-app guidance; M4 adds a pointer from it to this template.                                                                                              | M1         |
 | D8  | Installation          | **Decided: PWA by default** for generated production apps, with an explicit per-app opt-out. Device support claims require evidence; a browser-only choice stays supported.                                                                                                                                                                                     | M1/M3      |
 
 ## Target layout
@@ -68,10 +70,9 @@ Then, in the repository, ask the assistant: "Read INIT.md and set up my
 repository." It asks for the owner's name, the UI language and the first app
 idea and test Pod/context if available; it installs dependencies, runs
 `npm run new-app -- <id>`, starts the development server and builds the first
-slice using the local app-workflow skill and the pinned SDK references. Until
-the SDK entry pages are reorganized, its
-[AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md)
-is part of those references. INIT also adapts inherited repository ownership and
+slice using the local app-workflow skill and the pinned SDK references,
+including the SDK's
+[AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md). INIT also adapts inherited repository ownership and
 maintainer settings (for example CODEOWNERS) to the instance. The template's own
 contribution checks, such as the DCO sign-off workflow, stay in the template:
 an instance keeps them only if its owner asks, so assistant commits in a
@@ -202,9 +203,10 @@ describes only original template material.
   remaining limits. Browser fixtures do not establish live-Pod or iOS standalone
   support.
 - **M4, public.** Public template; used for events and by others. Decide whether
-  the apps of `haed/sempods-apps` move into an instance. Coordinate SDK entry
-  links toward this default vibe-coding journey while keeping the SDK's
-  code-first quickstart, API documentation and existing external links usable.
+  the apps of `haed/sempods-apps` move into an instance. Add a pointer from the
+  SDK's entry pages to this template as the quick start for personal apps; the
+  SDK keeps its quickstart, AI app-builder guide, API documentation and existing
+  links.
 
 ## Later, with its own issue
 
