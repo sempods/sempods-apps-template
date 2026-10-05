@@ -10,12 +10,12 @@ Owner direction, 2026-10-05: vibe-coding is the standard user journey here;
 production apps are PWAs by default. This template is the personal playground
 for quick apps; the SDK is the deliberate foundation for demanding apps, modules
 and services, owns the technical contracts and keeps its single-app guidance,
-including the AI app-builder guide. These decisions survive retirement of this plan in
-the maintained vision and workflow guides.
+including the AI app-builder guide. These decisions survive retirement of this
+plan in the maintained vision and workflow guides.
 
 | #   | Question              | Decision / proposal                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Needed for |
 | --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| D1  | Visibility            | Private through M3; public and marked as a GitHub template only in M4, with owner authorization.                                                                                                                                                                                                                                                                                                                                                                                                                              | M4         |
+| D1  | Visibility            | Enable the GitHub template setting before the M1 setup exercise, while the repository remains private. Keep it private through M3; change visibility to public only in M4, with owner authorization.                                                                                                                                                                                                                                                                                                                          | M1/M4      |
 | D2  | Template licence      | **Decided: MIT-0** for original template code and documentation. Copied SDK references and examples retain their own licences and notices; SDK dependencies remain Apache-2.0. Trademark rules are separate.                                                                                                                                                                                                                                                                                                                  | M1         |
 | D3  | Hosting layout        | One site, one app per path (`/konsum/`), for apps that trust each other's JavaScript. Paths and DIDs do not create browser security isolation; use separate origins where needed.                                                                                                                                                                                                                                                                                                                                             | M3         |
 | D4  | Package manager       | **Decided: npm workspaces.** Matches the SDK quickstart and ships with Node. Declare dependencies in each app; verify standalone installation/build. Set `ignore-scripts=true` and `save-exact=true`; M1 verifies the selected stack works with those settings. A later tool change needs fresh install/build checks as well as updated commands and lockfiles.                                                                                                                                                               | M1         |
@@ -41,7 +41,7 @@ reference/sempods-sdk/ SDK docs and examples, snapshot of the installed version
                        instructions, VERSION; replaced as a whole on update
 package.json           workspace root; npm scripts are thin calls into .sempods/
 docs/start.md          short user steps: start, change, try, publish
-docs/app-workflow.md   canonical assistant workflow and handoff requirements
+docs/app-workflow.md   thin entry to canonical instructions in .sempods/
 docs/                  vision, plan, maintaining (template-maintainer context)
 ```
 
@@ -66,6 +66,12 @@ instructions.
 
 ## Setup flow
 
+Before the M1 exercise, the maintainer enables GitHub's template setting on the
+still-private repository. Participants need read access to that repository;
+public discovery starts in M4. Template capability and public visibility are
+separate settings
+([GitHub's template guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository)).
+
 ```sh
 gh repo create my-sempods-apps --template sempods/sempods-apps-template --private --clone
 ```
@@ -76,13 +82,14 @@ idea and test Pod/context if available; it installs dependencies, runs
 `npm run new-app -- <id>`, starts the development server and builds the first
 slice using the local app-workflow skill and the pinned SDK references,
 including the SDK's
-[AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md). INIT also adapts inherited repository ownership and
-maintainer settings (for example CODEOWNERS) to the instance. The template's own
-contribution checks, such as the DCO sign-off workflow, stay in the template:
-an instance keeps them only if its owner asks, so assistant commits in a
-personal repository are not rejected for a missing sign-off. INIT records the
-template revision, and marks setup done. Repeating setup must preserve existing
-apps. A later app is one prompt: "New app: a shopping list with …".
+[AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md).
+INIT also adapts inherited repository ownership and maintainer settings (for
+example CODEOWNERS) to the instance. The template's own contribution checks,
+such as the DCO sign-off workflow, stay in the template: an instance keeps them
+only if its owner asks, so assistant commits in a personal repository are not
+rejected for a missing sign-off. INIT records the template revision, and marks
+setup done. Repeating setup must preserve existing apps. A later app is one
+prompt: "New app: a shopping list with …".
 
 No domain, hosting account or DID is needed to start. Locally, every app uses
 dynamic identity with `development: 'loopback-http'`. Without a Pod, the
@@ -98,16 +105,16 @@ Scripts (deterministic, tested in CI):
 
 - `new-app`: copies the app skeleton, sets the Vite and router base to `/<id>/`,
   the callback route, a free development port and the identity configuration,
-  and adds the app to `apps.json`. Base path, callback, identity and PWA settings
-  go into generated files that the app's code imports but never edits, so an
-  update can regenerate them for existing apps. Before copying anything, it rejects an ID
-  that is not one lowercase segment (`^[a-z][a-z0-9-]{0,39}$`), because the ID
-  becomes a directory, a URL path and a `did:web` component; names reserved by
-  the site (for example the overview page's assets) are rejected too. IDs, paths
-  and ports are validated for collisions; rerunning must not overwrite an
-  existing app. Generate PWA
-  configuration by default, with a documented per-app opt-out; registration runs
-  only from the production app entry.
+  and adds the app to `apps.json`. Base path, callback, identity and PWA
+  settings go into generated files that the app's code imports but never edits,
+  so an update can regenerate them for existing apps. Before copying anything,
+  it rejects an ID that is not one lowercase segment (`^[a-z][a-z0-9-]{0,39}$`),
+  because the ID becomes a directory, a URL path and a `did:web` component;
+  names reserved by the site (for example the overview page's assets) are
+  rejected too. IDs, paths and ports are validated for collisions; rerunning
+  must not overwrite an existing app. Generate PWA configuration by default,
+  with a documented per-app opt-out; registration runs only from the production
+  app entry.
 - `configure-app` (M3): an idempotent command applies explicit local, production
   or preview profiles to an existing app from `apps.json`. It derives DID,
   callback, `returnTo`, asset base and PWA paths together, without touching user
@@ -147,23 +154,41 @@ recovery.
 ## Updates
 
 **SDK.** All apps of an instance use one exact shared version of both SDK
-packages: they share one origin, and with it the browser storage and locks in
-which the SDK keeps sessions. Security releases are applied promptly; other
-updates when the owner wants them. A scheduled workflow (weekly) runs
-`sdk-update` for the newest release, runs `check` and opens a pull request that
-links the SDK's migration notes. A patch release can be merged when the checks
-pass, automatically if the owner enables that. Before 1.0 a minor release may
-break apps: the owner asks the assistant to apply it, and the update skill
-follows the migration guide, adapts the apps, runs the checks and lists what to
-try on the Pod.
+packages for reproducible builds, one matching documentation snapshot and a
+single update process. This is a template policy, not a same-origin runtime
+requirement: the SDK namespaces sessions and locks by identity kind plus app DID
+(or dynamic callback URI). Different app DIDs therefore have distinct
+namespaces, while sharing the origin's browser security boundary. See the SDK's
+[session persistence contract](https://github.com/sempods/sempods-typescript/blob/012fa63cea292d6b63b71e3a17187710f7180d44/docs/migration.md#know-what-persists).
+Security releases are applied promptly; other updates when the owner wants them.
+A scheduled workflow (weekly) runs `sdk-update` for the newest release, runs
+`check` and opens a pull request that links the SDK's migration notes. A patch
+release can be merged when the checks pass, automatically if the owner enables
+that. Before 1.0 a minor release may break apps: the owner asks the assistant to
+apply it, and the update skill follows the migration guide, adapts the apps,
+runs the checks and lists what to try on the Pod.
 
-**Template.** Every file has one owner:
+**Template.** Each file or explicitly delimited section has an update policy:
 
-| Owner    | Files                                                                                    | On update                                    |
-| -------- | ---------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Template | `.sempods/` (scripts, skills, shared instructions, VERSION), generated app configuration | Replaced or regenerated as a whole           |
-| Owner    | App code, `apps.json`, the owner section of AGENTS.md, each app's development notes      | Never changed automatically                  |
-| Shared   | Few files that both edit, such as the template part of AGENTS.md, README and INIT.md     | Changed only through upgrade notes, reviewed |
+| Owner                      | Files                                                                                                                                                                   | On update                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                      | Replace or regenerate as a whole.                                                                            |
+| Owner                      | App code, `apps.json`, the owner section of AGENTS.md, each app's development notes                                                                                     | Preserve; never overwrite as part of a template update.                                                      |
+| Shared                     | Template section of AGENTS.md, README, INIT.md, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
+| Shared manifests           | Root and app `package.json` files                                                                                                                                       | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
+| Generated dependency state | `package-lock.json`                                                                                                                                                     | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
+| SDK reference              | `reference/sempods-sdk/`                                                                                                                                                | Refresh with `sdk-update` at the matching package revision, retaining provenance.                            |
+
+The workflow entry outside `.sempods/` links to its canonical instructions
+inside that directory rather than maintaining a second workflow. Template
+releases list any required dependency, adapter, workflow or configuration-schema
+changes in their upgrade notes. Updating `.sempods/` alone is not enough when
+those change: apply the related manifest, lockfile and shared-file updates in
+the same PR. If an upgrade needs a change to an owner-owned file, stop that part
+and explain the required migration for explicit review; do not overwrite it
+during regeneration. Checks cover instruction links and preservation of app
+code, public profile inputs and the owner section of AGENTS.md across a
+representative template upgrade.
 
 The template is released with semantic version tags and a changelog whose
 upgrade notes are written for assistants. An instance records its template
@@ -172,8 +197,10 @@ the `update-template` skill fetches a newer tagged release, replaces
 `.sempods/`, regenerates the generated configuration, applies the upgrade notes
 to shared files, runs `check` and opens a pull request. After the package exists
 (after M4), an instance switches once; from then on, template updates arrive as
-version pull requests like SDK updates, and only shared files still need the
-skill.
+version pull requests like SDK updates. Those updates still explicitly
+regenerate app configuration and run the same consistency checks; they cannot
+rely on npm install hooks with `ignore-scripts=true`. Shared-file migrations
+still use the skill and reviewed upgrade notes.
 
 ## Identity and hosting (M3)
 
@@ -208,20 +235,25 @@ describes only original template material.
 
 - **M0, this plan.** Vision and plan independently reviewed at the exact head
   and merged by the owner.
-- **M1, skeleton.** Layout with the ownership split of D6 (`.sempods/` with
-  VERSION, generated configuration in separate files), `new-app`, `sdk-update`,
-  `update-template`, `check`, `AGENTS.md`, `INIT.md`, short user guidance, the
-  app-workflow skill, maintainer guidance, default PWA skeleton, `.npmrc`, CI,
-  the scheduled SDK update workflow, a changelog with upgrade notes, and
-  Dependabot for actions and for npm dependencies other than the SDK packages,
-  which the update workflow owns. Accepted when a user can start from the short
-  introduction and an assistant without prior context reaches a running example
-  against a loopback Pod. CI verifies clean generation, non-destructive reruns,
-  app tests, instruction links/version consistency, an app's standalone
-  install/build, and that replacing `.sempods/` with a newer revision
-  regenerates configuration without touching app code. Record the authoring
-  exercise separately from fixture results; this does not claim production or
-  installed-device validation.
+- **M1a, first working slice.** Enable the private template setting, then build
+  the D6 ownership layout (`.sempods/` with VERSION and separate generated app
+  configuration), `new-app`, `check`, AGENTS.md, INIT.md, short user guidance,
+  the app-workflow skill, maintainer guidance, default PWA skeleton, `.npmrc`
+  and CI. Start with pinned SDK packages and their matching reference snapshot.
+  Accepted when a user follows the short introduction and an assistant without
+  prior context reaches a running example against a loopback Pod. CI verifies
+  clean generation, non-destructive reruns, app tests, instruction links/version
+  consistency and an app's standalone install/build. Record the authoring
+  exercise separately from fixtures and from production/device evidence.
+- **M1b, repeatable updates.** After the first working slice, add `sdk-update`,
+  `update-template`, a changelog with upgrade notes, the scheduled SDK update
+  workflow, and Dependabot for actions and npm dependencies other than the SDK
+  packages. The dedicated update workflow owns the two SDK packages together.
+  Accept with an upgrade fixture that changes template tooling and one shared
+  dependency: update generated configuration, manifests, lockfile and
+  instruction links together, then install and run `check`. Verify app code,
+  `apps.json`, owner notes and owner AGENTS.md sections are unchanged; repeat
+  the update safely. M1 is complete only after M1a and M1b, before M2.
 - **M2, Konsum.** The first real app, built from a short prompt. Record the
   prompt, the time taken, manual interventions and friction; friction becomes
   SDK or template issues, not app workarounds. Scope: open items, adding several
