@@ -248,6 +248,11 @@ describe('check', () => {
       assert.match(problems, /imports canvas-confetti/);
       assert.match(problems, /tests\/helper\.cjs imports left-pad/);
       assert.doesNotMatch(problems, /bundled-only/);
+      mkdirSync(join(root, 'apps', 'orphan'));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /apps\/orphan is not listed in apps\.json/,
+      );
       assert.match(
         problems,
         /vite\.sempods\.generated\.ts does not match apps\.json/,

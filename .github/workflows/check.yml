@@ -1,7 +1,7 @@
 name: Check
-# Checks every app and the template tooling: script tests, a freshly generated
-# app (including a refused rerun), Markdown links, lint, typecheck, build and
-# tests, and one standalone install/build outside the workspace.
+# Checks the owner's apps as they are, then tests the template tooling in an
+# isolated copy: a freshly generated app, a refused rerun, and check with a
+# standalone install/build. The copy never touches apps or apps.json here.
 on:
   pull_request:
   push:
@@ -13,7 +13,7 @@ jobs:
   check:
     name: Apps and tooling
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,14 +23,5 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci --no-audit --no-fund
-      # The generated app proves the skeleton; its ID does not collide with
-      # an owner's app, and a second run must change nothing.
-      - run: npm run new-app -- ci-sample --title "CI sample"
-      - run: |
-          cp apps.json "$RUNNER_TEMP/apps.json"
-          if npm run new-app -- ci-sample --skip-install; then
-            echo "A rerun of new-app must be refused." >&2
-            exit 1
-          fi
-          cmp apps.json "$RUNNER_TEMP/apps.json"
-      - run: npm run check -- --standalone ci-sample
+      - run: npm run check
+      - run: node .sempods/scripts/self-test.mjs

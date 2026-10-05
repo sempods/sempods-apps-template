@@ -73,14 +73,18 @@ export function staticProblems(root) {
     return [error.message];
   }
   const appsDir = join(root, 'apps');
+  // Every directory counts, with or without package.json: an unlisted one
+  // would also block new-app for that ID.
   const dirs = existsSync(appsDir)
-    ? readdirSync(appsDir).filter((name) =>
-        existsSync(join(appsDir, name, 'package.json')),
-      )
+    ? readdirSync(appsDir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+        .map((entry) => entry.name)
     : [];
   for (const dir of dirs)
     if (!manifest.apps.some((app) => app.id === dir))
-      problems.push(`apps/${dir} is not listed in apps.json`);
+      problems.push(
+        `apps/${dir} is not listed in apps.json; add it there or remove the directory`,
+      );
 
   const snapshotFile = join(root, 'reference', 'sempods-sdk', 'source.json');
   const snapshot = existsSync(snapshotFile)
