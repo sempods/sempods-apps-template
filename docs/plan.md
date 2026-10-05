@@ -168,6 +168,16 @@ that. Before 1.0 a minor release may break apps: the owner asks the assistant to
 apply it, and the update skill follows the migration guide, adapts the apps,
 runs the checks and lists what to try on the Pod.
 
+When installing the update workflow (M1b), INIT checks whether Actions may
+create pull requests. For a new personal repository this is disabled by default.
+Guide the owner to the repository's Actions settings to enable that capability,
+subject to organisation policy; YAML permissions alone do not enable it. Scope
+`contents: write` and `pull-requests: write` to the update job. If policy or the
+owner keeps PR creation disabled, report automatic updates as unavailable and
+retain the local `sdk-update` plus assistant-created PR path using the owner's
+existing GitHub access. Never request a token in a prompt. See
+[GitHub's PR creation setting](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#preventing-github-actions-from-creating-or-approving-pull-requests).
+
 **Template.** Each file or explicitly delimited section has an update policy:
 
 | Owner                      | Files                                                                                                                                                                   | On update                                                                                                    |
@@ -253,7 +263,9 @@ describes only original template material.
   dependency: update generated configuration, manifests, lockfile and
   instruction links together, then install and run `check`. Verify app code,
   `apps.json`, owner notes and owner AGENTS.md sections are unchanged; repeat
-  the update safely. M1 is complete only after M1a and M1b, before M2.
+  the update safely. In a test instance, verify PR creation with the required
+  repository/job permissions and clear manual fallback when creation is
+  disabled. M1 is complete only after M1a and M1b, before M2.
 - **M2, Konsum.** The first real app, built from a short prompt. Record the
   prompt, the time taken, manual interventions and friction; friction becomes
   SDK or template issues, not app workarounds. Scope: open items, adding several
