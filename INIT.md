@@ -57,8 +57,10 @@ On resumed setup, completed adaptations are inspected, not reset to defaults.
 
 Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm.
 Check `node --version` first. If it differs, switch with the owner's version
-manager (for example fnm, mise or nvm, which read `.node-version`) or ask the
-owner to install that version; do not work around it. `.npmrc` sets
+manager, naming the version from `.node-version` explicitly (for example
+`nvm install 24.15.0`, `mise use node@24.15.0` or `fnm use 24.15.0`; not every
+manager reads `.node-version` by default), or ask the owner to install that
+version; do not work around it. `.npmrc` sets
 `engine-strict`, so `npm ci` stops with `EBADENGINE` on an older Node. From the
 repository root, install the committed dependencies:
 
