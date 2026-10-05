@@ -110,8 +110,9 @@ Scripts (deterministic, tested in CI):
   so an update can regenerate them for existing apps. Before copying anything,
   it rejects an ID that is not one lowercase segment (`^[a-z][a-z0-9-]{0,39}$`),
   because the ID becomes a directory, a URL path and a `did:web` component;
-  names reserved by the site (for example the overview page's assets) are
-  rejected too. IDs, paths and ports are validated for collisions; rerunning
+  names reserved by the site (for example the overview page's assets) and
+  Windows device names (`con`, `prn`, `aux`, `nul`, `com1`–`com9`,
+  `lpt1`–`lpt9`) are rejected too. IDs, paths and ports are validated for collisions; rerunning
   must not overwrite an existing app. Generate PWA configuration by default,
   with a documented per-app opt-out; registration runs only from the production
   app entry.
@@ -175,7 +176,15 @@ subject to organisation policy; YAML permissions alone do not enable it. Scope
 `contents: write` and `pull-requests: write` to the update job. If policy or the
 owner keeps PR creation disabled, report automatic updates as unavailable and
 retain the local `sdk-update` plus assistant-created PR path using the owner's
-existing GitHub access. Never request a token in a prompt. See
+existing GitHub access. Never request a token in a prompt.
+
+A pull request opened with the job's `GITHUB_TOKEN` does not trigger
+`pull_request` workflows, so its CI would not run on its own. The updater
+therefore runs `check` on the update branch before opening the PR and then
+starts the instance's check workflow for that branch with a
+`workflow_dispatch` event (allowed for this token; it needs `actions: write` on
+the update job), so the PR head carries a check result. No personal token or
+GitHub App is required for this. See
 [GitHub's PR creation setting](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#preventing-github-actions-from-creating-or-approving-pull-requests).
 
 **Template.** Each file or explicitly delimited section has an update policy:
@@ -264,8 +273,9 @@ describes only original template material.
   instruction links together, then install and run `check`. Verify app code,
   `apps.json`, owner notes and owner AGENTS.md sections are unchanged; repeat
   the update safely. In a test instance, verify PR creation with the required
-  repository/job permissions and clear manual fallback when creation is
-  disabled. M1 is complete only after M1a and M1b, before M2.
+  repository/job permissions, a check result on the update PR's head, and clear
+  manual fallback when creation is disabled. M1 is complete only after M1a and
+  M1b, before M2.
 - **M2, Konsum.** The first real app, built from a short prompt. Record the
   prompt, the time taken, manual interventions and friction; friction becomes
   SDK or template issues, not app workarounds. Scope: open items, adding several
