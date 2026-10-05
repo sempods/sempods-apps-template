@@ -189,9 +189,16 @@ describe('check', () => {
       import { join } from 'node:path';
       import fs from 'fs';
       const lazy = import('lodash/fp');
-      export { y } from "./y.ts";`);
+      export { y } from "./y.ts";
+      // import ghost from 'ghost';
+      /* const old = require('legacy'); */
+      const text = "import fake from 'not-a-package'";
+      const cjs = require('cjs-only');
+      export * from '@scope/reexported/sub';`);
     assert.deepEqual([...names].sort(), [
+      '@scope/reexported',
       '@sempods/app-sdk',
+      'cjs-only',
       'lodash',
       'react',
     ]);
@@ -226,12 +233,21 @@ describe('check', () => {
         join(dir, 'src', 'extra.ts'),
         "import confetti from 'canvas-confetti';\n",
       );
+      mkdirSync(join(dir, 'tests'));
+      writeFileSync(
+        join(dir, 'tests', 'helper.cjs'),
+        "module.exports = require('left-pad');\n",
+      );
+      mkdirSync(join(dir, 'dist'));
+      writeFileSync(join(dir, 'dist', 'bundle.js'), "import 'bundled-only';\n");
       writeFileSync(join(dir, 'vite.sempods.generated.ts'), '// edited\n');
       const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
       pkg.dependencies['@sempods/client-sdk'] = '^0.1.0';
       writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg));
       const problems = staticProblems(root).join('\n');
       assert.match(problems, /imports canvas-confetti/);
+      assert.match(problems, /tests\/helper\.cjs imports left-pad/);
+      assert.doesNotMatch(problems, /bundled-only/);
       assert.match(
         problems,
         /vite\.sempods\.generated\.ts does not match apps\.json/,

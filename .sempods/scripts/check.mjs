@@ -13,7 +13,7 @@ import {
   rmSync,
   statSync,
 } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,22 +27,34 @@ const BUILTIN = new Set(builtinModules);
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
+// Build output, installed packages and static files are not app source.
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'dev-dist', 'public']);
+
 function sourceFiles(dir) {
   if (!existsSync(dir)) return [];
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory())
-      return name === 'node_modules' ? [] : sourceFiles(path);
+      return SKIP_DIRS.has(name) || name.startsWith('.')
+        ? []
+        : sourceFiles(path);
     return SOURCE_EXT.test(name) ? [path] : [];
   });
+}
+
+let typescript;
+function scanner() {
+  // TypeScript's own import scanner: it skips comments and strings and finds
+  // static and dynamic imports, re-exports and require() calls.
+  typescript ??= createRequire(import.meta.url)('typescript');
+  return typescript;
 }
 
 /** Package names imported by a source file (bare specifiers only). */
 export function importedPackages(source) {
   const names = new Set();
-  const specifiers =
-    /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
-  for (const [, spec] of source.matchAll(specifiers)) {
+  const { importedFiles } = scanner().preProcessFile(source, true, true);
+  for (const { fileName: spec } of importedFiles) {
     if (/^(\.|\/|node:|virtual:|[a-z]+:\/\/)/.test(spec)) continue;
     const parts = spec.split('/');
     const name = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
@@ -109,11 +121,7 @@ export function staticProblems(root) {
       ...Object.keys(pkg.dependencies ?? {}),
       ...Object.keys(pkg.devDependencies ?? {}),
     ]);
-    const topLevel = readdirSync(dir)
-      .filter((name) => SOURCE_EXT.test(name))
-      .map((name) => join(dir, name));
-    const files = [...sourceFiles(join(dir, 'src')), ...topLevel];
-    for (const file of files)
+    for (const file of sourceFiles(dir))
       for (const name of importedPackages(readFileSync(file, 'utf8')))
         if (!declared.has(name))
           problems.push(
