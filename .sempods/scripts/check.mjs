@@ -22,7 +22,7 @@ import { readApps } from './lib/apps.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 
 const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
-const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
+const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -165,9 +165,12 @@ function standalone(root, id) {
         !/[\\/](node_modules|dist)([\\/]|$)/.test(src.slice(root.length)),
     });
     cpSync(join(root, '.npmrc'), join(work, '.npmrc'));
+    // Installs, builds and tests without the workspace, so a package that
+    // only another app or the root tooling provides fails here.
     return (
       npm(['install', '--no-audit', '--no-fund'], work) &&
-      npm(['run', 'build'], work)
+      npm(['run', 'build'], work) &&
+      npm(['run', 'test'], work)
     );
   } finally {
     rmSync(work, { recursive: true, force: true });
@@ -211,7 +214,7 @@ function main() {
   }
   if (values.standalone)
     step(
-      `apps/${values.standalone}: standalone install and build`,
+      `apps/${values.standalone}: standalone install, build and tests`,
       standalone(root, values.standalone),
     );
 

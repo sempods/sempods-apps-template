@@ -238,6 +238,15 @@ describe('check', () => {
         join(dir, 'tests', 'helper.cjs'),
         "module.exports = require('left-pad');\n",
       );
+      mkdirSync(join(dir, 'tests', 'nested'));
+      writeFileSync(
+        join(dir, 'tests', 'nested', 'undeclared.test.mts'),
+        "import { unified } from 'unified';\n",
+      );
+      writeFileSync(
+        join(dir, 'tests', 'nested', 'helper.cts'),
+        "import yaml = require('js-yaml');\n",
+      );
       mkdirSync(join(dir, 'dist'));
       writeFileSync(join(dir, 'dist', 'bundle.js'), "import 'bundled-only';\n");
       writeFileSync(join(dir, 'vite.sempods.generated.ts'), '// edited\n');
@@ -247,6 +256,8 @@ describe('check', () => {
       const problems = staticProblems(root).join('\n');
       assert.match(problems, /imports canvas-confetti/);
       assert.match(problems, /tests\/helper\.cjs imports left-pad/);
+      assert.match(problems, /undeclared\.test\.mts imports unified/);
+      assert.match(problems, /helper\.cts imports js-yaml/);
       assert.doesNotMatch(problems, /bundled-only/);
       mkdirSync(join(root, 'apps', 'orphan'));
       assert.match(
