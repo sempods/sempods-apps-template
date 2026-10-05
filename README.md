@@ -10,3 +10,10 @@ stores the data and enforces access.
 under review; until then, build a single app with the SDK's
 [quickstart](https://github.com/sempods/sempods-typescript/blob/main/docs/quickstart.md)
 and [AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md).
+
+## Licence
+
+The content of this template, code and documentation, is licensed under
+[MIT-0](LICENSE): a repository created from it is yours, with no attribution
+required. The sempods SDK packages your apps install keep their own licence
+(Apache-2.0).
