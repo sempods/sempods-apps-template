@@ -1,29 +1,49 @@
 # Purpose and direction
 
-The [SDK vision](https://github.com/sempods/sempods-typescript/blob/main/docs/vision.md)
-says that people should be able to build a small, useful app around their own data
-without building another backend. This template makes the second and the tenth app
-as cheap as the first.
+The
+[SDK vision](https://github.com/sempods/sempods-typescript/blob/main/docs/vision.md)
+says that people should be able to build a small, useful app around their own
+data without building another backend. This template makes the second and the
+tenth app as cheap as the first. Vibe-coding is the standard way to use it: a
+person describes what they need, the assistant builds a small slice, and they
+try it and decide what comes next. Users do not need to identify as developers.
 
-**Your own apps repository.** One person or team keeps all of their small sempods
-apps in one repository, created from this template. The one-time work happens
-once: instructions for the coding assistant, tooling, checks, hosting and one
-domain. After that, a new app is a folder and a conversation: describe the idea,
-let the assistant build it with the SDK, try it on your Pod.
+**Your own apps repository.** One person or team keeps all of their small
+sempods apps in one repository, created from this template. The one-time work
+happens once: instructions for the coding assistant, tooling, checks, hosting
+and one domain. After that, a new app is a folder and a conversation: describe
+the idea, let the assistant build it with the SDK, try it on your Pod.
+
+**Clear responsibilities.** This template owns the guided vibe-coding journey:
+short user introductions, starter prompts, setup, agent instructions and
+reusable skill entry points for creating, changing and preparing an app for
+deployment. The TypeScript SDK focuses on direct, code-first use: public APIs,
+technical guides, contracts and executable examples for apps, widgets and
+libraries. Its agent instructions remain useful for SDK maintenance and
+technical reference; the template consumes those contracts rather than copying
+their explanations. This is the intended division; moving existing SDK entry
+guidance is coordinated separately, preserving working links.
 
 **Same app, either way.** A single app built with the SDK's
 [quickstart](https://github.com/sempods/sempods-typescript/blob/main/docs/quickstart.md)
-remains a first-class path, and the SDK repository keeps owning instructions for
-single apps and other modules. Each app in this repository has the quickstart's
-layout, so it can move into its own repository and back. The repository only adds
-what several apps share: a manifest, an overview page, one site build and shared
-instructions.
+remains a first-class path. Each app in this repository has the quickstart's
+layout, so it can move into its own repository and back. The repository only
+adds what several apps share: a manifest, an overview page, one site build and
+shared instructions.
 
-**One repository, one trust boundary.** Apps of one repository trust each other's
-JavaScript. Deployed under one site, they share a browser security boundary
+**One repository, one trust boundary.** Apps of one repository trust each
+other's JavaScript. Deployed under one site, they share a browser security
+boundary
 ([deployment guide](https://github.com/sempods/sempods-typescript/blob/main/docs/deployment.md)).
 Apps of different people never share a site: at an event, every participant
 creates their own repository from this template, not a folder in a shared one.
+
+**Two readers, two entrances.** The README answers "What can I make?", "What do
+I need?" and "What do I tell my assistant?" in a few short paragraphs with a
+copyable prompt. Linked user guides explain the next action in plain language.
+AGENTS.md routes the assistant to the complete workflow, app decisions and
+pinned SDK references; skill entries point to that same workflow. Users should
+not need to read an API guide or an agent manual to begin.
 
 **Instructions are the product.** The value of this template lies in its agent
 instructions and in a few deterministic scripts. Scripts own what must be right
@@ -33,13 +53,22 @@ with the SDK come from a snapshot pinned to the installed SDK version, not from
 copied text that drifts.
 
 **Default UI first.** Apps start with the SDK's default AppShell and components.
-When the default gets in the way, the finding goes to the SDK, not into a local
-workaround; a template that needs heavy customization signals an SDK gap.
+Ordinary visual and domain-specific customization is welcome. When an app needs
+to recreate authentication, recovery or other SDK responsibilities, record an
+SDK finding rather than adding a parallel implementation.
+
+**PWA by default.** Generated production apps include the manifest, icons and
+scoped worker configuration needed for installation. Each app can opt out. An
+offline shell is not offline editing; sign-in, update behavior and
+installed-device support keep the SDK's documented constraints and evidence
+requirements.
 
 **Success** means that someone with a Pod and a coding assistant goes from "Use
 this template" to a first working app on their Pod in one session, and adds the
-next app with one prompt. The reference exercise is a shopping list (Konsum) built
-from a short prompt, with the time taken and every point of friction recorded.
+next app with one prompt. The user can follow the short introduction, see what
+was tested and retain control over real data and publication. The reference
+exercise is a shopping list (Konsum) built from a short prompt, with the time
+taken and every point of friction recorded.
 
 **Not goals:** a framework or runtime of its own, a backend, shared hosting for
 several people, AI features by default, or a second home for SDK documentation.
