@@ -1,0 +1,9 @@
+node_modules/
+dist/
+netlify-dist/
+.netlify/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store

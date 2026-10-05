@@ -1,0 +1,7 @@
+# Whom GitHub requests for review when a matching path changes. This assigns
+# reviewers; it does not require them. Last matching pattern wins.
+
+*                                      @haed
+
+# CI and this file: a change here can weaken every other guard.
+/.github/                              @haed
