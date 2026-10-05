@@ -1,0 +1,112 @@
+// Reads and validates apps.json, the owner's manifest of apps.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+export const SCHEMA_VERSION = 1;
+export const FIRST_DEV_PORT = 5174;
+export const LANGUAGES = ['en', 'de'];
+
+const ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
+// Paths the site itself uses, and directory names that would confuse the
+// repository layout.
+const SITE_RESERVED = new Set([
+  'apps',
+  'assets',
+  'callback',
+  'index',
+  'node_modules',
+  'public',
+  'reference',
+  'src',
+  'static',
+]);
+// Windows reserves these device names, with or without an extension.
+const WINDOWS_DEVICES = new Set([
+  'con',
+  'prn',
+  'aux',
+  'nul',
+  ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`),
+]);
+
+/** Returns a reason when `id` cannot name an app, otherwise undefined. */
+export function invalidId(id) {
+  if (typeof id !== 'string' || !ID_PATTERN.test(id))
+    return 'an app ID is one lowercase segment: a letter, then up to 39 letters, digits or hyphens';
+  if (id.endsWith('-')) return 'an app ID does not end with a hyphen';
+  if (SITE_RESERVED.has(id)) return `"${id}" is reserved by the site layout`;
+  if (WINDOWS_DEVICES.has(id))
+    return `"${id}" is a reserved device name on Windows`;
+  return undefined;
+}
+
+export function appsFile(root) {
+  return join(root, 'apps.json');
+}
+
+/** Reads apps.json; a missing file is an empty manifest. Throws on invalid content. */
+export function readApps(root) {
+  const file = appsFile(root);
+  if (!existsSync(file)) return { schemaVersion: SCHEMA_VERSION, apps: [] };
+  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  const problems = validateApps(manifest);
+  if (problems.length > 0) throw new Error(`apps.json: ${problems.join('; ')}`);
+  return manifest;
+}
+
+export function writeApps(root, manifest) {
+  const apps = [...manifest.apps].sort((a, b) => a.id.localeCompare(b.id));
+  writeFileSync(
+    appsFile(root),
+    `${JSON.stringify({ ...manifest, apps }, null, 2)}\n`,
+  );
+}
+
+/** Lists every problem of a parsed apps.json. */
+export function validateApps(manifest) {
+  const problems = [];
+  if (manifest?.schemaVersion !== SCHEMA_VERSION)
+    problems.push(`schemaVersion must be ${SCHEMA_VERSION}`);
+  if (!Array.isArray(manifest?.apps))
+    return [...problems, 'apps must be a list'];
+  const ids = new Set();
+  const ports = new Set();
+  for (const app of manifest.apps) {
+    const reason = invalidId(app?.id);
+    if (reason) {
+      problems.push(`${JSON.stringify(app?.id)}: ${reason}`);
+      continue;
+    }
+    if (ids.has(app.id)) problems.push(`${app.id}: listed twice`);
+    ids.add(app.id);
+    if (typeof app.title !== 'string' || app.title.trim() === '')
+      problems.push(`${app.id}: title must be text`);
+    if (!LANGUAGES.includes(app.language))
+      problems.push(
+        `${app.id}: language must be one of ${LANGUAGES.join(', ')}`,
+      );
+    if (app.path !== `/${app.id}/`)
+      problems.push(`${app.id}: path must be "/${app.id}/"`);
+    if (
+      !Number.isInteger(app.devPort) ||
+      app.devPort < 1024 ||
+      app.devPort > 65535
+    )
+      problems.push(`${app.id}: devPort must be a port number from 1024`);
+    else if (ports.has(app.devPort))
+      problems.push(`${app.id}: devPort ${app.devPort} is used twice`);
+    ports.add(app.devPort);
+    if (typeof app.pwa !== 'boolean')
+      problems.push(`${app.id}: pwa must be true or false`);
+  }
+  return problems;
+}
+
+/** The first development port after the ones in use. */
+export function nextDevPort(manifest) {
+  const used = new Set(manifest.apps.map((app) => app.devPort));
+  let port = FIRST_DEV_PORT;
+  while (used.has(port)) port += 1;
+  return port;
+}

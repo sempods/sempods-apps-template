@@ -1,0 +1,18 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #173740;
+  background: #f6faf9;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  margin: 0.25rem;
+  padding: 0.4rem;
+}
+input[type='checkbox'] {
+  accent-color: #176354;
+}
