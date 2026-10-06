@@ -338,7 +338,17 @@ export const CHECKPOINT = '.sempods/.template-update-pending';
 export async function applyRelease(
   release,
   instance,
-  { install = true, afterReplace = () => {} } = {},
+  {
+    install = true,
+    afterReplace = () => {},
+    npmInstall = () =>
+      spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
+        cwd: instance,
+        // npm's output goes to stderr, so stdout carries only the report.
+        stdio: ['ignore', 2, 2],
+        shell: process.platform === 'win32',
+      }).status === 0,
+  } = {},
 ) {
   const from = version(instance);
   const to = version(release);
@@ -561,21 +571,17 @@ export async function applyRelease(
     readText(join(release, '.sempods', 'CHANGELOG.md')),
     from,
   );
+  report.resumed = Boolean(resumed);
+  // Complete only once the dependencies are installed; until then a rerun resumes.
+  if (install && !npmInstall()) {
+    report.unfinished = true;
+    report.review.push(
+      'npm install failed; fix the cause, then run the update again to finish it',
+    );
+    return report;
+  }
   write('.sempods/VERSION', readText(join(release, '.sempods', 'VERSION')));
   write(CHECKPOINT, null);
-  report.resumed = Boolean(resumed);
-  if (install) {
-    const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
-      cwd: instance,
-      // npm's output goes to stderr, so stdout carries only the report.
-      stdio: ['ignore', 2, 2],
-      shell: process.platform === 'win32',
-    });
-    if (npm.status !== 0)
-      report.review.push(
-        'npm install failed; fix the manifests, then run it again',
-      );
-  }
   return report;
 }
 
@@ -588,6 +594,9 @@ export function formatReport(report) {
     `## Template ${report.from} → ${report.to}`,
     '',
     report.resumed ? 'Resumed an interrupted update.\n' : '',
+    report.unfinished
+      ? `Not finished: this repository stays at template ${report.from} until the update completes.\n`
+      : '',
     report.exact
       ? `Base: release v${report.from}.`
       : `Base: no release tag for ${report.from}; template commit ${report.origin}, whose .sempods/ matches this repository's, served as base.`,

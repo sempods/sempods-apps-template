@@ -491,6 +491,25 @@ describe('update-template', () => {
     );
   });
 
+  it('stays resumable when installing the dependencies fails', async () => {
+    const { release, instance } = setup();
+    const failed = await applyRelease(release, instance, {
+      npmInstall: () => false,
+    });
+    assert.equal(failed.unfinished, true);
+    assert.match(formatReport(failed), /Not finished/);
+    assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+    assert.ok(existsSync(join(instance, '.sempods/.template-update-pending')));
+    let installs = 0;
+    const done = await applyRelease(release, instance, {
+      npmInstall: () => ++installs > 0,
+    });
+    assert.equal(done.resumed, true);
+    assert.equal(installs, 1);
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+    assert.ok(!existsSync(join(instance, '.sempods/.template-update-pending')));
+  });
+
   it('refuses a release older than the repository', async () => {
     const { release, instance } = setup();
     file(instance, '.sempods/VERSION', '0.3.0\n');
