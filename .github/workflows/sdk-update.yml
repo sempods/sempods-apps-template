@@ -16,6 +16,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   update:
+    # Template maintainers update the SDK through normal PRs; organization
+    # policy disables automated PR creation here. Instances keep the schedule.
+    if: github.event_name != 'schedule' || github.repository != 'sempods/sempods-apps-template'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -65,7 +68,7 @@ jobs:
           branch="sempods/sdk-update-$VERSION"
           if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
             git switch --track "origin/$branch"
-            git merge --no-edit "origin/$DEFAULT_BRANCH"
+            git merge --no-edit --signoff "origin/$DEFAULT_BRANCH"
           else
             git switch -c "$branch"
           fi

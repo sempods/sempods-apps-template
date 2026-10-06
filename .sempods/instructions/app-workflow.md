@@ -132,9 +132,12 @@ Run `npm run sdk-update -- latest` (the npm dist-tag) or name an exact release,
 for example `npm run sdk-update -- 0.3.0`. It coordinates both SDK packages in
 the root, skeleton and every app in `apps.json`, regenerates the npm lockfile,
 verifies the shipped reference and runs `npm run check`. Other manifest fields
-are preserved. Already at that version is a clean no-op; an intentional
-downgrade requires `--allow-downgrade`. Failed installs or checks leave a
-reviewable diff: diagnose it and rerun the checks before opening a PR.
+are preserved. Already at that version with a matching lockfile, installed
+packages and reference is a clean no-op; an intentional downgrade requires `--allow-downgrade`. Failed installs or checks leave a
+reviewable diff and a local checkpoint: diagnose it and rerun the same update
+command. It repeats installation and checks, even if manifests already name the
+release, and clears the checkpoint only after success. Open a PR after checks
+pass.
 
 Use the printed release and migration links pinned to that version and the
 newly installed reference. A patch update is merged when checks pass; automatic
