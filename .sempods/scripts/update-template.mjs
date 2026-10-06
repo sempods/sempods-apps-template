@@ -28,6 +28,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import {
+  compareVersions as compareSdk,
+  EXACT_VERSION,
+  PENDING_UPDATE,
+} from './sdk-update.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
 const here = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -298,7 +303,7 @@ export function mergeManifest(
 function sdkVersionOf(manifest, sdk) {
   for (const field of ['dependencies', 'devDependencies']) {
     const value = manifest?.[field]?.[sdk[0]];
-    if (value && SEMVER.test(value)) return value;
+    if (value && EXACT_VERSION.test(value)) return value;
   }
   return undefined;
 }
@@ -356,6 +361,13 @@ export async function applyRelease(release, instance, { install = true } = {}) {
       writeFileSync(target, content);
     }
   };
+
+  if (existsSync(join(instance, PENDING_UPDATE)))
+    throw new Error(
+      'An SDK update is unfinished; complete it with npm run sdk-update first.',
+    );
+  // Read before .sempods/ is replaced: the copy's SDK may be ahead of the release.
+  const ownSkeleton = readText(join(instance, policy.skeletonManifest));
 
   // Template-owned: replaced as a whole.
   for (const dir of policy.replace) {
@@ -461,12 +473,19 @@ export async function applyRelease(release, instance, { install = true } = {}) {
   const releaseSkeleton = parse(
     readText(join(release, policy.skeletonManifest)),
   );
+  const appManifests = walk(instance).filter((f) =>
+    matches(policy.appManifests, f),
+  );
+  // One shared SDK version: never lower than any the copy already uses.
   const sdkVersion = [
-    sdkVersionOf(root, policy.sdk),
-    sdkVersionOf(releaseSkeleton, policy.sdk),
+    root,
+    parse(ownSkeleton),
+    ...appManifests.map((file) => parse(readText(join(instance, file)))),
+    releaseSkeleton,
   ]
+    .map((manifest) => sdkVersionOf(manifest, policy.sdk))
     .filter(Boolean)
-    .sort(compareVersions)
+    .sort(compareSdk)
     .at(-1);
   const rootBases = bases.read(rootPath).map(parse);
   const newRoot = mergeManifest(
@@ -480,18 +499,14 @@ export async function applyRelease(release, instance, { install = true } = {}) {
   );
   write(rootPath, `${JSON.stringify(newRoot, null, 2)}\n`);
   const skeletonBases = bases.read(policy.skeletonManifest).map(parse);
-  for (const file of walk(instance).filter((f) =>
-    matches(policy.appManifests, f),
-  )) {
+  for (const file of appManifests) {
     const manifest = parse(readText(join(instance, file)));
     write(
       file,
       `${JSON.stringify(mergeManifest(manifest, skeletonBases, releaseSkeleton, policy.sdk, sdkVersion, report.notes, file), null, 2)}\n`,
     );
   }
-  if (
-    compareVersions(sdkVersion, sdkVersionOf(releaseSkeleton, policy.sdk)) > 0
-  ) {
+  if (compareSdk(sdkVersion, sdkVersionOf(releaseSkeleton, policy.sdk)) > 0) {
     const skeleton = parse(readText(join(instance, policy.skeletonManifest)));
     for (const key of policy.sdk) skeleton.dependencies[key] = sdkVersion;
     write(policy.skeletonManifest, `${JSON.stringify(skeleton, null, 2)}\n`);

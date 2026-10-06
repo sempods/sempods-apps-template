@@ -422,6 +422,42 @@ describe('update-template', () => {
     assert.match(readme, /Third line, released\./);
   });
 
+  it('keeps an SDK the copy already moved past the release', async () => {
+    const { release, instance } = setup();
+    for (const path of [
+      'apps/demo/package.json',
+      '.sempods/skeleton/app/package.json',
+    ]) {
+      const manifest = JSON.parse(read(instance, path));
+      manifest.dependencies['@sempods/app-sdk'] = '0.4.0';
+      manifest.dependencies['@sempods/client-sdk'] = '0.4.0';
+      file(instance, path, json(manifest));
+    }
+    commit(instance, 'SDK 0.4.0');
+    await applyRelease(release, instance, { install: false });
+    for (const [path, field] of [
+      ['package.json', 'devDependencies'],
+      ['apps/demo/package.json', 'dependencies'],
+      ['.sempods/skeleton/app/package.json', 'dependencies'],
+    ])
+      for (const name of ['@sempods/app-sdk', '@sempods/client-sdk'])
+        assert.equal(
+          JSON.parse(read(instance, path))[field][name],
+          '0.4.0',
+          `${path} ${name}`,
+        );
+  });
+
+  it('waits for an unfinished SDK update', async () => {
+    const { release, instance } = setup();
+    file(instance, '.sempods/.sdk-update-pending', '0.3.0\n');
+    await assert.rejects(
+      applyRelease(release, instance, { install: false }),
+      /SDK update is unfinished/,
+    );
+    assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+  });
+
   it('refuses a release older than the repository', async () => {
     const { release, instance } = setup();
     file(instance, '.sempods/VERSION', '0.3.0\n');
