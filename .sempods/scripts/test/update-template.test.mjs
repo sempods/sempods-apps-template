@@ -450,6 +450,26 @@ describe('update-template', () => {
         );
   });
 
+  it('keeps the newer of the two SDK packages', async () => {
+    const { release, instance } = setup();
+    const path = 'apps/demo/package.json';
+    const manifest = JSON.parse(read(instance, path));
+    manifest.dependencies['@sempods/client-sdk'] = '0.4.0';
+    file(instance, path, json(manifest));
+    commit(instance, 'client SDK 0.4.0');
+    await applyRelease(release, instance, { install: false });
+    for (const name of ['@sempods/app-sdk', '@sempods/client-sdk']) {
+      assert.equal(
+        JSON.parse(read(instance, path)).dependencies[name],
+        '0.4.0',
+      );
+      assert.equal(
+        JSON.parse(read(instance, 'package.json')).devDependencies[name],
+        '0.4.0',
+      );
+    }
+  });
+
   it('waits for an unfinished SDK update', async () => {
     const { release, instance } = setup();
     file(instance, '.sempods/.sdk-update-pending', '0.3.0\n');

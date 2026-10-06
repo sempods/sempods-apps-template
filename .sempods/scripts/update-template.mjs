@@ -307,13 +307,15 @@ export function mergeManifest(
   return result;
 }
 
-function sdkVersionOf(manifest, sdk) {
-  for (const field of ['dependencies', 'devDependencies']) {
-    const value = manifest?.[field]?.[sdk[0]];
-    if (value && EXACT_VERSION.test(value)) return value;
-  }
-  return undefined;
+/** Exact versions of every SDK package a manifest names. */
+function sdkVersionsOf(manifest, sdk) {
+  return ['dependencies', 'devDependencies'].flatMap((field) =>
+    sdk
+      .map((name) => manifest?.[field]?.[name])
+      .filter((value) => value && EXACT_VERSION.test(value)),
+  );
 }
+const highest = (versions) => [...versions].sort(compareSdk).at(-1);
 
 /** Upgrade notes of every release after `from`, newest first. */
 export function upgradeNotes(changelog, from) {
@@ -511,17 +513,16 @@ export async function applyRelease(
   const appManifests = walk(instance).filter((f) =>
     matches(policy.appManifests, f),
   );
-  // One shared SDK version: never lower than any the copy already uses.
-  const sdkVersion = [
-    root,
-    parse(ownSkeleton),
-    ...appManifests.map((file) => parse(readText(join(instance, file)))),
-    releaseSkeleton,
-  ]
-    .map((manifest) => sdkVersionOf(manifest, policy.sdk))
-    .filter(Boolean)
-    .sort(compareSdk)
-    .at(-1);
+  // One shared SDK version: never lower than any the copy already uses, for
+  // either package.
+  const sdkVersion = highest(
+    [
+      root,
+      parse(ownSkeleton),
+      ...appManifests.map((file) => parse(readText(join(instance, file)))),
+      releaseSkeleton,
+    ].flatMap((manifest) => sdkVersionsOf(manifest, policy.sdk)),
+  );
   const rootBases = bases.read(rootPath).map(parse);
   const newRoot = mergeManifest(
     root,
@@ -541,7 +542,12 @@ export async function applyRelease(
       `${JSON.stringify(mergeManifest(manifest, skeletonBases, releaseSkeleton, policy.sdk, sdkVersion, report.notes, file), null, 2)}\n`,
     );
   }
-  if (compareSdk(sdkVersion, sdkVersionOf(releaseSkeleton, policy.sdk)) > 0) {
+  if (
+    compareSdk(
+      sdkVersion,
+      highest(sdkVersionsOf(releaseSkeleton, policy.sdk)),
+    ) > 0
+  ) {
     const skeleton = parse(readText(join(instance, policy.skeletonManifest)));
     for (const key of policy.sdk) skeleton.dependencies[key] = sdkVersion;
     write(policy.skeletonManifest, `${JSON.stringify(skeleton, null, 2)}\n`);
