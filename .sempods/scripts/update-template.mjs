@@ -78,8 +78,9 @@ export class Bases {
     this.exact =
       git(release, ['rev-parse', '-q', '--verify', `refs/tags/v${from}`])
         .status === 0;
+    // Commit IDs throughout, so a recorded origin compares with a tag's commit.
     this.commits = this.exact
-      ? [`v${from}`]
+      ? [gitOk(release, ['rev-parse', `v${from}^{commit}`]).trim()]
       : gitOk(release, ['rev-list', '--first-parent', 'HEAD'])
           .split('\n')
           .filter(Boolean)
@@ -390,7 +391,18 @@ export async function applyRelease(
     readFileSync(join(release, '.sempods', 'update-policy.json'), 'utf8'),
   );
   const bases = new Bases(release, from, instance, resumed?.origin);
-  const checkpoint = `${JSON.stringify({ from, to, origin: gitOk(release, ['rev-parse', bases.origin]).trim() })}\n`;
+  const parse = (text) => (text === null ? undefined : JSON.parse(text));
+  // The copy's skeleton is replaced early; its SDK version, which may be ahead
+  // of the release, is kept in the checkpoint for a resumed run.
+  const skeletonSdk = resumed
+    ? resumed.skeletonSdk
+    : highest(
+        sdkVersionsOf(
+          parse(readText(join(instance, policy.skeletonManifest))),
+          policy.sdk,
+        ),
+      );
+  const checkpoint = `${JSON.stringify({ from, to, origin: bases.origin, skeletonSdk })}\n`;
   const labels = ['this repository', `template ${from}`, `template ${to}`];
   const report = {
     from,
@@ -420,8 +432,6 @@ export async function applyRelease(
     throw new Error(
       'An SDK update is unfinished; complete it with npm run sdk-update first.',
     );
-  // Read before .sempods/ is replaced: the copy's SDK may be ahead of the release.
-  const ownSkeleton = readText(join(instance, policy.skeletonManifest));
   write(CHECKPOINT, checkpoint);
 
   // Template-owned: replaced as a whole. VERSION follows at the very end.
@@ -524,7 +534,6 @@ export async function applyRelease(
   }
 
   // Manifests: template entries only, one shared SDK version.
-  const parse = (text) => (text === null ? undefined : JSON.parse(text));
   const rootPath = policy.rootManifest;
   const root = parse(readText(join(instance, rootPath)));
   const releaseSkeleton = parse(
@@ -538,10 +547,11 @@ export async function applyRelease(
   const sdkVersion = highest(
     [
       root,
-      parse(ownSkeleton),
       ...appManifests.map((file) => parse(readText(join(instance, file)))),
       releaseSkeleton,
-    ].flatMap((manifest) => sdkVersionsOf(manifest, policy.sdk)),
+    ]
+      .flatMap((manifest) => sdkVersionsOf(manifest, policy.sdk))
+      .concat(skeletonSdk ? [skeletonSdk] : []),
   );
   const rootBases = bases.read(rootPath).map(parse);
   const newRoot = mergeManifest(

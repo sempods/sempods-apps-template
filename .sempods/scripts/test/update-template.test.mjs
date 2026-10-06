@@ -530,6 +530,34 @@ describe('update-template', () => {
     );
   });
 
+  it('resumes from a tagged base and keeps a skeleton SDK ahead of the release', async () => {
+    const { release, instance } = setup({ tagOld: true });
+    const path = '.sempods/skeleton/app/package.json';
+    const skeleton = JSON.parse(read(instance, path));
+    skeleton.dependencies['@sempods/app-sdk'] = '0.4.0';
+    skeleton.dependencies['@sempods/client-sdk'] = '0.4.0';
+    file(instance, path, json(skeleton));
+    commit(instance, 'skeleton SDK 0.4.0');
+    await assert.rejects(
+      applyRelease(release, instance, {
+        install: false,
+        afterReplace: () => {
+          throw new Error('interrupted');
+        },
+      }),
+      /interrupted/,
+    );
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.resumed, true);
+    assert.equal(report.exact, true);
+    for (const manifest of [path, 'apps/demo/package.json'])
+      assert.equal(
+        JSON.parse(read(instance, manifest)).dependencies['@sempods/app-sdk'],
+        '0.4.0',
+        manifest,
+      );
+  });
+
   it('stays resumable when installing the dependencies fails', async () => {
     const { release, instance } = setup();
     const failed = await applyRelease(release, instance, {
