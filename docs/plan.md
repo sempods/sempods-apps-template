@@ -215,10 +215,7 @@ The template is released with semantic version tags and a changelog
 instance records its template version in `.sempods/VERSION`. The table above is
 machine-readable in `.sempods/update-policy.json`, including the delimited owner
 sections (the owner section of AGENTS.md and the setup record in INIT.md) and
-retired template paths. The first tagged release is 0.2.0. Copies created before
-it carry 0.1.0 without a tag; for them, `update-template` uses the template
-commits with that version as base and, per file, the one closest to the copy.
-The base is then an inference, so conflicts say so. Until `.sempods/` is published as an npm package,
+retired template paths. The first tagged release is 0.2.0. Copies created before it carry 0.1.0 without a tag, which several template commits share. For them, `update-template` takes as origin the 0.1.0 commit whose template-owned `.sempods/` matches the copy's best, uses its files as merge base and counts a missing entry or file as the owner's removal only against it. The base is then an inference, so the report names the commit and conflicts say so. Until `.sempods/` is published as an npm package,
 the `update-template` skill fetches a newer tagged release, replaces
 `.sempods/`, regenerates the generated configuration, applies the upgrade notes
 to shared files, runs `check` and opens a pull request. After the package exists
