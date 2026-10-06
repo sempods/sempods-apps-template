@@ -59,7 +59,9 @@ SDK migrations. New shared files, retired paths and owner sections belong in
 `.sempods/update-policy.json`; the new release's policy governs its update.
 
 After the merge, the owner tags `v<version>` on the merge commit;
-`update-template` only offers tagged releases. Tags are never moved. Verify an
+`update-template` only offers tagged releases. Tags are never moved. The repository ruleset `protect-release-tags` protects
+`refs/tags/v*` against updates and deletion, with no bypass actors; new tags
+remain allowed. This GitHub setting is not installed by template updates. Verify an
 upgrade from the previous release in a copy before tagging, and keep the update
 tests in `.sempods/scripts/test/` passing.
 

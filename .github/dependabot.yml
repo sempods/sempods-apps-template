@@ -34,3 +34,19 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
+
+  # The generator skeleton is outside the apps/* npm workspaces.
+  - package-ecosystem: 'npm'
+    directory: '/.sempods/skeleton/app'
+    schedule:
+      interval: 'weekly'
+    versioning-strategy: 'increase'
+    ignore:
+      - dependency-name: '@sempods/*'
+    groups:
+      npm:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'

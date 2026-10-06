@@ -6,6 +6,27 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.2.1
+
+### Changes
+
+- Dependabot also monitors the app skeleton's npm dependencies, including
+  React, Vite and the PWA stack. The coordinated sempods SDK packages remain
+  excluded and use `sdk-update`.
+- The upstream contribution guide states MIT-0 for original template material
+  and preserves imported SDK licences, DCO and AI attribution rules.
+
+### Upgrade notes
+
+1. Review the new npm entry in `.github/dependabot.yml` for
+   `/.sempods/skeleton/app`, keeping any owner-specific settings.
+2. `CONTRIBUTING.md` is owner-owned after setup. The updater does not add or
+   overwrite it in existing copies. The upstream guide applies to template
+   contributions; an instance owner may replace or remove the inherited guide
+   and sets their own app contribution policy.
+3. Run `npm run check -- --standalone all`. This release changes no app code or
+   dependency versions.
+
 ## 0.2.0
 
 First tagged release. Repositories created earlier have template version 0.1.0
