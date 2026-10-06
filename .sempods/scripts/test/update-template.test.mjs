@@ -450,6 +450,25 @@ describe('update-template', () => {
         );
   });
 
+  it('puts the SDK in the section the release declares it in', async () => {
+    const { release, instance } = setup();
+    const root = JSON.parse(read(instance, 'package.json'));
+    root.dependencies = {
+      '@sempods/app-sdk': '0.2.0',
+      '@sempods/client-sdk': '0.2.0',
+    };
+    file(instance, 'package.json', json(root));
+    commit(instance, 'SDK in root dependencies');
+    const report = await applyRelease(release, instance, { install: false });
+    const updated = JSON.parse(read(instance, 'package.json'));
+    assert.equal(updated.dependencies, undefined);
+    assert.equal(updated.devDependencies['@sempods/app-sdk'], '0.3.0');
+    assert.match(
+      report.notes.join('\n'),
+      /dependencies\.@sempods\/app-sdk: moved/,
+    );
+  });
+
   it('keeps the newer of the two SDK packages', async () => {
     const { release, instance } = setup();
     const path = 'apps/demo/package.json';
@@ -493,15 +512,15 @@ describe('update-template', () => {
     );
     // Not done yet: the old version stays and the origin is recorded.
     assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
-    const checkpoint = JSON.parse(
-      read(instance, '.sempods/.template-update-pending'),
-    );
+    const checkpoint = JSON.parse(read(instance, '.template-update-pending'));
     assert.equal(checkpoint.origin, first);
+    // Even a replacement interrupted before VERSION was written resumes.
+    rmSync(join(instance, '.sempods/VERSION'));
     const report = await applyRelease(release, instance, { install: false });
     assert.equal(report.resumed, true);
     assert.equal(report.origin, first.slice(0, report.origin.length));
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
-    assert.ok(!existsSync(join(instance, '.sempods/.template-update-pending')));
+    assert.ok(!existsSync(join(instance, '.template-update-pending')));
     assert.match(read(instance, 'README.md'), /First line, mine\./);
     assert.match(read(instance, 'README.md'), /Third line, released\./);
     assert.match(read(instance, 'AGENTS.md'), /- Owner: Alex\./);
@@ -519,7 +538,7 @@ describe('update-template', () => {
     assert.equal(failed.unfinished, true);
     assert.match(formatReport(failed), /Not finished/);
     assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
-    assert.ok(existsSync(join(instance, '.sempods/.template-update-pending')));
+    assert.ok(existsSync(join(instance, '.template-update-pending')));
     let installs = 0;
     const done = await applyRelease(release, instance, {
       npmInstall: () => ++installs > 0,
@@ -527,7 +546,7 @@ describe('update-template', () => {
     assert.equal(done.resumed, true);
     assert.equal(installs, 1);
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
-    assert.ok(!existsSync(join(instance, '.sempods/.template-update-pending')));
+    assert.ok(!existsSync(join(instance, '.template-update-pending')));
   });
 
   it('refuses a release older than the repository', async () => {

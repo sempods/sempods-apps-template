@@ -243,6 +243,7 @@ const KEYED = [
   'overrides',
 ];
 const PLAIN = ['type', 'private', 'workspaces'];
+const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies'];
 
 /** Template entries of a manifest, merged; owner entries and names are untouched. */
 export function mergeManifest(
@@ -290,9 +291,26 @@ export function mergeManifest(
         `${field}.${key}`,
       );
     }
-    for (const key of sdk)
-      if (theirs[field]?.[key] !== undefined || target[key] !== undefined)
-        if (field.endsWith('ependencies')) target[key] = sdkVersion;
+    // The SDK sits where the release puts it; elsewhere only if the release
+    // declares it nowhere in this manifest.
+    if (field.endsWith('ependencies'))
+      for (const key of sdk) {
+        const declared = DEPENDENCY_FIELDS.some(
+          (f) => theirs[f]?.[key] !== undefined,
+        );
+        if (
+          declared
+            ? theirs[field]?.[key] !== undefined
+            : target[key] !== undefined
+        )
+          target[key] = sdkVersion;
+        else if (target[key] !== undefined) {
+          delete target[key];
+          notes.push(
+            `${where} ${field}.${key}: moved to the section the release declares it in`,
+          );
+        }
+      }
     // npm keeps dependency lists sorted; scripts and the rest keep their order.
     const ordered = field.endsWith('ependencies')
       ? Object.fromEntries(
@@ -332,9 +350,10 @@ export function upgradeNotes(changelog, from) {
     .trim();
 }
 
-// Present while an update is under way. VERSION changes only once the update is
+// Present while an update is under way, outside the replaced .sempods/. It
+// records where the update started; VERSION changes only once the update is
 // complete, so an interrupted update is resumed instead of reported as done.
-export const CHECKPOINT = '.sempods/.template-update-pending';
+export const CHECKPOINT = '.template-update-pending';
 
 /** Applies the release at `release` to the instance at `instance`. */
 export async function applyRelease(
@@ -352,12 +371,13 @@ export async function applyRelease(
       }).status === 0,
   } = {},
 ) {
-  const from = version(instance);
-  const to = version(release);
-  if (!from || !to) throw new Error('Both repositories need .sempods/VERSION.');
   const pending = readText(join(instance, CHECKPOINT));
   const resumed = pending === null ? null : JSON.parse(pending);
-  if (resumed && (resumed.from !== from || resumed.to !== to))
+  // An interrupted replacement can leave .sempods/ without VERSION.
+  const from = resumed?.from ?? version(instance);
+  const to = version(release);
+  if (!from || !to) throw new Error('Both repositories need .sempods/VERSION.');
+  if (resumed && resumed.to !== to)
     throw new Error(
       `An update from template ${resumed.from} to ${resumed.to} is unfinished; complete it with that release.`,
     );
@@ -402,19 +422,19 @@ export async function applyRelease(
     );
   // Read before .sempods/ is replaced: the copy's SDK may be ahead of the release.
   const ownSkeleton = readText(join(instance, policy.skeletonManifest));
+  write(CHECKPOINT, checkpoint);
 
-  // Template-owned: replaced as a whole.
+  // Template-owned: replaced as a whole. VERSION follows at the very end.
   for (const dir of policy.replace) {
     rmSync(join(instance, dir), { recursive: true, force: true });
     for (const file of releaseFiles.filter(
-      (f) => f === dir || f.startsWith(`${dir}/`),
+      (f) => (f === dir || f.startsWith(`${dir}/`)) && f !== '.sempods/VERSION',
     )) {
       mkdirSync(dirname(join(instance, file)), { recursive: true });
       cpSync(join(release, file), join(instance, file));
     }
   }
   write('.sempods/VERSION', `${from}\n`);
-  write(CHECKPOINT, checkpoint);
   afterReplace();
   for (const file of policy.replaceIfPresent)
     if (existsSync(join(instance, file)))
