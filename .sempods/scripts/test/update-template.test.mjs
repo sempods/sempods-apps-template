@@ -154,6 +154,7 @@ function templateFiles(root, v) {
         ...(next
           ? { '@sempods/app-sdk': '0.3.0', '@sempods/client-sdk': '0.3.0' }
           : {}),
+        ...(next ? { remark: '15.0.1' } : {}),
         typescript: next ? '6.0.3' : '6.0.0',
       },
     }),
@@ -161,6 +162,7 @@ function templateFiles(root, v) {
   file(root, 'LICENSE', next ? 'MIT-0, revised\n' : 'MIT-0\n');
   file(root, '.github/workflows/dco.yml', 'name: DCO\n');
   if (next) {
+    file(root, '.node-version', '24.15.0\n');
     file(root, '.claude/skills/update-template/SKILL.md', '# Update\n');
     file(
       root,
@@ -195,6 +197,13 @@ function setup({ tagOld = false } = {}) {
       'Third line.',
     ),
   );
+  // Still 0.1.0: adds a dependency, a shared file and template tooling that
+  // copies from the first commit lack, without having removed them.
+  const followUp = JSON.parse(read(release, 'package.json'));
+  followUp.devDependencies.remark = '15.0.0';
+  file(release, 'package.json', json(followUp));
+  file(release, '.node-version', '24.15.0\n');
+  file(release, '.sempods/instructions/later.md', '# Later\n');
   commit(release, 'template 0.1.0, follow-up');
   templateFiles(release, '0.2.0');
   file(
@@ -269,7 +278,7 @@ function setup({ tagOld = false } = {}) {
   );
   file(instance, 'apps/demo/src/sempods.generated.ts', '// stale\n');
   commit(instance, 'instance');
-  return { release, instance };
+  return { release, instance, first };
 }
 
 beforeEach(() => {
@@ -279,13 +288,14 @@ afterEach(() => rmSync(work, { recursive: true, force: true }));
 
 describe('update-template', () => {
   it('updates template files and template entries, never owner files', async () => {
-    const { release, instance } = setup();
+    const { release, instance, first } = setup();
     const before = (path) => git(instance, 'show', `HEAD:${path}`);
     const report = await applyRelease(release, instance, { install: false });
 
     assert.equal(report.from, '0.1.0');
     assert.equal(report.to, '0.2.0');
     assert.equal(report.exact, false);
+    assert.equal(report.origin, first.slice(0, report.origin.length));
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
     assert.deepEqual(report.conflicts, []);
 
@@ -330,6 +340,10 @@ describe('update-template', () => {
       'node .sempods/scripts/update-template.mjs',
     );
     assert.equal(root.devDependencies.typescript, '6.0.3');
+    // Introduced after this copy's origin, not removed by its owner.
+    assert.equal(root.devDependencies.remark, '15.0.1');
+    assert.ok(report.added.includes('.node-version'));
+    assert.doesNotMatch(report.notes.join('\n'), /remark/);
     assert.equal(root.devDependencies['@sempods/app-sdk'], '0.3.0');
     const demo = JSON.parse(read(instance, 'apps/demo/package.json'));
     assert.equal(demo.name, 'demo');

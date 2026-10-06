@@ -63,10 +63,12 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /**
  * The template as the instance received it. A release tag gives the exact tree.
  * Without one (instances from before tagged releases), every template commit
- * that carried the instance's VERSION is a candidate, newest first.
+ * that carried the instance's VERSION is a candidate, and the origin is the one
+ * whose `.sempods/` matches the instance's best: that directory is
+ * template-owned, so instances do not edit it.
  */
 export class Bases {
-  constructor(release, from) {
+  constructor(release, from, instance) {
     this.release = release;
     this.exact =
       git(release, ['rev-parse', '-q', '--verify', `refs/tags/v${from}`])
@@ -84,11 +86,41 @@ export class Bases {
       throw new Error(
         `The template history has no release or commit with version ${from}; update this repository by hand.`,
       );
+    this.origin = this.commits[0];
+    if (!this.exact && instance) {
+      const own = walk(join(instance, '.sempods')).map((f) => `.sempods/${f}`);
+      let best = -Infinity;
+      for (const commit of this.commits) {
+        const theirs = gitOk(release, [
+          'ls-tree',
+          '-r',
+          '--name-only',
+          commit,
+          '.sempods',
+        ])
+          .split('\n')
+          .filter(Boolean);
+        let score = 0;
+        for (const file of new Set([...own, ...theirs])) {
+          const shown = git(release, ['show', `${commit}:${file}`]);
+          const content = shown.status === 0 ? shown.stdout : null;
+          score +=
+            content !== null && content === readText(join(instance, file))
+              ? 1
+              : -1;
+        }
+        // Newest first, so a tie keeps the newer commit.
+        if (score > best) [best, this.origin] = [score, commit];
+      }
+    }
   }
-  /** Distinct contents of a file across the candidates, newest first; null if absent. */
+  /**
+   * Distinct contents of a file: the origin's first, then the other candidates
+   * newest first; null where the file is absent.
+   */
   read(path) {
     const seen = [];
-    for (const commit of this.commits) {
+    for (const commit of [this.origin, ...this.commits]) {
       const shown = git(this.release, ['show', `${commit}:${path}`]);
       const content = shown.status === 0 ? shown.stdout : null;
       if (!seen.some((other) => other === content)) seen.push(content);
@@ -144,37 +176,6 @@ export function withSection(text, markers, from) {
   );
 }
 
-/** Number of changed lines between two texts. */
-export function distance(a, b) {
-  const dir = mkdtempSync(join(tmpdir(), 'sempods-diff-'));
-  try {
-    writeFileSync(join(dir, 'a'), a);
-    writeFileSync(join(dir, 'b'), b);
-    const result = git(dir, [
-      'diff',
-      '--no-index',
-      '--numstat',
-      '--',
-      'a',
-      'b',
-    ]);
-    return result.stdout
-      .split('\n')
-      .filter(Boolean)
-      .reduce(
-        (sum, line) =>
-          sum +
-          line
-            .split('\t')
-            .slice(0, 2)
-            .reduce((n, x) => n + (Number(x) || 0), 0),
-        0,
-      );
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
 /** Three-way merge with git; returns the merged text and its conflict count. */
 export function mergeText(ours, base, theirs, labels) {
   const dir = mkdtempSync(join(tmpdir(), 'sempods-merge-'));
@@ -210,8 +211,9 @@ export function mergeText(ours, base, theirs, labels) {
  */
 export function decide(ours, bases, theirs) {
   if (same(ours, theirs)) return { value: ours };
+  // Absence counts as the owner's removal only if the origin had the entry.
   if (ours === undefined)
-    return bases.some((b) => b !== undefined)
+    return bases[0] !== undefined
       ? { value: undefined, note: 'removed in this repository; left out' }
       : { value: theirs };
   if (bases.some((b) => same(b, ours))) return { value: theirs };
@@ -329,12 +331,13 @@ export async function applyRelease(release, instance, { install = true } = {}) {
   const policy = JSON.parse(
     readFileSync(join(release, '.sempods', 'update-policy.json'), 'utf8'),
   );
-  const bases = new Bases(release, from);
+  const bases = new Bases(release, from, instance);
   const labels = ['this repository', `template ${from}`, `template ${to}`];
   const report = {
     from,
     to,
     exact: bases.exact,
+    origin: gitOk(release, ['rev-parse', '--short', bases.origin]).trim(),
     merged: [],
     added: [],
     removed: [],
@@ -386,7 +389,7 @@ export async function applyRelease(release, instance, { install = true } = {}) {
     const theirs = readText(join(release, file));
     if (ours === theirs) continue;
     if (ours === null) {
-      if (candidates.some((c) => c !== null))
+      if (candidates[0] !== null)
         report.review.push(
           `${file}: removed in this repository; the template ${theirs === null ? 'removed it too' : 'still ships it'}`,
         );
@@ -409,12 +412,8 @@ export async function applyRelease(release, instance, { install = true } = {}) {
     }
     // Owner sections are not merged: set aside, then restored verbatim.
     const sections = policy.sections?.[file] ?? [];
-    // Without a release tag, the candidate closest to this copy is its likely origin.
-    let base =
-      candidates
-        .filter((c) => c !== null)
-        .map((c) => ({ c, d: distance(ours, c) }))
-        .sort((x, y) => x.d - y.d)[0]?.c ?? '';
+    // The origin's version is the base; an empty base if the origin lacked the file.
+    let base = candidates[0] ?? '';
     let mine = ours;
     let missing = false;
     for (const markers of sections) {
@@ -547,7 +546,7 @@ export function formatReport(report) {
     '',
     report.exact
       ? `Base: release v${report.from}.`
-      : `Base: no release tag for ${report.from}; the template history with that version served as base.`,
+      : `Base: no release tag for ${report.from}; template commit ${report.origin}, whose .sempods/ matches this repository's, served as base.`,
     '',
     ...list('Conflicts to resolve (marked in the files)', report.conflicts),
     ...list('Review by hand', report.review),
