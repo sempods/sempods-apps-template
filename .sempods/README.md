@@ -12,9 +12,12 @@ it here; your apps and `apps.json` stay yours.
   on its own.
 - `scripts/self-test.mjs`: tests this tooling in an isolated copy of the
   repository; your apps are not touched.
-- `scripts/sdk-snapshot.mjs`: refreshes `reference/sempods-sdk/` for an SDK
-  version.
+- `scripts/update-template.mjs`: `npm run update-template` brings in a newer
+  template release; see the [update skill](skills/update-template/SKILL.md).
+- `update-policy.json`: which files a template update replaces, merges or
+  leaves to you.
+- `CHANGELOG.md`: what each template release changed, with upgrade notes.
 - `skeleton/app/`: what a new app starts from. Files named `*.generated.ts` in
-  an app are written from `apps.json` when the app is created; do not edit them.
-  This version has no command that regenerates an existing app (the update and
-  deployment tooling will), and `check` reports any difference from `apps.json`.
+  an app are written from `apps.json` when the app is created and rewritten by
+  a template update; do not edit them. `check` reports any difference from
+  `apps.json`.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks the whole repository: manifest, generated configuration, the shared
-// SDK version and its reference snapshot, declared dependencies, Markdown
+// SDK version and its shipped app-author reference, declared dependencies, Markdown
 // links, script tests, and lint, typecheck, build and tests of every app.
 // Usage: npm run check [-- --standalone <id|all>]
 import { spawnSync } from 'node:child_process';
@@ -19,10 +19,12 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { checkLinks } from './lib/links.mjs';
 
 const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
+export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
 
@@ -87,27 +89,24 @@ export function staticProblems(root) {
         `apps/${dir} is not listed in apps.json; add it there or remove the directory`,
       );
 
-  const snapshotFile = join(root, 'reference', 'sempods-sdk', 'source.json');
-  const snapshot = existsSync(snapshotFile)
-    ? readJson(snapshotFile).version
-    : undefined;
-  if (!snapshot)
-    problems.push(
-      'reference/sempods-sdk/source.json is missing; run the SDK snapshot',
-    );
+  const rootManifest = readJson(join(root, 'package.json'));
   const skeleton = readJson(
     join(root, '.sempods', 'skeleton', 'app', 'package.json'),
   );
 
   const versions = new Map();
   const expect = (where, pkg, version) => {
-    if (!/^\d+\.\d+\.\d+$/.test(version ?? ''))
+    if (!EXACT_VERSION.test(version ?? ''))
       problems.push(
         `${where}: ${pkg} must be an exact version, found ${JSON.stringify(version)}`,
       );
     versions.set(`${where} ${pkg}`, version);
   };
-  for (const pkg of SDK) expect('skeleton', pkg, skeleton.dependencies?.[pkg]);
+  for (const pkg of SDK) {
+    expect('skeleton', pkg, skeleton.dependencies?.[pkg]);
+    // The root installs the SDK too, so its shipped reference is there before any app.
+    expect('root', pkg, rootManifest.devDependencies?.[pkg]);
+  }
 
   for (const app of manifest.apps) {
     const dir = join(appsDir, app.id);
@@ -135,15 +134,21 @@ export function staticProblems(root) {
   }
 
   const found = new Set(versions.values());
-  if (snapshot) found.add(snapshot);
   for (const sdk of SDK) {
     const installed = join(root, 'node_modules', sdk, 'package.json');
-    if (manifest.apps.length > 0 && existsSync(installed))
-      found.add(readJson(installed).version);
+    if (existsSync(installed)) found.add(readJson(installed).version);
   }
   if (found.size > 1)
     problems.push(
-      `SDK versions differ (${[...found].join(', ')}): all apps, the skeleton, the installed packages and reference/sempods-sdk must use one version`,
+      `SDK versions differ (${[...found].join(', ')}): the root, the skeleton, all apps and the installed packages must use one version`,
+    );
+  // The app-author reference ships inside the installed SDK (0.3.0 and later).
+  if (
+    existsSync(join(root, 'node_modules', '@sempods', 'app-sdk')) &&
+    !existsSync(join(root, ...REFERENCE.split('/')))
+  )
+    problems.push(
+      `${REFERENCE} is missing: the installed @sempods/app-sdk ships no app-author reference`,
     );
   return problems;
 }

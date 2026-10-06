@@ -1,5 +1,4 @@
 # Version updates. Security updates are enabled in the repository settings.
-# npm updates follow with the SDK and template update tooling (M1b).
 version: 2
 
 updates:
@@ -15,6 +14,21 @@ updates:
         - 'sempods/.github/*'
     groups:
       github-actions:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    versioning-strategy: 'increase'
+    ignore:
+      - dependency-name: '@sempods/*'
+    groups:
+      npm:
         patterns:
           - '*'
         update-types:

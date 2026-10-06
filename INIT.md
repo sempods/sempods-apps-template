@@ -16,10 +16,10 @@ before repository adaptation.
 
 Setup needs the companion skeleton: root `package.json`, `package-lock.json`,
 `.node-version`, `.sempods/VERSION`, `.sempods/scripts/new-app.mjs`,
-`.sempods/scripts/check.mjs`, `apps.json`, and the
-[SDK source record](reference/sempods-sdk/SOURCE.md). If these are missing,
-report that the skeleton is not integrated. Do not invent scripts, configuration
-or a replacement SDK snapshot to work around it.
+`.sempods/scripts/check.mjs` and `apps.json`; after `npm ci`, the SDK's
+shipped reference `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`. If
+these are missing, report that the skeleton is not integrated. Do not invent
+scripts, configuration or a replacement SDK reference to work around it.
 
 ## Ask once, then keep the answers
 
@@ -52,9 +52,26 @@ rather than changing remote rules or claiming workflow removal changes them. Do
 not invent an author identity or sign-off on the owner's behalf.
 
 Record the starting template version from `.sempods/VERSION` below; do not
-modify that source file or the SDK snapshot. Preserve LICENSE and imported
+modify that file or anything under `node_modules`. Preserve LICENSE and imported
 notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
 On resumed setup, completed adaptations are inspected, not reset to defaults.
+
+## Enable automatic SDK update PRs
+
+Using the owner's existing GitHub access, inspect the repository's Actions
+workflow permissions (for example `gh api repos/<owner>/<repo>/actions/permissions/workflow`;
+`can_approve_pull_request_reviews` reports the PR creation/approval setting).
+If access cannot read the setting, have the owner inspect it in the UI; do not
+assume it is enabled. Guide the owner to **Settings → Actions → General →
+Workflow permissions → Allow GitHub Actions to create and approve pull
+requests**, subject to organization policy. The update job's YAML permissions
+alone do not enable it. Record the observed setting and owner's choice below.
+
+If it stays disabled, report **automatic SDK updates unavailable**. The local
+`npm run sdk-update -- <version|latest>` command and an assistant-created PR
+using the owner's existing GitHub access remain available. Never ask for a
+token. Keep the check workflow's manual-dispatch trigger: the SDK workflow
+opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
 
 ## Create the first app and open it
 
@@ -99,8 +116,11 @@ installed-PWA behavior are not successful interoperability evidence. If setup is
 already done, reopen the recorded app and follow its notes; do not recreate it
 or repeat ownership changes.
 
-Automatic SDK/template updates arrive in M1b; deployment configuration and site
-building arrive in M3. Do not run those planned commands during this setup.
+SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-the-sdk).
+Template updates follow the
+[update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
+asks for one; do not run an update during this setup. Deployment configuration
+and site building arrive in M3.
 
 ## Instance setup record
 
@@ -112,11 +132,12 @@ starting template version remains the version this instance began with.
 
 - Status: not started
 - Starting template version (`.sempods/VERSION`): not recorded
-- SDK version at setup (`reference/sempods-sdk/source.json`): not recorded
+- SDK version at setup (`@sempods/app-sdk` in the root `package.json`): not recorded
 - Owner and review identity: not recorded
 - UI language: not selected
 - First app ID and idea: not selected
 - Test Pod/context: not selected (optional; synthetic data only)
+- Automatic SDK updates / Actions PR setting: not checked
 - Repository adaptations: not done
 - Local URL and check result: not checked
 - Pod exercise and remaining gaps: not tested

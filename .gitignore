@@ -8,3 +8,10 @@ netlify-dist/
 !.env.example
 .DS_Store
 dev-dist/
+# Editor settings stay local.
+.idea/
+.vscode/
+
+# Local SDK update checkpoint; removed only after install and checks succeed.
+.sempods/.sdk-update-pending
+/.template-update-pending

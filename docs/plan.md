@@ -35,7 +35,6 @@ INIT.md                one-time setup conversation; marked done afterwards
 apps.json              app metadata, stable paths/ports, deployment profiles, PWA choice
 apps/<id>/             one app, quickstart layout (Vite, React, app-sdk); owner code
                        plus generated configuration files the code imports
-reference/sempods-sdk/ SDK docs and examples, snapshot of the installed version
 .sempods/              template-owned: scripts (new-app, configure-app, sdk-update,
                        update-template, check, build-site), skills, shared
                        instructions, VERSION; replaced as a whole on update
@@ -55,8 +54,9 @@ brief, action-oriented steps and examples, calling its audience users, not
 developers. Technical setup details belong in the assistant workflow and linked
 SDK guides.
 
-AGENTS.md links to INIT.md, the canonical app workflow, the matching SDK
-snapshot and each app's decisions. The app-workflow skill and tool-specific
+AGENTS.md links to INIT.md, the canonical app workflow, the app-author reference
+the installed SDK ships (`node_modules/@sempods/app-sdk/docs/`) and each app's
+decisions. The app-workflow skill and tool-specific
 entry files route to these same instructions; no copied API manuals or separate
 rules per assistant. Plain AGENTS.md routing must work when skill discovery is
 unavailable. The workflow covers create/change, test/recover, SDK update and
@@ -124,17 +124,17 @@ Scripts (deterministic, tested in CI):
   production DID. Fail on incomplete or inconsistent configuration rather than
   inferring a production identity from the current browser hostname.
 - `sdk-update <version>`: sets one exact shared version of both SDK packages for
-  all apps, refreshes `reference/sempods-sdk/` from the matching SDK tag and
-  records the source revision, licences and notices. Update manifests, lockfile
-  and snapshot together and preserve linked references, locally or at the same
-  pinned revision. The assistant then follows the SDK's migration guide. CI
-  rejects SDK version or snapshot drift, including dependency-bot PRs;
-  coordinate the two SDK updates and snapshot refresh rather than merging
-  independent version bumps.
+  the root, the skeleton and all apps, and updates manifests and lockfile
+  together. The SDK ships its app-author reference in the package (from 0.3.0),
+  so the reference follows the version without a separate copy. The assistant
+  then follows the SDK's migration guide. CI rejects SDK version drift,
+  including dependency-bot PRs; coordinate the two SDK updates rather than
+  merging independent version bumps.
 - `check`: typecheck, lint and build of every app, and a check that every
   package an app imports is declared in that app's own `package.json`. Run
   script and app tests, generate an app in CI, check documentation links and
-  AGENTS/skill navigation, and verify SDK/snapshot consistency. A standalone app
+  AGENTS/skill navigation, and verify one SDK version everywhere and the
+  presence of its shipped reference. A standalone app
   install/build proves portability beyond an import lint. Use a reusable
   Markdown checker and a small navigation check; do not invent a parser or
   change sempods-spec tooling.
@@ -155,8 +155,8 @@ recovery.
 ## Updates
 
 **SDK.** All apps of an instance use one exact shared version of both SDK
-packages for reproducible builds, one matching documentation snapshot and a
-single update process. This is a template policy, not a same-origin runtime
+packages for reproducible builds, one matching shipped reference and a single
+update process. This is a template policy, not a same-origin runtime
 requirement: the SDK namespaces sessions and locks by identity kind plus app DID
 (or dynamic callback URI). Different app DIDs therefore have distinct
 namespaces, while sharing the origin's browser security boundary. See the SDK's
@@ -189,16 +189,15 @@ GitHub App is required for this. See
 
 **Template.** Each file or explicitly delimited section has an update policy. A file that no row names is owner-owned: `update-template` never changes it and lists the template's change to it in the upgrade notes for review.
 
-| Owner                      | Files                                                                                                                                                                                 | On update                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                                    | Replace or regenerate as a whole.                                                                            |
-| Owner                      | App code, `apps.json`, the owner section of AGENTS.md, each app's development notes                                                                                                   | Preserve; never overwrite as part of a template update.                                                      |
-| Shared                     | Template section of AGENTS.md, README, INIT.md, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
-| Shared manifests           | Root and app `package.json` files                                                                                                                                                     | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
-| Generated dependency state | `package-lock.json`                                                                                                                                                                   | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
-| SDK reference              | `reference/sempods-sdk/`                                                                                                                                                              | Refresh with `sdk-update` at the matching package revision, retaining provenance.                            |
-| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                               | Replace as a whole; they describe the template, not the instance, and INIT may remove them.                  |
-| Owner after setup          | `LICENSE`, `.github/CODEOWNERS` and other files INIT adapts or removes (such as the DCO workflow)                                                                                     | Preserve; report a template change to them in the upgrade notes for review.                                  |
+| Owner                      | Files                                                                                                                                                                                                               | On update                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                                                                  | Replace or regenerate as a whole.                                                                            |
+| Owner                      | App code, `apps.json`, the owner section of AGENTS.md, the setup record in INIT.md, each app's development notes                                                                                                    | Preserve; never overwrite as part of a template update.                                                      |
+| Shared                     | Template section of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, `.node-version`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
+| Shared manifests           | Root and app `package.json` files                                                                                                                                                                                   | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
+| Generated dependency state | `package-lock.json`                                                                                                                                                                                                 | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
+| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                                                             | Replace as a whole; they describe the template, not the instance, and INIT may remove them.                  |
+| Owner after setup          | `LICENSE`, `.github/CODEOWNERS` and other files INIT adapts or removes (such as the DCO workflow)                                                                                                                   | Preserve; report a template change to them in the upgrade notes for review.                                  |
 
 The workflow entry outside `.sempods/` links to its canonical instructions
 inside that directory rather than maintaining a second workflow. Template
@@ -211,9 +210,18 @@ during regeneration. Checks cover instruction links and preservation of app
 code, public profile inputs and the owner section of AGENTS.md across a
 representative template upgrade.
 
-The template is released with semantic version tags and a changelog whose
-upgrade notes are written for assistants. An instance records its template
-version in `.sempods/VERSION`. Until `.sempods/` is published as an npm package,
+The template is released with semantic version tags and a changelog
+(`.sempods/CHANGELOG.md`) whose upgrade notes are written for assistants. An
+instance records its template version in `.sempods/VERSION`. The table above is
+machine-readable in `.sempods/update-policy.json`, including the delimited owner
+sections (the owner section of AGENTS.md and the setup record in INIT.md) and
+retired template paths. The first tagged release is 0.2.0. Copies created before
+it carry 0.1.0 without a tag, which several template commits share. For them,
+`update-template` takes as origin the 0.1.0 commit whose template-owned
+`.sempods/` matches the copy's best, uses its files as merge base and counts a
+missing entry or file as the owner's removal only against it. The base is then
+an inference, so the report names the commit and conflicts say so. Until
+`.sempods/` is published as an npm package,
 the `update-template` skill fetches a newer tagged release, replaces
 `.sempods/`, regenerates the generated configuration, applies the upgrade notes
 to shared files, runs `check` and opens a pull request. After the package exists
@@ -246,11 +254,11 @@ an inference from desktop CI.
 Public identities and profile inputs contain no secrets. Hosting credentials
 stay in the host/CI secret store; Vite variables become public if bundled.
 Deployment instructions preserve callback queries for the runtime to consume and
-scrub. Copied SDK documentation is CC BY 4.0 and copied examples are Apache-2.0
-according to the SDK's
+scrub. SDK documentation is CC BY 4.0 and SDK examples are Apache-2.0 according
+to the SDK's
 [NOTICE](https://github.com/sempods/sempods-typescript/blob/012fa63cea292d6b63b71e3a17187710f7180d44/NOTICE);
-retain that provenance within the snapshot and when adapting examples. MIT-0
-describes only original template material.
+code adapted from SDK examples keeps that notice. MIT-0 describes only original
+template material.
 
 ## Milestones
 
@@ -260,7 +268,8 @@ describes only original template material.
   the D6 ownership layout (`.sempods/` with VERSION and separate generated app
   configuration), `new-app`, `check`, AGENTS.md, INIT.md, short user guidance,
   the app-workflow skill, maintainer guidance, default PWA skeleton, `.npmrc`
-  and CI. Start with pinned SDK packages and their matching reference snapshot.
+  and CI. Start with pinned SDK packages; from SDK 0.3.0 their shipped reference
+  replaces the earlier `reference/sempods-sdk/` snapshot.
   Accepted when a user follows the short introduction and an assistant without
   prior context reaches a running example against a loopback Pod. CI verifies
   clean generation, non-destructive reruns, app tests, instruction links/version
