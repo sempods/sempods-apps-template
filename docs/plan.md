@@ -189,15 +189,15 @@ GitHub App is required for this. See
 
 **Template.** Each file or explicitly delimited section has an update policy. A file that no row names is owner-owned: `update-template` never changes it and lists the template's change to it in the upgrade notes for review.
 
-| Owner                      | Files                                                                                                                                                                                 | On update                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                                    | Replace or regenerate as a whole.                                                                            |
-| Owner                      | App code, `apps.json`, the owner section of AGENTS.md, each app's development notes                                                                                                   | Preserve; never overwrite as part of a template update.                                                      |
-| Shared                     | Template section of AGENTS.md, README, INIT.md, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
-| Shared manifests           | Root and app `package.json` files                                                                                                                                                     | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
-| Generated dependency state | `package-lock.json`                                                                                                                                                                   | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
-| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                               | Replace as a whole; they describe the template, not the instance, and INIT may remove them.                  |
-| Owner after setup          | `LICENSE`, `.github/CODEOWNERS` and other files INIT adapts or removes (such as the DCO workflow)                                                                                     | Preserve; report a template change to them in the upgrade notes for review.                                  |
+| Owner                      | Files                                                                                                                                                                                                               | On update                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                                                                  | Replace or regenerate as a whole.                                                                            |
+| Owner                      | App code, `apps.json`, the owner section of AGENTS.md, the setup record in INIT.md, each app's development notes                                                                                                    | Preserve; never overwrite as part of a template update.                                                      |
+| Shared                     | Template section of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, `.node-version`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
+| Shared manifests           | Root and app `package.json` files                                                                                                                                                                                   | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
+| Generated dependency state | `package-lock.json`                                                                                                                                                                                                 | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
+| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                                                             | Replace as a whole; they describe the template, not the instance, and INIT may remove them.                  |
+| Owner after setup          | `LICENSE`, `.github/CODEOWNERS` and other files INIT adapts or removes (such as the DCO workflow)                                                                                                                   | Preserve; report a template change to them in the upgrade notes for review.                                  |
 
 The workflow entry outside `.sempods/` links to its canonical instructions
 inside that directory rather than maintaining a second workflow. Template
@@ -210,9 +210,18 @@ during regeneration. Checks cover instruction links and preservation of app
 code, public profile inputs and the owner section of AGENTS.md across a
 representative template upgrade.
 
-The template is released with semantic version tags and a changelog whose
-upgrade notes are written for assistants. An instance records its template
-version in `.sempods/VERSION`. Until `.sempods/` is published as an npm package,
+The template is released with semantic version tags and a changelog
+(`.sempods/CHANGELOG.md`) whose upgrade notes are written for assistants. An
+instance records its template version in `.sempods/VERSION`. The table above is
+machine-readable in `.sempods/update-policy.json`, including the delimited owner
+sections (the owner section of AGENTS.md and the setup record in INIT.md) and
+retired template paths. The first tagged release is 0.2.0. Copies created before
+it carry 0.1.0 without a tag, which several template commits share. For them,
+`update-template` takes as origin the 0.1.0 commit whose template-owned
+`.sempods/` matches the copy's best, uses its files as merge base and counts a
+missing entry or file as the owner's removal only against it. The base is then
+an inference, so the report names the commit and conflicts say so. Until
+`.sempods/` is published as an npm package,
 the `update-template` skill fetches a newer tagged release, replaces
 `.sempods/`, regenerates the generated configuration, applies the upgrade notes
 to shared files, runs `check` and opens a pull request. After the package exists

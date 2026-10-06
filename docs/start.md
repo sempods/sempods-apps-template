@@ -39,5 +39,11 @@ M3; your assistant should not present them as ready yet. Apps include PWA
 configuration by default for later installation from an HTTPS site. Offline
 startup will not make Pod edits work offline. You decide when to publish.
 
+## Update
+
+When the template gets better, ask your assistant: “Update the template.” It
+brings in the new version as a change you can review; your apps and notes stay
+yours.
+
 Your assistant uses the [app workflow](app-workflow.md) and records progress in
 each app's `NOTES.md`, so a later session can pick up where you left off.

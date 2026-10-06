@@ -14,3 +14,4 @@ dev-dist/
 
 # Local SDK update checkpoint; removed only after install and checks succeed.
 .sempods/.sdk-update-pending
+/.template-update-pending

@@ -155,6 +155,8 @@ repository setting. Never ask for a token.
 
 ## Later capabilities
 
-Production profiles (`configure-app`) and combined hosting (`build-site`) are
-M3. Until those increments land, capture the request and consult the installed
-SDK's `deployment.md` without implementing a parallel configuration mechanism.
+Template updates follow the
+[update-template skill](../skills/update-template/SKILL.md). Production profiles
+(`configure-app`) and combined hosting (`build-site`) are M3. Until those
+increments land, capture the request and consult the installed SDK's
+`deployment.md` without implementing a parallel configuration mechanism.

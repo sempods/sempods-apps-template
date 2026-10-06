@@ -85,7 +85,7 @@ jobs:
           process.exit(result.status ?? 1);
           JS
           if ! git diff --cached --quiet; then
-            git commit -s -m "[Codex] Update SDK to $VERSION"
+            git commit -s -m "Update the SDK to $VERSION"
           fi
           git push origin "$branch"
       - name: Open the SDK update PR
@@ -95,7 +95,7 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           cat > "$RUNNER_TEMP/sdk-update-body.md" <<EOF_BODY
-          [Codex] Update both SDK packages to $VERSION across the root, skeleton and all apps, with npm dependency state regenerated.
+          Update both SDK packages to $VERSION across the root, skeleton and all apps, with npm dependency state regenerated.
 
           SDK release: https://github.com/sempods/sempods-typescript/releases/tag/v$VERSION
           Migration guide: https://github.com/sempods/sempods-typescript/blob/v$VERSION/docs/migration.md
@@ -105,7 +105,7 @@ jobs:
           A patch update is merged when checks pass. Before 1.0, a minor update may break apps: follow the migration guide, adapt the apps, rerun checks and list what to try on the Pod before merging.
           EOF_BODY
           if ! gh pr create --base "$DEFAULT_BRANCH" --head "sempods/sdk-update-$VERSION" \
-            --title "[Codex] Update SDK to $VERSION" --body-file "$RUNNER_TEMP/sdk-update-body.md"; then
+            --title "Update the SDK to $VERSION" --body-file "$RUNNER_TEMP/sdk-update-body.md"; then
             echo '::error::Could not create the SDK update PR. Check Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests (subject to organization policy). If disabled, automatic SDK updates are unavailable. Manual fallback: npm run sdk-update -- <version|latest>, then ask your assistant to open a PR using your existing GitHub access. Never supply a token.'
             exit 1
           fi

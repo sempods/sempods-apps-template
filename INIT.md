@@ -117,7 +117,10 @@ already done, reopen the recorded app and follow its notes; do not recreate it
 or repeat ownership changes.
 
 SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-the-sdk).
-Deployment configuration and site building arrive in M3.
+Template updates follow the
+[update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
+asks for one; do not run an update during this setup. Deployment configuration
+and site building arrive in M3.
 
 ## Instance setup record
 

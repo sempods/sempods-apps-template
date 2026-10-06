@@ -48,6 +48,21 @@ initial records remain unfilled. Do not remove records from a user's copy to
 make it resemble a fresh template. Code adapted from SDK examples keeps its
 Apache-2.0 notice; template MIT-0 does not replace it.
 
+## Release the template
+
+A change that copies should receive is a release. In the same PR, raise
+`.sempods/VERSION` (semver; before 1.0 a minor release for changes that need
+upgrade work) and add a section to `.sempods/CHANGELOG.md` with its changes and
+upgrade notes written for the assistant that applies them. Name what
+`update-template` cannot do alone: owner files to adapt, configuration choices,
+SDK migrations. New shared files, retired paths and owner sections belong in
+`.sempods/update-policy.json`; the new release's policy governs its update.
+
+After the merge, the owner tags `v<version>` on the merge commit;
+`update-template` only offers tagged releases. Tags are never moved. Verify an
+upgrade from the previous release in a copy before tagging, and keep the update
+tests in `.sempods/scripts/test/` passing.
+
 ## Handoff
 
 Sign off every commit using the configured contributor identity
