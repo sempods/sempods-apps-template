@@ -9,13 +9,14 @@ You need a coding assistant that can work with local files, Node.js 24.15 or
 newer, and a Pod account for trying real saves. Your assistant helps with the local setup. No hosting account
 is needed yet.
 
-Local apps come first; publishing and automatic updates come later.
+> **Preview.** This template is new and still changing. Today you can build
+> apps, try them locally against your Pod and bring template and SDK updates
+> into your copy. Publishing apps on your own site comes later.
 
 ## Start with your idea
 
 Choose **Use this template → Create a new repository**, create your own private
-copy, and open it in your coding assistant. While this template is private, you
-need access to it. Alternatively, use the GitHub CLI:
+copy, and open it in your coding assistant. Alternatively, use the GitHub CLI:
 
 ```sh
 gh repo create my-sempods-apps --template sempods/sempods-apps-template --private --clone
