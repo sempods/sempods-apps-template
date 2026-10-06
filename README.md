@@ -10,10 +10,8 @@ newer, and a Pod account for trying real saves. Your assistant helps with the lo
 is needed yet.
 
 > **Preview.** This template is new and still changing. Today you can build
-> apps and try them locally against your Pod. Publishing them on your own site
-> and updating your copy when the template or the SDK changes come later. Your
-> copy records its template version in `.sempods/VERSION`, so those updates can
-> reach it then.
+> apps, try them locally against your Pod and bring template and SDK updates
+> into your copy. Publishing apps on your own site comes later.
 
 ## Start with your idea
 
