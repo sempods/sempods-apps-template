@@ -204,6 +204,8 @@ function setup({ tagOld = false } = {}) {
   file(release, 'package.json', json(followUp));
   file(release, '.node-version', '24.15.0\n');
   file(release, '.sempods/instructions/later.md', '# Later\n');
+  // Owner-adapted after setup; the release keeps this later text.
+  file(release, 'LICENSE', 'MIT-0, revised\n');
   commit(release, 'template 0.1.0, follow-up');
   templateFiles(release, '0.2.0');
   file(
@@ -456,6 +458,37 @@ describe('update-template', () => {
       /SDK update is unfinished/,
     );
     assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+  });
+
+  it('resumes an interrupted update with the same origin', async () => {
+    const { release, instance, first } = setup();
+    await assert.rejects(
+      applyRelease(release, instance, {
+        install: false,
+        afterReplace: () => {
+          throw new Error('interrupted');
+        },
+      }),
+      /interrupted/,
+    );
+    // Not done yet: the old version stays and the origin is recorded.
+    assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+    const checkpoint = JSON.parse(
+      read(instance, '.sempods/.template-update-pending'),
+    );
+    assert.equal(checkpoint.origin, first);
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.resumed, true);
+    assert.equal(report.origin, first.slice(0, report.origin.length));
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+    assert.ok(!existsSync(join(instance, '.sempods/.template-update-pending')));
+    assert.match(read(instance, 'README.md'), /First line, mine\./);
+    assert.match(read(instance, 'README.md'), /Third line, released\./);
+    assert.match(read(instance, 'AGENTS.md'), /- Owner: Alex\./);
+    assert.equal(
+      JSON.parse(read(instance, 'package.json')).devDependencies.remark,
+      '15.0.1',
+    );
   });
 
   it('refuses a release older than the repository', async () => {

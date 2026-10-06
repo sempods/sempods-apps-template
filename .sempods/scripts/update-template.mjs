@@ -73,7 +73,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
  * template-owned, so instances do not edit it.
  */
 export class Bases {
-  constructor(release, from, instance) {
+  constructor(release, from, instance, recorded) {
     this.release = release;
     this.exact =
       git(release, ['rev-parse', '-q', '--verify', `refs/tags/v${from}`])
@@ -92,7 +92,14 @@ export class Bases {
         `The template history has no release or commit with version ${from}; update this repository by hand.`,
       );
     this.origin = this.commits[0];
-    if (!this.exact && instance) {
+    if (recorded) {
+      // Resuming: the origin was inferred before .sempods/ was replaced.
+      if (!this.commits.includes(recorded))
+        throw new Error(
+          `The recorded template origin ${recorded} is not a ${from} commit.`,
+        );
+      this.origin = recorded;
+    } else if (!this.exact && instance) {
       const own = walk(join(instance, '.sempods')).map((f) => `.sempods/${f}`);
       let best = -Infinity;
       for (const commit of this.commits) {
@@ -323,11 +330,25 @@ export function upgradeNotes(changelog, from) {
     .trim();
 }
 
+// Present while an update is under way. VERSION changes only once the update is
+// complete, so an interrupted update is resumed instead of reported as done.
+export const CHECKPOINT = '.sempods/.template-update-pending';
+
 /** Applies the release at `release` to the instance at `instance`. */
-export async function applyRelease(release, instance, { install = true } = {}) {
+export async function applyRelease(
+  release,
+  instance,
+  { install = true, afterReplace = () => {} } = {},
+) {
   const from = version(instance);
   const to = version(release);
   if (!from || !to) throw new Error('Both repositories need .sempods/VERSION.');
+  const pending = readText(join(instance, CHECKPOINT));
+  const resumed = pending === null ? null : JSON.parse(pending);
+  if (resumed && (resumed.from !== from || resumed.to !== to))
+    throw new Error(
+      `An update from template ${resumed.from} to ${resumed.to} is unfinished; complete it with that release.`,
+    );
   const order = compareVersions(to, from);
   if (order === 0) return { from, to, unchanged: true };
   if (order < 0)
@@ -336,7 +357,8 @@ export async function applyRelease(release, instance, { install = true } = {}) {
   const policy = JSON.parse(
     readFileSync(join(release, '.sempods', 'update-policy.json'), 'utf8'),
   );
-  const bases = new Bases(release, from, instance);
+  const bases = new Bases(release, from, instance, resumed?.origin);
+  const checkpoint = `${JSON.stringify({ from, to, origin: gitOk(release, ['rev-parse', bases.origin]).trim() })}\n`;
   const labels = ['this repository', `template ${from}`, `template ${to}`];
   const report = {
     from,
@@ -379,6 +401,9 @@ export async function applyRelease(release, instance, { install = true } = {}) {
       cpSync(join(release, file), join(instance, file));
     }
   }
+  write('.sempods/VERSION', `${from}\n`);
+  write(CHECKPOINT, checkpoint);
+  afterReplace();
   for (const file of policy.replaceIfPresent)
     if (existsSync(join(instance, file)))
       write(file, readText(join(release, file)));
@@ -460,7 +485,7 @@ export async function applyRelease(release, instance, { install = true } = {}) {
   // Files the owner adapts after setup: never written, changes reported.
   for (const file of policy.ownerAfterSetup) {
     const theirs = readText(join(release, file));
-    if (!bases.read(file).includes(theirs))
+    if (bases.read(file)[0] !== theirs)
       report.review.push(
         `${file}: changed in template ${to}; this repository's copy is yours, compare it by hand`,
       );
@@ -536,6 +561,9 @@ export async function applyRelease(release, instance, { install = true } = {}) {
     readText(join(release, '.sempods', 'CHANGELOG.md')),
     from,
   );
+  write('.sempods/VERSION', readText(join(release, '.sempods', 'VERSION')));
+  write(CHECKPOINT, null);
+  report.resumed = Boolean(resumed);
   if (install) {
     const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
       cwd: instance,
@@ -559,6 +587,7 @@ export function formatReport(report) {
   return [
     `## Template ${report.from} → ${report.to}`,
     '',
+    report.resumed ? 'Resumed an interrupted update.\n' : '',
     report.exact
       ? `Base: release v${report.from}.`
       : `Base: no release tag for ${report.from}; template commit ${report.origin}, whose .sempods/ matches this repository's, served as base.`,
@@ -594,6 +623,7 @@ async function main() {
       );
     if (
       !values['allow-dirty'] &&
+      !existsSync(join(instance, CHECKPOINT)) &&
       git(instance, ['status', '--porcelain']).stdout.trim()
     )
       throw new Error(
