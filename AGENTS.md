@@ -16,13 +16,16 @@ For creating or changing an app:
    owner section below. Do not place credentials or private Pod data there.
 
 The [skill](.sempods/skills/app-workflow/SKILL.md) routes to the same workflow;
-skill discovery is optional. [User steps](docs/start.md) stay short and plain.
+skill discovery is optional. To pick up a newer template release, follow the
+[update-template skill](.sempods/skills/update-template/SKILL.md). [User steps](docs/start.md) stay short and plain.
 [Workflow entry](docs/app-workflow.md) is a pointer, not another set of rules.
 
-Tool entries: [CLAUDE.md](CLAUDE.md),
-[Codex skill](.agents/skills/app-workflow/SKILL.md) and
-[Claude skill](.claude/skills/app-workflow/SKILL.md). They route here or to the
-canonical skill.
+Tool entries: [CLAUDE.md](CLAUDE.md), the Codex skills
+([app workflow](.agents/skills/app-workflow/SKILL.md),
+[update](.agents/skills/update-template/SKILL.md)) and the Claude skills
+([app workflow](.claude/skills/app-workflow/SKILL.md),
+[update](.claude/skills/update-template/SKILL.md)). They route here or to the
+canonical skills.
 
 If the task is to maintain **the template itself**, read
 [template maintenance](docs/maintaining.md) instead of running instance setup.

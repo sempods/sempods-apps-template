@@ -128,7 +128,9 @@ strength of this workflow alone; follow the user's authorized scope.
 
 ## Later capabilities
 
-SDK/template update tooling is M1b. Production profiles (`configure-app`) and
+Template updates follow the
+[update-template skill](../skills/update-template/SKILL.md). SDK update tooling
+is the rest of M1b. Production profiles (`configure-app`) and
 combined hosting (`build-site`) are M3. They are not M1a commands. Until those
 increments land, capture the request and consult the installed SDK's
 `migration.md` or `deployment.md` for planning,

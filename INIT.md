@@ -99,8 +99,10 @@ installed-PWA behavior are not successful interoperability evidence. If setup is
 already done, reopen the recorded app and follow its notes; do not recreate it
 or repeat ownership changes.
 
-Automatic SDK/template updates arrive in M1b; deployment configuration and site
-building arrive in M3. Do not run those planned commands during this setup.
+Template updates follow the
+[update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
+asks for one; do not run an update during this setup. Deployment configuration
+and site building arrive in M3.
 
 ## Instance setup record
 
