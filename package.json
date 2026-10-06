@@ -18,11 +18,10 @@
   "devDependencies": {
     "@sempods/app-sdk": "0.3.0",
     "@sempods/client-sdk": "0.3.0",
-    "@typescript/typescript6": "6.0.2",
     "markdown-extensions": "2.0.0",
     "remark": "15.0.1",
     "remark-validate-links": "13.1.0",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "unified-engine": "11.2.2"
   },
   "overrides": {

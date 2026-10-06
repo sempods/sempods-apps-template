@@ -10,9 +10,9 @@ alone: owner files, configuration choices and the SDK migration.
 
 ### Changes
 
-- Root tooling and new apps use the TypeScript 7 native compiler. The import
-  checker uses the official `@typescript/typescript6` compatibility package,
-  because TypeScript 7 does not ship the compiler API it needs.
+- New apps use the TypeScript 7 native compiler. The root import checker stays
+  on TypeScript 6, because TypeScript 7 does not ship the compiler API it needs.
+  Dependabot excludes root TypeScript major updates until that API is migrated.
 - CodeQL scans GitHub Actions and JavaScript/TypeScript, explicitly including
   `.sempods/scripts`, `.sempods/skeleton/app` and owner apps. Hidden template
   directories are skipped by the JavaScript extractor's default traversal.
@@ -21,12 +21,13 @@ alone: owner files, configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Review the root and app manifest changes, regenerate the lockfile and run
+1. Review the app manifest changes, regenerate the lockfile and run
    `npm run check -- --standalone all`. Owner-modified TypeScript versions are
    preserved and reported by the updater; migrate those apps deliberately.
-   TypeScript 7 has no compiler API: owner tools that import `typescript`
-   require their own migration. The template checker now installs and imports
-   `@typescript/typescript6` separately.
+   Keep root `typescript` on 6.0.3 for the import checker. Apps use their own
+   TypeScript 7 compiler; owner tools that import `typescript` from an app need
+   a deliberate API migration. The template self-test verifies that npm selects
+   the app's declared compiler for workspace builds.
 2. Review the new shared CodeQL workflow and configuration, preserving owner
    scan choices. If GitHub CodeQL Default Setup is enabled, switch to Advanced
    Setup in Settings → Advanced Security; Default Setup blocks this workflow's
