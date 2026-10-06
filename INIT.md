@@ -56,6 +56,23 @@ modify that file or anything under `node_modules`. Preserve LICENSE and imported
 notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
 On resumed setup, completed adaptations are inspected, not reset to defaults.
 
+## Enable automatic SDK update PRs
+
+Using the owner's existing GitHub access, inspect the repository's Actions
+workflow permissions (for example `gh api repos/<owner>/<repo>/actions/permissions/workflow`;
+`can_approve_pull_request_reviews` reports the PR creation/approval setting).
+If access cannot read the setting, have the owner inspect it in the UI; do not
+assume it is enabled. Guide the owner to **Settings → Actions → General →
+Workflow permissions → Allow GitHub Actions to create and approve pull
+requests**, subject to organization policy. The update job's YAML permissions
+alone do not enable it. Record the observed setting and owner's choice below.
+
+If it stays disabled, report **automatic SDK updates unavailable**. The local
+`npm run sdk-update -- <version|latest>` command and an assistant-created PR
+using the owner's existing GitHub access remain available. Never ask for a
+token. Keep the check workflow's manual-dispatch trigger: the SDK workflow
+opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
+
 ## Create the first app and open it
 
 Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm. Check
@@ -99,6 +116,7 @@ installed-PWA behavior are not successful interoperability evidence. If setup is
 already done, reopen the recorded app and follow its notes; do not recreate it
 or repeat ownership changes.
 
+SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-the-sdk).
 Template updates follow the
 [update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
 asks for one; do not run an update during this setup. Deployment configuration
@@ -119,6 +137,7 @@ starting template version remains the version this instance began with.
 - UI language: not selected
 - First app ID and idea: not selected
 - Test Pod/context: not selected (optional; synthetic data only)
+- Automatic SDK updates / Actions PR setting: not checked
 - Repository adaptations: not done
 - Local URL and check result: not checked
 - Pod exercise and remaining gaps: not tested

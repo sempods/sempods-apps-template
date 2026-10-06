@@ -19,6 +19,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { checkLinks } from './lib/links.mjs';
 
@@ -95,7 +96,7 @@ export function staticProblems(root) {
 
   const versions = new Map();
   const expect = (where, pkg, version) => {
-    if (!/^\d+\.\d+\.\d+$/.test(version ?? ''))
+    if (!EXACT_VERSION.test(version ?? ''))
       problems.push(
         `${where}: ${pkg} must be an exact version, found ${JSON.stringify(version)}`,
       );

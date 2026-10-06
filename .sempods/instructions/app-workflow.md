@@ -126,12 +126,37 @@ untested. Keep implementation details in notes unless they help the user's next
 decision. Never publish or perform unrelated changes to real data on the
 strength of this workflow alone; follow the user's authorized scope.
 
+## Update the SDK
+
+Run `npm run sdk-update -- latest` (the npm dist-tag) or name an exact release,
+for example `npm run sdk-update -- 0.3.0`. It coordinates both SDK packages in
+the root, skeleton and every app in `apps.json`, regenerates the npm lockfile,
+verifies the shipped reference and runs `npm run check`. Other manifest fields
+are preserved. Already at that version with a matching lockfile, installed
+packages and reference is a clean no-op; an intentional downgrade requires `--allow-downgrade`. Failed installs or checks leave a
+reviewable diff and a local checkpoint: diagnose it and rerun the same update
+command. It repeats installation and checks, even if manifests already name the
+release, and clears the checkpoint only after success. Open a PR after checks
+pass.
+
+Use the printed release and migration links pinned to that version and the
+newly installed reference. A patch update is merged when checks pass; automatic
+merging requires the owner's choice. Before 1.0 a minor update may break apps:
+follow the SDK migration guide, adapt the apps, run `npm run check --
+--standalone all`, and list what the owner should try on the Pod before merging.
+Record changed behavior, checks and remaining Pod/device evidence in app notes
+and the PR. The owner controls merging.
+
+The weekly SDK workflow opens one PR per version and dispatches Check on its
+branch. If Actions may not create PRs, report automatic SDK updates unavailable
+and use the local command plus an assistant-created PR with the owner's existing
+GitHub access. [INIT](../../INIT.md#enable-automatic-sdk-update-prs) explains the
+repository setting. Never ask for a token.
+
 ## Later capabilities
 
 Template updates follow the
-[update-template skill](../skills/update-template/SKILL.md). SDK update tooling
-is the rest of M1b. Production profiles (`configure-app`) and
-combined hosting (`build-site`) are M3. They are not M1a commands. Until those
+[update-template skill](../skills/update-template/SKILL.md). Production profiles
+(`configure-app`) and combined hosting (`build-site`) are M3. Until those
 increments land, capture the request and consult the installed SDK's
-`migration.md` or `deployment.md` for planning,
-without silently implementing a parallel updater or production configuration.
+`deployment.md` without implementing a parallel configuration mechanism.

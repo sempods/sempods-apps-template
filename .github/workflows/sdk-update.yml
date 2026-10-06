@@ -1,0 +1,116 @@
+name: SDK update
+on:
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact SDK version, or latest (npm dist-tag)'
+        required: false
+        default: 'latest'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: sdk-update
+  cancel-in-progress: false
+jobs:
+  update:
+    # Template maintainers update the SDK through normal PRs; organization
+    # policy disables automated PR creation here. Instances keep the schedule.
+    if: github.event_name != 'schedule' || github.repository != 'sempods/sempods-apps-template'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Resolve SDK release and check for an existing PR
+        id: target
+        env:
+          REQUESTED_VERSION: ${{ inputs.version || 'latest' }}
+        run: |
+          node .sempods/scripts/sdk-update.mjs "$REQUESTED_VERSION" --resolve-only
+      - name: Decide whether to update
+        id: needed
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+          CHANGED: ${{ steps.target.outputs.changed }}
+        run: |
+          branch="sempods/sdk-update-$VERSION"
+          count=$(gh pr list --state open --head "$branch" --json number --jq length)
+          if [ "$CHANGED" != true ] || [ "$count" != 0 ]; then
+            echo "Already up to date or an SDK $VERSION PR is open; nothing changed."
+            echo 'update=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'update=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Update and check the branch
+        if: steps.needed.outputs.update == 'true'
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch="sempods/sdk-update-$VERSION"
+          if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+            git switch --track "origin/$branch"
+            git merge --no-edit --signoff "origin/$DEFAULT_BRANCH"
+          else
+            git switch -c "$branch"
+          fi
+          npm ci --no-audit --no-fund
+          npm run sdk-update -- "$VERSION"
+          npm run check -- --standalone all
+          # Stage only the coordinated SDK manifests and npm dependency state.
+          node --input-type=module <<'JS'
+          import { spawnSync } from 'node:child_process';
+          import { readApps } from './.sempods/scripts/lib/apps.mjs';
+          const files = ['package.json', '.sempods/skeleton/app/package.json', 'package-lock.json',
+            ...readApps(process.cwd()).apps.map(app => `apps/${app.id}/package.json`)];
+          const result = spawnSync('git', ['add', '--', ...files], { stdio: 'inherit' });
+          process.exit(result.status ?? 1);
+          JS
+          if ! git diff --cached --quiet; then
+            git commit -s -m "Update the SDK to $VERSION"
+          fi
+          git push origin "$branch"
+      - name: Open the SDK update PR
+        if: steps.needed.outputs.update == 'true'
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          cat > "$RUNNER_TEMP/sdk-update-body.md" <<EOF_BODY
+          Update both SDK packages to $VERSION across the root, skeleton and all apps, with npm dependency state regenerated.
+
+          SDK release: https://github.com/sempods/sempods-typescript/releases/tag/v$VERSION
+          Migration guide: https://github.com/sempods/sempods-typescript/blob/v$VERSION/docs/migration.md
+
+          Checks: sdk-update ran npm run check; npm run check -- --standalone all passed on this branch. A separate Check run is dispatched for the PR head.
+
+          A patch update is merged when checks pass. Before 1.0, a minor update may break apps: follow the migration guide, adapt the apps, rerun checks and list what to try on the Pod before merging.
+          EOF_BODY
+          if ! gh pr create --base "$DEFAULT_BRANCH" --head "sempods/sdk-update-$VERSION" \
+            --title "Update the SDK to $VERSION" --body-file "$RUNNER_TEMP/sdk-update-body.md"; then
+            echo '::error::Could not create the SDK update PR. Check Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests (subject to organization policy). If disabled, automatic SDK updates are unavailable. Manual fallback: npm run sdk-update -- <version|latest>, then ask your assistant to open a PR using your existing GitHub access. Never supply a token.'
+            exit 1
+          fi
+      - name: Dispatch checks for the PR head
+        if: steps.needed.outputs.update == 'true'
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+        run: gh workflow run check.yml --ref "sempods/sdk-update-$VERSION"

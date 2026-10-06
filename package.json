@@ -12,6 +12,7 @@
     "new-app": "node .sempods/scripts/new-app.mjs",
     "dev": "node .sempods/scripts/dev.mjs",
     "check": "node .sempods/scripts/check.mjs",
+    "sdk-update": "node .sempods/scripts/sdk-update.mjs",
     "update-template": "node .sempods/scripts/update-template.mjs"
   },
   "devDependencies": {

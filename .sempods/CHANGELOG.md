@@ -21,6 +21,12 @@ without a tag; `update-template` uses the template history as their base.
   and the installed packages, and an installed SDK that ships its reference.
 - **Dark appearance.** The skeleton's `src/index.css` opts into
   `color-scheme: light dark` with page colours that match the SDK defaults.
+- **SDK updates.** `npm run sdk-update -- <version|latest>` moves both SDK
+  packages together in the root, the skeleton and every app, regenerates the
+  lockfile and runs `check`. The weekly SDK update workflow
+  (`.github/workflows/sdk-update.yml`) does the same on a branch, opens a pull
+  request linking the SDK migration guide and starts the check workflow for
+  it. Dependabot now also proposes grouped npm updates, except the SDK.
 - **Template updates.** `npm run update-template`, the update-template skill,
   `.sempods/update-policy.json` and this changelog.
 - **App workflow.** Follow-ups from the first exercises: distinct labels next to
@@ -55,5 +61,15 @@ without a tag; `update-template` uses the template history as their base.
    "SDK version at setup (`@sempods/app-sdk` in the root `package.json`)" with
    the version the repository started with, and keep the starting template
    version unchanged.
-6. Run `npm run check -- --standalone all`, then list what the owner should try
+6. **Automatic SDK update pull requests.** The SDK workflow can open pull
+   requests only if the repository allows it: Settings → Actions → General →
+   Workflow permissions → "Allow GitHub Actions to create and approve pull
+   requests", subject to organisation policy. Check the setting with the
+   owner (`gh api repos/<owner>/<repo>/actions/permissions/workflow`, field
+   `can_approve_pull_request_reviews`) and add the line "Automatic SDK updates
+   / Actions PR setting" with the result to the setup record in `INIT.md`. If
+   it stays disabled, automatic SDK updates are unavailable;
+   `npm run sdk-update` and a pull request opened with the owner's access
+   remain. Never ask for a token.
+7. Run `npm run check -- --standalone all`, then list what the owner should try
    on the Pod: sign-in, the app's main flows, and light and dark appearance.
