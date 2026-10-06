@@ -11,3 +11,6 @@ dev-dist/
 # Editor settings stay local.
 .idea/
 .vscode/
+
+# Local SDK update checkpoint; removed only after install and checks succeed.
+.sempods/.sdk-update-pending

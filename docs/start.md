@@ -24,6 +24,14 @@ then choose that context in the app. Ask your assistant to check a save and a
 reload, and to tell you what it has not tested. Never paste passwords or tokens
 into chat. Without a Pod, you can still try the screen.
 
+## Keep apps up to date
+
+Weekly SDK updates can arrive as a PR after setup enables that GitHub setting.
+Ask your assistant: “Update my SDK and explain what I should try.” A patch
+update is merged when checks pass. Before 1.0 a minor update may break apps;
+your assistant follows the migration guide, adapts your apps and lists what to
+try on the Pod. You decide when to merge.
+
 ## Publish later
 
 M1a runs apps on your computer. Shared hosting and deployment setup follow in
