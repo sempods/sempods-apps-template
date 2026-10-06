@@ -8,3 +8,6 @@ netlify-dist/
 !.env.example
 .DS_Store
 dev-dist/
+# Editor settings stay local.
+.idea/
+.vscode/
