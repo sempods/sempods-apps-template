@@ -15,5 +15,6 @@ it here; your apps and `apps.json` stay yours.
 - `scripts/sdk-snapshot.mjs`: refreshes `reference/sempods-sdk/` for an SDK
   version.
 - `skeleton/app/`: what a new app starts from. Files named `*.generated.ts` in
-  an app are written from `apps.json`; change `apps.json` and rerun the script
-  instead of editing them.
+  an app are written from `apps.json` when the app is created; do not edit them.
+  This version has no command that regenerates an existing app (the update and
+  deployment tooling will), and `check` reports any difference from `apps.json`.

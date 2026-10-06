@@ -28,6 +28,29 @@ components; ordinary visual customization is welcome. The SDK owns connection,
 editing and recovery behavior; use the reference rather than rebuilding those
 facilities.
 
+Choose the data vocabulary before writing data. Prefer an existing, specific
+type and properties (for example `https://schema.org/BuyAction` for a shopping
+item rather than the generic `Action` of the task example), and keep different
+kinds of data on different types so apps sharing a context do not mix them.
+Write exact IRIs (`https://schema.org/`, not `http://`), choose a fixed text
+language or `language: null`, and the enum/flag values. If the test context
+already holds data the app should show, read how it is stored before deciding.
+Record the vocabulary in `NOTES.md`.
+
+Keep the screen consistent with the SDK's UI:
+
+- Format dates and numbers with the SDK locale, `useSdkLocale().format`
+  (`dateTime`, `dateOnly`, `number`), so they follow the app's language instead
+  of the browser default.
+- Ask for confirmation inside the page (for example a second "Löschen" and
+  "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
+  browsers and webviews may block them and silently answer "cancel".
+- Give app controls labels that differ from AppShell's own. A list reload next
+  to AppShell's "Erneut prüfen" (access recheck) needs another label. A `useList`
+  view refreshes by itself only after confirmed creation, row mutation or
+  bound-editor writes on that exact view; keep an explicit reload for anything
+  else, such as other clients, another view, raw client calls or another Pod.
+
 For a new app, run the root command with the chosen values:
 
 ```sh
@@ -36,19 +59,25 @@ npm run dev -- konsum
 ```
 
 The interface also accepts `--no-pwa` at creation. Generation never overwrites
-an app: check `apps.json` and the folder before invoking it. For an existing
-app, work in its existing folder and skip generation. Keep Node/npm consistent
-with the root setup; do not switch package managers. Use `npm ci` when restoring
-the committed dependency tree. If a requested feature needs an additional
-dependency, declare it in that app's own manifest and update the root npm
-lockfile; preserve exact SDK versions and do not install another SDK copy from a
-local checkout.
+an app: check `apps.json` and the folder before invoking it. The first app adds
+its dependency tree to `package-lock.json` (several thousand lines); that is
+expected, so point the owner to the app's own files when they review the change.
+For an existing app, work in its existing folder and skip generation. Keep
+Node/npm consistent with the root setup; do not switch package managers. Use
+`npm ci` when restoring the committed dependency tree. If a requested feature
+needs an additional dependency, declare it in that app's own manifest and update
+the root npm lockfile; preserve exact SDK versions and do not install another
+SDK copy from a local checkout.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
 path/port; do not invent deployment-profile fields that M1a does not provide.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
+Run the development server as its own process and stop only that process (its
+job, or Ctrl+C in its terminal). Never stop processes by port, for example with
+`lsof -ti tcp:<port>`: other programs, such as a browser pane showing the app,
+hold connections to it.
 
 Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,

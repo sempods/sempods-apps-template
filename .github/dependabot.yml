@@ -1,5 +1,5 @@
 # Version updates. Security updates are enabled in the repository settings.
-# The npm ecosystem is added together with the first package.json.
+# npm updates follow with the SDK and template update tooling (M1b).
 version: 2
 
 updates:
@@ -8,7 +8,7 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    # Our own reviewed releases (the shared DCO check) need no waiting period;
+    # Reviewed releases of shared sempods actions need no waiting period;
     # third-party actions keep Dependabot's default three-day cooldown.
     cooldown:
       exclude:

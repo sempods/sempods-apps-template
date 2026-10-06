@@ -10,7 +10,9 @@ Confirm the current repository's identity from its Git remote or GitHub
 metadata, and inspect the worktree and setup record before changing anything. If
 it is `sempods/sempods-apps-template`, or the task is template maintenance, use
 [maintaining](docs/maintaining.md): do not adapt ownership or remove its DCO
-check. If the identity is unclear, clarify it before repository adaptation.
+check. A local copy without a Git remote is the owner's instance when the owner
+says so; record that in the setup record. If the identity is unclear, clarify it
+before repository adaptation.
 
 Setup needs the companion skeleton: root `package.json`, `package-lock.json`,
 `.node-version`, `.sempods/VERSION`, `.sempods/scripts/new-app.mjs`,
@@ -42,7 +44,8 @@ owner-created entries; never leave `@haed` assigned merely because it came from
 the template.
 
 Remove the inherited `.github/workflows/dco.yml` unless the owner asks to keep
-it. This applies only to the known template DCO workflow: if it was customized,
+it. The comments in `.github/dependabot.yml` and `.github/CODEOWNERS` do not
+depend on it; keep those files apart from the review handles. This applies only to the known template DCO workflow: if it was customized,
 clarify its purpose rather than deleting it. Keep app validation workflows.
 Repository or organization rules may still require DCO; report that separately
 rather than changing remote rules or claiming workflow removal changes them. Do
@@ -108,7 +111,8 @@ starting template version remains the version this instance began with.
 <!-- BEGIN INSTANCE SETUP RECORD -->
 
 - Status: not started
-- Starting template version: not recorded
+- Starting template version (`.sempods/VERSION`): not recorded
+- SDK version at setup (`reference/sempods-sdk/source.json`): not recorded
 - Owner and review identity: not recorded
 - UI language: not selected
 - First app ID and idea: not selected

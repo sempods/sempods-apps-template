@@ -3,7 +3,7 @@
 
 *                                      @haed
 
-# Licensing stays with the maintainer.
+# Licence changes need the owner's review.
 /LICENSE                               @haed
 
 # CI and this file: a change here can weaken every other guard.
