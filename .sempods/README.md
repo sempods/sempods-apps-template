@@ -12,8 +12,6 @@ it here; your apps and `apps.json` stay yours.
   on its own.
 - `scripts/self-test.mjs`: tests this tooling in an isolated copy of the
   repository; your apps are not touched.
-- `scripts/sdk-snapshot.mjs`: refreshes `reference/sempods-sdk/` for an SDK
-  version.
 - `skeleton/app/`: what a new app starts from. Files named `*.generated.ts` in
   an app are written from `apps.json` when the app is created; do not edit them.
   This version has no command that regenerates an existing app (the update and

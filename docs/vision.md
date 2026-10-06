@@ -51,8 +51,8 @@ not need to read an API guide or an agent manual to begin.
 instructions and in a few deterministic scripts. Scripts own what must be right
 (base paths, callback routes, identity configuration, the shared SDK version);
 the assistant owns the conversation and the app itself. Instructions that change
-with the SDK come from a snapshot pinned to the installed SDK version, not from
-copied text that drifts.
+with the SDK come from the reference the installed SDK package ships at its own
+version, not from copied text that drifts.
 
 **Default UI first.** Apps start with the SDK's default AppShell and components.
 Ordinary visual and domain-specific customization is welcome. When an app needs

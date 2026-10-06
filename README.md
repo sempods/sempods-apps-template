@@ -39,6 +39,7 @@ contributors: [maintaining](docs/maintaining.md).
 
 ## Licence
 
-Original template material is [MIT-0](LICENSE). Copied SDK code and examples
-keep Apache-2.0; copied SDK documentation keeps CC BY 4.0. Preserve the pinned
-snapshot's own notices and source information.
+Original template material is [MIT-0](LICENSE). The SDK packages, including the
+documentation and examples they ship, keep their own licences: Apache-2.0 for
+code and CC BY 4.0 for documentation. Code adapted from SDK examples keeps its
+Apache-2.0 notice.

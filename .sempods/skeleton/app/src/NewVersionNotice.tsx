@@ -1,6 +1,6 @@
 // Adapted from the sempods TypeScript SDK v0.2.0 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
-// reference/sempods-sdk/LICENSE and NOTICE. Changes: this header; the
+// the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the
 // registration function moved to pwa.ts.
 import { useEffect, useState } from 'react';
 import { useSdkLocale } from '@sempods/app-sdk/react';

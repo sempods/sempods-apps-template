@@ -1,7 +1,10 @@
 :root {
+  /* Follow the system's light or dark mode; the SDK components follow the page.
+     The colours match the SDK defaults, so AppShell sits seamlessly on the page. */
+  color-scheme: light dark;
   font-family: system-ui, sans-serif;
-  color: #173740;
-  background: #f6faf9;
+  color: light-dark(#202923, #e8eee9);
+  background: light-dark(#fff, #191b1a);
 }
 body {
   margin: 0;
@@ -14,5 +17,5 @@ select {
   padding: 0.4rem;
 }
 input[type='checkbox'] {
-  accent-color: #176354;
+  accent-color: light-dark(#226044, #8acda6);
 }
