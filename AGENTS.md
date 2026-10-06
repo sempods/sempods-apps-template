@@ -8,8 +8,10 @@ For creating or changing an app:
 1. On first setup, read [INIT.md](INIT.md). On later sessions, read its setup
    record and the target app's `apps/<id>/NOTES.md` first.
 2. Follow the [app workflow](.sempods/instructions/app-workflow.md), then the
-   [pinned SDK AI entry](reference/sempods-sdk/docs/ai-app-builder.md) and the
-   references relevant to the change. Use the installed version's API.
+   SDK's AI entry, shipped with the installed package at
+   `node_modules/@sempods/app-sdk/docs/ai-app-builder.md` (run `npm ci` first
+   if `node_modules` is missing), and the guides relevant to the change. They
+   match the installed version; use that version's API.
 3. Keep app-specific decisions in its notes and repository-wide choices in the
    owner section below. Do not place credentials or private Pod data there.
 
@@ -25,8 +27,8 @@ canonical skill.
 If the task is to maintain **the template itself**, read
 [template maintenance](docs/maintaining.md) instead of running instance setup.
 Do not apply INIT's repository adaptations to `sempods/sempods-apps-template`.
-SDK snapshot contributor instructions govern SDK contributions, not this app
-repo.
+The SDK repository's contributor instructions govern SDK contributions, not
+this app repo.
 
 ## Owner instructions
 

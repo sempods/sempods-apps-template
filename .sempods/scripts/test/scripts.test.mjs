@@ -17,7 +17,6 @@ import { invalidId, nextDevPort, validateApps } from '../lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../lib/generate.mjs';
 import { createApp } from '../new-app.mjs';
 import { importedPackages, staticProblems } from '../check.mjs';
-import { pinOutsideLinks } from '../sdk-snapshot.mjs';
 
 const templateRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -221,22 +220,83 @@ describe('check', () => {
     ]);
   });
 
+  it('requires the root SDK version and the reference the installed SDK ships', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sempods-check-'));
+    try {
+      cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(root, 'apps.json'),
+        '{"schemaVersion": 1, "apps": []}',
+      );
+      const sdk = JSON.parse(
+        readFileSync(
+          join(root, '.sempods', 'skeleton', 'app', 'package.json'),
+          'utf8',
+        ),
+      ).dependencies;
+      // The root names no SDK yet.
+      writeFileSync(join(root, 'package.json'), '{"devDependencies": {}}');
+      assert.match(
+        staticProblems(root).join('\n'),
+        /root: @sempods\/app-sdk must be an exact version/,
+      );
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({
+          devDependencies: {
+            '@sempods/app-sdk': sdk['@sempods/app-sdk'],
+            '@sempods/client-sdk': sdk['@sempods/client-sdk'],
+          },
+        }),
+      );
+      assert.deepEqual(staticProblems(root), []);
+      // An installed SDK without its shipped reference (before 0.3.0).
+      const installed = join(root, 'node_modules', '@sempods', 'app-sdk');
+      mkdirSync(installed, { recursive: true });
+      writeFileSync(
+        join(installed, 'package.json'),
+        JSON.stringify({ version: sdk['@sempods/app-sdk'] }),
+      );
+      assert.match(
+        staticProblems(root).join('\n'),
+        /ships no app-author reference/,
+      );
+      mkdirSync(join(installed, 'docs'));
+      writeFileSync(join(installed, 'docs', 'ai-app-builder.md'), '# Entry\n');
+      assert.deepEqual(staticProblems(root), []);
+      // An installed version other than the declared one is drift.
+      writeFileSync(
+        join(installed, 'package.json'),
+        JSON.stringify({ version: '9.9.9' }),
+      );
+      assert.match(staticProblems(root).join('\n'), /SDK versions differ/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('reports undeclared imports, edited generated files and SDK version drift', () => {
     const root = mkdtempSync(join(tmpdir(), 'sempods-check-'));
     try {
       cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
         recursive: true,
       });
-      mkdirSync(join(root, 'reference', 'sempods-sdk'), { recursive: true });
-      const skeletonVersion = JSON.parse(
+      const skeleton = JSON.parse(
         readFileSync(
           join(root, '.sempods', 'skeleton', 'app', 'package.json'),
           'utf8',
         ),
-      ).dependencies['@sempods/app-sdk'];
+      ).dependencies;
       writeFileSync(
-        join(root, 'reference', 'sempods-sdk', 'source.json'),
-        JSON.stringify({ version: skeletonVersion }),
+        join(root, 'package.json'),
+        JSON.stringify({
+          devDependencies: {
+            '@sempods/app-sdk': skeleton['@sempods/app-sdk'],
+            '@sempods/client-sdk': skeleton['@sempods/client-sdk'],
+          },
+        }),
       );
       writeFileSync(
         join(root, 'apps.json'),
@@ -290,33 +350,5 @@ describe('check', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
-});
-
-describe('SDK snapshot links', () => {
-  const present = (path) =>
-    ['docs/quickstart.md', 'docs/pwa.md', 'examples/todo/src/app.tsx'].includes(
-      path,
-    );
-  it('keeps links inside the snapshot and pins the others', () => {
-    const source = [
-      '[q](quickstart.md#1-create) [p](./pwa.md) [app](../examples/todo/src/app.tsx)',
-      '[rules](agents/release.md) [web](https://example.org/x) [here](#top)',
-      '[ref]: ../AGENTS.md',
-    ].join('\n');
-    const out = pinOutsideLinks(source, 'docs/README.md', present, 'v0.2.0');
-    assert.match(out, /\[q\]\(quickstart\.md#1-create\)/);
-    assert.match(out, /\[p\]\(\.\/pwa\.md\)/);
-    assert.match(out, /\[app\]\(\.\.\/examples\/todo\/src\/app\.tsx\)/);
-    assert.match(
-      out,
-      /\[rules\]\(https:\/\/github\.com\/sempods\/sempods-typescript\/blob\/v0\.2\.0\/docs\/agents\/release\.md\)/,
-    );
-    assert.match(out, /\[web\]\(https:\/\/example\.org\/x\)/);
-    assert.match(out, /\[here\]\(#top\)/);
-    assert.match(
-      out,
-      /\[ref\]: https:\/\/github\.com\/sempods\/sempods-typescript\/blob\/v0\.2\.0\/AGENTS\.md/,
-    );
   });
 });

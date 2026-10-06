@@ -1,6 +1,6 @@
 // Adapted from the sempods TypeScript SDK v0.2.0 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
-// reference/sempods-sdk/LICENSE and NOTICE. Changes: this header; the notice
+// the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the notice
 // component moved to NewVersionNotice.tsx.
 /**
  * Registers the app's service worker. Call it once from the app entry, never on

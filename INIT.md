@@ -16,10 +16,10 @@ before repository adaptation.
 
 Setup needs the companion skeleton: root `package.json`, `package-lock.json`,
 `.node-version`, `.sempods/VERSION`, `.sempods/scripts/new-app.mjs`,
-`.sempods/scripts/check.mjs`, `apps.json`, and the
-[SDK source record](reference/sempods-sdk/SOURCE.md). If these are missing,
-report that the skeleton is not integrated. Do not invent scripts, configuration
-or a replacement SDK snapshot to work around it.
+`.sempods/scripts/check.mjs` and `apps.json`; after `npm ci`, the SDK's
+shipped reference `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`. If
+these are missing, report that the skeleton is not integrated. Do not invent
+scripts, configuration or a replacement SDK reference to work around it.
 
 ## Ask once, then keep the answers
 
@@ -52,7 +52,7 @@ rather than changing remote rules or claiming workflow removal changes them. Do
 not invent an author identity or sign-off on the owner's behalf.
 
 Record the starting template version from `.sempods/VERSION` below; do not
-modify that source file or the SDK snapshot. Preserve LICENSE and imported
+modify that file or anything under `node_modules`. Preserve LICENSE and imported
 notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
 On resumed setup, completed adaptations are inspected, not reset to defaults.
 
@@ -112,7 +112,7 @@ starting template version remains the version this instance began with.
 
 - Status: not started
 - Starting template version (`.sempods/VERSION`): not recorded
-- SDK version at setup (`reference/sempods-sdk/source.json`): not recorded
+- SDK version at setup (`@sempods/app-sdk` in the root `package.json`): not recorded
 - Owner and review identity: not recorded
 - UI language: not selected
 - First app ID and idea: not selected

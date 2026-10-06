@@ -15,18 +15,19 @@ release packages.
 ## Parallel M1a work
 
 [#2](https://github.com/sempods/sempods-apps-template/issues/2) owns the
-skeleton, root package/configuration, scripts, snapshot and CI. Its paths,
+skeleton, root package/configuration, scripts and CI. Its paths,
 commands and `apps.json` fields are the integration contract.
 [#3](https://github.com/sempods/sempods-apps-template/issues/3) owns user
 guides, agent instructions and skills. Propose interface changes in #2 first; do
 not change its files from the instructions branch. Keep user-facing prose short;
-link to the pinned snapshot instead of copying SDK manuals.
+point to the SDK reference shipped in the installed package instead of copying
+SDK manuals.
 
 Review #2 and #3 together before the independent
 [#4 authoring exercise](https://github.com/sempods/sempods-apps-template/issues/4).
 Until #2 lands, validate local Markdown links and check SDK-reference targets
 against the pinned SDK revision, reporting the missing integration dependency.
-Do not add placeholder scripts or a fabricated snapshot to make checks pass.
+Do not add placeholder scripts or a fabricated SDK reference to make checks pass.
 Once the skeleton is integrated, use its `npm ci` and `npm run check` commands.
 Record the exact commit and distinguish document/fixture checks from an actual
 user starting an app against a Pod. Skills and link checks do not prove that
@@ -44,8 +45,8 @@ In an instance, preserve the delimited owner section in AGENTS.md, the instance
 setup record in INIT, app code, `apps.json` and app notes. Updates must respect
 the [plan's file ownership](plan.md#updates). In this template repository those
 initial records remain unfilled. Do not remove records from a user's copy to
-make it resemble a fresh template. SDK snapshots keep their source revision and
-own licence/NOTICE files; template MIT-0 does not replace them.
+make it resemble a fresh template. Code adapted from SDK examples keeps its
+Apache-2.0 notice; template MIT-0 does not replace it.
 
 ## Handoff
 
