@@ -27,6 +27,10 @@ updates:
     versioning-strategy: 'increase'
     ignore:
       - dependency-name: '@sempods/*'
+      # Match the Node 24 runtime baseline; review runtime and typings together.
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
     groups:
       npm:
         patterns:
@@ -43,6 +47,10 @@ updates:
     versioning-strategy: 'increase'
     ignore:
       - dependency-name: '@sempods/*'
+      # Match the Node 24 runtime baseline; review runtime and typings together.
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
     groups:
       npm:
         patterns:

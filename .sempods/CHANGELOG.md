@@ -6,6 +6,37 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.3.0
+
+### Changes
+
+- Root tooling and new apps use the TypeScript 7 native compiler. The import
+  checker uses the official `@typescript/typescript6` compatibility package,
+  because TypeScript 7 does not ship the compiler API it needs.
+- CodeQL scans GitHub Actions and JavaScript/TypeScript, explicitly including
+  `.sempods/scripts`, `.sempods/skeleton/app` and owner apps. Hidden template
+  directories are skipped by the JavaScript extractor's default traversal.
+- Dependabot keeps `@types/node` within the Node 24 runtime baseline. Review a
+  Node major migration together with its types before removing the exclusion.
+
+### Upgrade notes
+
+1. Review the root and app manifest changes, regenerate the lockfile and run
+   `npm run check -- --standalone all`. Owner-modified TypeScript versions are
+   preserved and reported by the updater; migrate those apps deliberately.
+   TypeScript 7 has no compiler API: owner tools that import `typescript`
+   require their own migration. The template checker now installs and imports
+   `@typescript/typescript6` separately.
+2. Review the new shared CodeQL workflow and configuration, preserving owner
+   scan choices. If GitHub CodeQL Default Setup is enabled, switch to Advanced
+   Setup in Settings → Advanced Security; Default Setup blocks this workflow's
+   uploads. This repository setting is not changed by `update-template`.
+   Verify successful Actions and JavaScript/TypeScript analyses on the default
+   branch and a PR. Code scanning availability depends on repository visibility
+   and the owner's GitHub plan.
+3. Keep the `@types/node` major exclusion in both npm Dependabot entries while
+   `.node-version` stays on Node 24; update these together for a runtime change.
+
 ## 0.2.1
 
 ### Changes
