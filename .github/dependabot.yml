@@ -31,6 +31,20 @@ updates:
       - dependency-name: 'typescript'
         update-types:
           - 'version-update:semver-major'
+      # The Markdown link check is template tooling too. Template releases move
+      # its majors, so a copy does not diverge from the template's entries.
+      - dependency-name: 'remark'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'remark-validate-links'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'unified-engine'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'markdown-extensions'
+        update-types:
+          - 'version-update:semver-major'
       # Match the Node 24 runtime baseline; review runtime and typings together.
       - dependency-name: '@types/node'
         update-types:
