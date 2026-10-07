@@ -8,7 +8,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -29,9 +28,12 @@ const escapeHtml = (text) =>
   text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function fillTokens(dir, app) {
-  for (const name of readdirSync(dir)) {
+  // Directory entries carry their type, so no separate stat precedes the read
+  // and write of the same path.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const { name } = entry;
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) {
+    if (entry.isDirectory()) {
       fillTokens(path, app);
       continue;
     }

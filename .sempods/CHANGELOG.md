@@ -20,6 +20,8 @@ alone: owner files, configuration choices and the SDK migration.
 - CodeQL scans GitHub Actions and JavaScript/TypeScript, explicitly including
   `.sempods/scripts`, `.sempods/skeleton/app` and owner apps. Hidden template
   directories are skipped by the JavaScript extractor's default traversal.
+  `new-app` reads its skeleton copy without a separate stat before each file,
+  so the first analysis of a copy reports no file-system race in it.
 - Dependabot keeps `@types/node` within the Node 24 runtime baseline. Review a
   Node major migration together with its types before removing the exclusion.
 
