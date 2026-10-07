@@ -55,6 +55,25 @@ try {
     run(process.execPath, [newApp, FIXTURE, '--title', 'Self test'], copy) !== 0
   )
     throw new Error('new-app could not create the fixture');
+  // Verify the executable npm selects, not just the installed package version.
+  // Different root/app compiler versions and npm bin collisions must not let
+  // a workspace build silently run an older compiler.
+  const expectedCompiler = JSON.parse(
+    readFileSync(join(copy, 'apps', FIXTURE, 'package.json'), 'utf8'),
+  ).devDependencies.typescript;
+  const compiler = spawnSync(
+    'npm',
+    ['exec', '--workspace', `apps/${FIXTURE}`, '--', 'tsc', '--version'],
+    { cwd: copy, encoding: 'utf8', shell: process.platform === 'win32' },
+  );
+  if (
+    compiler.status !== 0 ||
+    compiler.stdout.trim() !== `Version ${expectedCompiler}`
+  )
+    throw new Error(
+      `workspace compiler: expected ${expectedCompiler}, got ${compiler.stdout.trim() || compiler.stderr.trim()}`,
+    );
+  console.log(`Workspace compiler: ${compiler.stdout.trim()}`);
   const before = readFileSync(join(copy, 'apps.json'), 'utf8');
   if (run(process.execPath, [newApp, FIXTURE, '--skip-install'], copy) === 0)
     throw new Error('a rerun of new-app must be refused');

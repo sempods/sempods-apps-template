@@ -16,7 +16,9 @@
     ".node-version",
     ".github/dependabot.yml",
     ".github/workflows/check.yml",
-    ".github/workflows/sdk-update.yml"
+    ".github/workflows/sdk-update.yml",
+    ".github/workflows/codeql.yml",
+    ".github/codeql/codeql-config.yml"
   ],
   "sections": {
     "AGENTS.md": [

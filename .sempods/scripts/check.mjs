@@ -48,7 +48,9 @@ function sourceFiles(dir) {
 let typescript;
 function scanner() {
   // TypeScript's own import scanner: it skips comments and strings and finds
-  // static and dynamic imports, re-exports and require() calls.
+  // static and dynamic imports, re-exports and require() calls. Keep the root
+  // dependency on TypeScript 6: TypeScript 7 does not ship this compiler API.
+  // Apps can use the native compiler independently of this scanner.
   typescript ??= createRequire(import.meta.url)('typescript');
   return typescript;
 }
