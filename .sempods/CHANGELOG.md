@@ -6,7 +6,7 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
-## 0.3.1
+## 0.4.0
 
 ### Changes
 
