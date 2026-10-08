@@ -25,10 +25,12 @@ SDK-dependent behavior.
 Use the user's request and existing notes to choose the next interaction. Ask
 only for missing choices that affect it: what the app should do, UI language,
 data vocabulary and test target. Briefly describe the screen and data change in
-the user's language, then build it. Start with the default AppShell and
-components; ordinary visual customization is welcome. The SDK owns connection,
-editing and recovery behavior; use the reference rather than rebuilding those
-facilities.
+the user's language, then build it. Start from the skeleton's layout:
+`AppAccess` beside `TargetScreen`, with a header that reopens data access, and
+the SDK's components. Ordinary visual customization is welcome. The SDK owns
+connection, editing and recovery behavior; use the reference rather than
+rebuilding those facilities. Existing apps on `AppShell` keep working; move them
+only when the owner wants the new layout.
 
 Choose the data vocabulary before writing data. Prefer an existing, specific
 type and properties (for example `https://schema.org/BuyAction` for a shopping
@@ -47,11 +49,12 @@ Keep the screen consistent with the SDK's UI:
 - Ask for confirmation inside the page (for example a second "Löschen" and
   "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
   browsers and webviews may block them and silently answer "cancel".
-- Give app controls labels that differ from AppShell's own. A list reload next
-  to AppShell's "Erneut prüfen" (access recheck) needs another label. A `useList`
-  view refreshes by itself only after confirmed creation, row mutation or
-  bound-editor writes on that exact view; keep an explicit reload for anything
-  else, such as other clients, another view, raw client calls or another Pod.
+- Give app controls labels that differ from the SDK's own. A list reload next
+  to the access controls ("Zugriff prüfen", "Erneut prüfen") needs another
+  label, for example "Liste neu laden". A `useList` view refreshes by itself
+  only after confirmed creation, row mutation or bound-editor writes on that
+  exact view; keep an explicit reload for anything else, such as other
+  clients, another view, raw client calls or another Pod.
 
 For a new app, run the root command with the chosen values:
 

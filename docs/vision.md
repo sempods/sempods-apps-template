@@ -54,7 +54,8 @@ the assistant owns the conversation and the app itself. Instructions that change
 with the SDK come from the reference the installed SDK package ships at its own
 version, not from copied text that drifts.
 
-**Default UI first.** Apps start with the SDK's default AppShell and components.
+**Default UI first.** Apps start with the SDK's default access UI (`AppAccess`)
+and components; the app owns its layout around them.
 Ordinary visual and domain-specific customization is welcome. When an app needs
 to recreate authentication, recovery or other SDK responsibilities, record an
 SDK finding rather than adding a parallel implementation.

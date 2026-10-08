@@ -1,6 +1,6 @@
 :root {
   /* Follow the system's light or dark mode; the SDK components follow the page.
-     The colours match the SDK defaults, so AppShell sits seamlessly on the page. */
+     The colours match the SDK defaults, so AppAccess sits seamlessly on the page. */
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
   color: light-dark(#202923, #e8eee9);
@@ -8,6 +8,22 @@
 }
 body {
   margin: 0;
+}
+main {
+  max-width: 760px;
+  margin: auto;
+  padding: 16px;
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+header h1 {
+  margin: 0;
+  font-size: 1.4rem;
 }
 button,
 input,

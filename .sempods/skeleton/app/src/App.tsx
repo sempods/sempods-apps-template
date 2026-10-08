@@ -1,8 +1,10 @@
+import { useRef, useState } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
 import {
-  AppShell,
+  AppAccess,
   SempodsProvider,
   TargetScreen,
+  useAppState,
   useSdkLocale,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
@@ -22,12 +24,44 @@ export default function App({
   return (
     <SempodsProvider runtime={runtime} language={app.language}>
       <NewVersionNotice registration={registration} />
-      <AppShell title={app.title}>
-        <TargetScreen>
-          <Start />
-        </TargetScreen>
-      </AppShell>
+      <Frame />
     </SempodsProvider>
+  );
+}
+
+// The app owns its layout. AppAccess shows sign-in and recovery beside the
+// content and hides once a context is readable; the button reopens it.
+function Frame() {
+  const [open, setOpen] = useState(false);
+  const focusTarget = useRef<HTMLButtonElement>(null);
+  const { connections } = useAppState();
+  const { messages } = useSdkLocale();
+  const header = connections.length > 0;
+  return (
+    <main>
+      {header && (
+        <header>
+          <h1>{app.title}</h1>
+          <button
+            ref={focusTarget}
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            {messages.controls.dataAccess}
+          </button>
+        </header>
+      )}
+      {/* Below the header's h1, AppAccess uses h2. */}
+      <AppAccess
+        appName={app.title}
+        headingLevel={header ? 2 : 1}
+        open={open}
+        focusTarget={focusTarget}
+      />
+      <TargetScreen>
+        <Start />
+      </TargetScreen>
+    </main>
   );
 }
 

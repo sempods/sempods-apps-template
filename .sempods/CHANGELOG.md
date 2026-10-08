@@ -6,6 +6,39 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.4.0
+
+### Changes
+
+- The SDK is 0.4.1 (`@sempods/app-sdk` and `@sempods/client-sdk`) for the
+  root tooling and the app skeleton. 0.4 adds Pod-wide reads and Contexts on
+  demand; 0.4.1 renews credentials before they expire.
+- New apps start with `AppAccess` beside `TargetScreen`, as the SDK reference
+  recommends, instead of `AppShell`. The skeleton's `App.tsx` owns its layout: a
+  header with the app title and a button that reopens data access. The skeleton
+  stylesheet gains matching `main` and `header` rules. The app workflow and the
+  vision name `AppAccess`.
+
+### Upgrade notes
+
+1. `update-template` updates the root and skeleton manifests. Then run
+   `npm run sdk-update -- 0.4.1` so every registered app moves to the same SDK
+   version, and run `npm run check -- --standalone all`.
+2. Review the SDK migration
+   [From 0.3 to 0.4](https://github.com/sempods/sempods-typescript/blob/v0.4.1/docs/migration.md#from-03-to-04)
+   for each app:
+   - Context labels are loaded only for the selected Context, so pickers and
+     tests that read `catalogue.labels` for other Contexts need updating;
+   - the edit helpers reject IRIs containing control characters or spaces;
+   - hand-built test doubles need the new members `Pod.sparql`,
+     `BrowserRuntime.bindPod`, `AppSnapshot.pod` and
+     `AppSnapshot.contextSelection`.
+3. Existing apps on `AppShell` keep working; do not migrate them unasked. To
+   move an app to the new layout, ask the owner first, then compare its
+   `App.tsx` with `.sempods/skeleton/app/src/App.tsx`. Keep the app's own
+   screens inside `TargetScreen`, and give the access button a label different
+   from the app's own controls.
+
 ## 0.3.0
 
 ### Changes
