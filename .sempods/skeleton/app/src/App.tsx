@@ -36,9 +36,10 @@ function Frame() {
   const focusTarget = useRef<HTMLButtonElement>(null);
   const { connections } = useAppState();
   const { messages } = useSdkLocale();
+  const header = connections.length > 0;
   return (
     <main>
-      {connections.length > 0 && (
+      {header && (
         <header>
           <h1>{app.title}</h1>
           <button
@@ -50,7 +51,13 @@ function Frame() {
           </button>
         </header>
       )}
-      <AppAccess appName={app.title} open={open} focusTarget={focusTarget} />
+      {/* Below the header's h1, AppAccess uses h2. */}
+      <AppAccess
+        appName={app.title}
+        headingLevel={header ? 2 : 1}
+        open={open}
+        focusTarget={focusTarget}
+      />
       <TargetScreen>
         <Start />
       </TargetScreen>
