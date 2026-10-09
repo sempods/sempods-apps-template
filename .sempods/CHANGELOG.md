@@ -21,6 +21,13 @@ alone: owner files, configuration choices and the SDK migration.
   the contexts the app needs in `NOTES.md`, takes the vocabulary from the stored
   data, keeps write hooks and operations out of the app and tests it with the
   read-only section of the installed SDK's `local-testing.md`.
+- New apps start with a test: `src/start.test.ts` tests the start screen's
+  text, now the pure function `startMessage` in `src/start.ts`. Tests type-check
+  through their own `tsconfig.test.json` with Node types, and the app
+  `tsconfig.app.json` leaves them out. The app workflow says where tests live,
+  what to test first and how to set up a component test.
+- `src/sempods.generated.ts` reads `location` only when the runtime is created,
+  no longer on import, so tests in Node can import it.
 
 ### Upgrade notes
 
@@ -46,6 +53,13 @@ alone: owner files, configuration choices and the SDK migration.
    selects its Context.
 4. For an existing app that only reads, add that decision and the contexts it
    reads to its `NOTES.md` when you next work on it.
+5. `update-template` regenerates `src/sempods.generated.ts` in every app; the
+   exported `runtimeOptions` keep their shape. Existing apps keep their own
+   test setup. To give one the skeleton's, ask the owner first, then copy
+   `.sempods/skeleton/app/tsconfig.test.json`, add it to the app's
+   `tsconfig.json` references and exclude `src/**/*.test.ts` and
+   `src/**/*.test.tsx` from its `tsconfig.app.json`. An app whose tests already
+   read Node APIs some other way can keep them.
 
 ## 0.4.0
 

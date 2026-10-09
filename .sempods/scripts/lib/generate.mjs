@@ -31,7 +31,11 @@ export const runtimeOptions: BrowserRuntimeOptions = {
   identity: {
     kind: 'dynamic',
     name: app.title,
-    redirectUri: \`\${location.origin}${app.path}callback\`,
+    // Read when the runtime is created, not on import, so tests can import
+    // this module outside a browser.
+    get redirectUri() {
+      return \`\${location.origin}${app.path}callback\`;
+    },
   },
   returnTo: app.basePath,
   // Local HTTP only. A deployed app gets a did:web identity on HTTPS (M3).

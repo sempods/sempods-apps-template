@@ -113,6 +113,14 @@ Never request credentials, export browser storage or put tokens in notes/logs. A
 missing Pod still allows UI work, but not a claim of working login, reads or
 writes.
 
+Tests live next to the code they test, as `src/<module>.test.ts`; the
+skeleton's `src/start.test.ts` shows the pattern. Test the domain logic first,
+as pure functions. Vitest runs in Node: tests may use Node APIs
+(`tsconfig.test.json`) and import `src/sempods.generated.ts`, but not modules
+that create the runtime on import, such as `App.tsx`. A component test needs a
+DOM: add `jsdom` and `@testing-library/react` as dev dependencies of the app
+and start the file with `// @vitest-environment jsdom`.
+
 Keep failures, conflicts and unconfirmed writes visible through SDK recovery. Do
 not blindly retry a mutation, clear sessions to hide a failure, or silently
 choose another context. Preserve drafts and the original target while diagnosing

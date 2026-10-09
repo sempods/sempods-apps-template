@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { invalidId, nextDevPort, validateApps } from '../lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../lib/generate.mjs';
 import { createApp } from '../new-app.mjs';
@@ -99,7 +99,7 @@ describe('generated configuration', () => {
     const runtime = files['src/sempods.generated.ts'];
     assert.match(
       runtime,
-      /redirectUri: `\$\{location\.origin\}\/demo\/callback`/,
+      /get redirectUri\(\) \{\n\s+return `\$\{location\.origin\}\/demo\/callback`;/,
     );
     assert.match(runtime, /title: "Demo \\"App\\""/);
     assert.match(runtime, /development: 'loopback-http'/);
@@ -109,6 +109,19 @@ describe('generated configuration', () => {
     assert.match(vite, /scope: "\/demo\/"/);
     assert.match(vite, /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\$\/\]/);
     assert.match(vite, /skipWaiting: false/);
+  });
+  it('reads location only when the callback is used', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
+    try {
+      // Node strips the types; the module runs without a browser's location.
+      const file = join(dir, 'sempods.generated.mts');
+      writeFileSync(file, generatedFiles(app)['src/sempods.generated.ts']);
+      const { runtimeOptions } = await import(pathToFileURL(file).href);
+      assert.equal(runtimeOptions.returnTo, '/demo/');
+      assert.throws(() => runtimeOptions.identity.redirectUri, ReferenceError);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
   it('has no PWA settings when the app opts out', () => {
     assert.match(
