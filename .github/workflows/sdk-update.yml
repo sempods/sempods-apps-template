@@ -16,9 +16,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   update:
-    # Template maintainers update the SDK through normal PRs; organization
-    # policy disables automated PR creation here. Instances keep the schedule.
-    if: github.event_name != 'schedule' || github.repository != 'sempods/sempods-apps-template'
+    # Scheduled runs need the owner's explicit opt-in. Manual dispatch is
+    # available without it; the upstream template never runs on the schedule.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       github.repository != 'sempods/sempods-apps-template' &&
+       vars.SEMPODS_SDK_AUTO_UPDATES == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -123,6 +123,11 @@ revisit them.
 
 ## Enable automatic SDK update PRs
 
+Scheduled SDK updates stay off unless `SEMPODS_SDK_AUTO_UPDATES` is `true`, even
+if Actions already permits PR creation. Leave that variable unset for a new
+copy while the choice is deferred. Manual workflow dispatch and local updates
+remain available. Preserve an existing explicit opt-in on a resumed setup.
+
 When the owner chooses automatic updates, use their existing GitHub access to
 inspect the repository's Actions workflow permissions (for example
 `gh api repos/<owner>/<repo>/actions/permissions/workflow`;
@@ -131,10 +136,18 @@ If access cannot read the setting, have the owner inspect it in the UI; do not
 assume it is enabled. Guide the owner to **Settings → Actions → General →
 Workflow permissions → Allow GitHub Actions to create and approve pull
 requests**, subject to organization policy. The update job's YAML permissions
-alone do not enable it. Record the observed setting and owner's choice below.
+alone do not enable it.
+
+Once PR creation is allowed, set the repository Actions variable
+`SEMPODS_SDK_AUTO_UPDATES` to `true` using the owner's existing access (for
+example `gh variable set SEMPODS_SDK_AUTO_UPDATES --body true --repo <owner>/<repo>`),
+or guide them to **Settings → Secrets and variables → Actions → Variables**.
+Verify the variable and record it alongside the observed Actions setting and
+owner's choice below. If access cannot set or verify it, record activation as
+pending. To turn scheduled updates off, set it to `false`; keep manual dispatch.
 
 If it stays disabled, report **automatic SDK updates unavailable**. The local
-`npm run sdk-update -- <version|latest>` command and an assistant-created PR
+`pnpm run sdk-update <version|latest>` command and an assistant-created PR
 using the owner's existing GitHub access remain available. Never ask for a
 token. Keep the check workflow's manual-dispatch trigger: the SDK workflow
 opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.

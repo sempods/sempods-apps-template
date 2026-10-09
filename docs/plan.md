@@ -165,17 +165,22 @@ requirement: the SDK namespaces sessions and locks by identity kind plus app DID
 namespaces, while sharing the origin's browser security boundary. See the SDK's
 [session persistence contract](https://github.com/sempods/sempods-typescript/blob/012fa63cea292d6b63b71e3a17187710f7180d44/docs/migration.md#know-what-persists).
 Security releases are applied promptly; other updates when the owner wants them.
-A scheduled workflow (weekly) runs `sdk-update` for the newest release, runs
+A scheduled workflow (weekly) runs only after the owner opts in with the Actions
+variable `SEMPODS_SDK_AUTO_UPDATES=true`; without it, the update job is skipped
+even if Actions may create PRs. Manual dispatch remains available. When enabled,
+it runs `sdk-update` for the newest release, runs
 `check` and opens a pull request that links the SDK's migration notes. A patch
 release can be merged when the checks pass, automatically if the owner enables
 that. Before 1.0 a minor release may break apps: the owner asks the assistant to
 apply it, and the update skill follows the migration guide, adapts the apps,
 runs the checks and lists what to try on the Pod.
 
-When installing the update workflow (M1b), INIT checks whether Actions may
+After the first local interaction, INIT offers automatic updates. If the owner
+chooses them, INIT checks whether Actions may
 create pull requests. For a new personal repository this is disabled by default.
 Guide the owner to the repository's Actions settings to enable that capability,
-subject to organisation policy; YAML permissions alone do not enable it. Scope
+subject to organisation policy; YAML permissions alone do not enable it. Set
+and verify the opt-in variable only after this capability is enabled. Scope
 `contents: write` and `pull-requests: write` to the update job. If policy or the
 owner keeps PR creation disabled, report automatic updates as unavailable and
 retain the local `sdk-update` plus assistant-created PR path using the owner's

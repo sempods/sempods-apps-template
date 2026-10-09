@@ -183,8 +183,11 @@ follow the SDK migration guide, adapt the apps, run `pnpm run check
 Record changed behavior, checks and remaining Pod/device evidence in app notes
 and the PR. The owner controls merging.
 
-The weekly SDK workflow opens one PR per version and dispatches Check on its
-branch. If Actions may not create PRs, report automatic SDK updates unavailable
+The weekly SDK workflow needs the owner's opt-in through the Actions variable
+`SEMPODS_SDK_AUTO_UPDATES=true` and permission for Actions to create PRs. Without
+the opt-in, scheduled runs skip the update job; manual dispatch still works.
+When enabled, it opens one PR per version and dispatches Check on its branch.
+If Actions may not create PRs, report automatic SDK updates unavailable
 and use the local command plus an assistant-created PR with the owner's existing
 GitHub access. [INIT](../../INIT.md#enable-automatic-sdk-update-prs) explains the
 repository setting. Never ask for a token.
