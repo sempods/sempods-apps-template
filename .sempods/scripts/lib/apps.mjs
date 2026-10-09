@@ -63,7 +63,8 @@ export function invalidOrigin(value) {
   // uppercase: did:web and the callback derive from exactly this host.
   if (url.protocol !== 'https:' || url.origin !== value || url.port)
     return reason;
-  if (LOOPBACK.has(url.hostname))
+  // Names under .localhost resolve to the visitor's own machine.
+  if (LOOPBACK.has(url.hostname) || url.hostname.endsWith('.localhost'))
     return 'must be a public host; local development keeps its own profile';
   // did:web names a host by its fully qualified domain name, never by an IP
   // address; the URL parser alone accepts empty or hyphen-edged labels.
