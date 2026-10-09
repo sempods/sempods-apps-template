@@ -3,8 +3,7 @@
 Use this workflow inside an owner's apps repository. Read
 [AGENTS.md](../../AGENTS.md) and its owner section first. For initial setup, use
 [INIT.md](../../INIT.md); for an existing app, read `apps/<id>/NOTES.md` and its
-local instructions. Template changes follow
-[maintaining](../../docs/maintaining.md).
+local instructions.
 
 ## Get the matching reference
 
@@ -84,7 +83,8 @@ SDK copy from a local checkout.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
-path/port; do not invent deployment-profile fields that M1a does not provide.
+path/port; do not invent deployment-profile fields, which the template does
+not provide yet.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
 Run the development server as its own process and stop only that process (its
@@ -94,10 +94,10 @@ hold connections to it.
 
 Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,
-callback, base path and PWA configuration. M1a's `new-app` creates new apps
-only; rerunning it does not reconfigure an existing app. If a requested
-configuration change needs a command not shipped yet, explain that limitation
-and raise it with the template maintainer; do not delete/recreate the app or
+callback, base path and PWA configuration. `new-app` creates new apps only;
+rerunning it does not reconfigure an existing app. If a requested configuration
+change needs a command not shipped yet, explain that limitation to the owner;
+they can request it from the template project. Do not delete/recreate the app or
 patch generated files as a workaround. `.sempods/` is template-owned, not app
 customization space.
 
@@ -178,6 +178,6 @@ repository setting. Never ask for a token.
 
 Template updates follow the
 [update-template skill](../skills/update-template/SKILL.md). Production profiles
-(`configure-app`) and combined hosting (`build-site`) are M3. Until those
-increments land, capture the request and consult the installed SDK's
+(`configure-app`) and combined hosting (`build-site`) are not available yet.
+Until they are, capture the request and consult the installed SDK's
 `deployment.md` without implementing a parallel configuration mechanism.

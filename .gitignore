@@ -8,6 +8,10 @@ netlify-dist/
 !.env.example
 .DS_Store
 dev-dist/
+# Personal assistant instructions stay local.
+CLAUDE.local.md
+AGENTS.override.md
+
 # Editor settings stay local.
 .idea/
 .vscode/

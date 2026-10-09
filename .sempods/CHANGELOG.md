@@ -28,6 +28,15 @@ alone: owner files, configuration choices and the SDK migration.
   what to test first and how to set up a component test.
 - `src/sempods.generated.ts` reads `location` only when the runtime is created,
   no longer on import, so tests in Node can import it.
+- The agent instructions serve only the owner who builds apps. AGENTS.md,
+  CLAUDE.md, INIT.md and the app workflow no longer route to template
+  maintenance or mention its milestones, so an assistant no longer switches to
+  the maintainer role or claims template issues. `docs/app-workflow.md`, a
+  pointer to the same workflow, is removed.
+- Setup removes the template's contributor documents (`CONTRIBUTING.md`,
+  `docs/maintaining.md`, `docs/plan.md`, `docs/vision.md`) from a new copy.
+  `.gitignore` ignores the personal instruction files `CLAUDE.local.md` and
+  `AGENTS.override.md`.
 
 ### Upgrade notes
 
@@ -60,6 +69,12 @@ alone: owner files, configuration choices and the SDK migration.
    `tsconfig.json` references and exclude `src/**/*.test.ts` and
    `src/**/*.test.tsx` from its `tsconfig.app.json`. An app whose tests already
    read Node APIs some other way can keep them.
+6. The contributor documents `CONTRIBUTING.md`, `docs/maintaining.md`,
+   `docs/plan.md` and `docs/vision.md` describe work on the template, not on
+   the owner's apps. Offer to remove them; keep `CONTRIBUTING.md` if the owner
+   adapted it for their own repository. First check that no kept file links to
+   them, so `npm run check` stays green. Template updates do not bring them
+   back once removed.
 
 ## 0.4.0
 

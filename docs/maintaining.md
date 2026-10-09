@@ -1,37 +1,25 @@
 # Maintain the template
 
-This guide applies to work on `sempods/sempods-apps-template` itself. For work
-in an owner's copy, use [AGENTS.md](../AGENTS.md) and the
-[app workflow](../.sempods/instructions/app-workflow.md). Do not execute INIT's
-instance adaptations in the upstream template: retain its CODEOWNERS and DCO.
+This guide applies to work on `sempods/sempods-apps-template` itself. Owner
+copies remove it during setup. Do not run INIT's instance adaptations in the
+upstream template: retain its CODEOWNERS and DCO.
 
-Read the [vision](vision.md), [plan](plan.md), owning issue and current
-discussion. Claim the issue with the matching `claimed:*` label and a signed
-agent comment (for example `[Codex]`); use an isolated branch from
-`origin/main`. Coordinate file ownership before editing. The owner merges;
-implementation is not approval or permission to publish, change visibility or
-release packages.
+Read the [vision](vision.md), the [plan](plan.md) and the issue you work on. Use
+a branch from `origin/main`. The owner merges; implementation is not approval or
+permission to publish, change visibility or release packages.
 
-## Parallel M1a work
+## Assistant instructions
 
-[#2](https://github.com/sempods/sempods-apps-template/issues/2) owns the
-skeleton, root package/configuration, scripts and CI. Its paths,
-commands and `apps.json` fields are the integration contract.
-[#3](https://github.com/sempods/sempods-apps-template/issues/3) owns user
-guides, agent instructions and skills. Propose interface changes in #2 first; do
-not change its files from the instructions branch. Keep user-facing prose short;
-point to the SDK reference shipped in the installed package instead of copying
-SDK manuals.
-
-Review #2 and #3 together before the independent
-[#4 authoring exercise](https://github.com/sempods/sempods-apps-template/issues/4).
-Until #2 lands, validate local Markdown links and check SDK-reference targets
-against the pinned SDK revision, reporting the missing integration dependency.
-Do not add placeholder scripts or a fabricated SDK reference to make checks pass.
-Once the skeleton is integrated, use its `npm ci` and `npm run check` commands.
-Record the exact commit and distinguish document/fixture checks from an actual
-user starting an app against a Pod. Skills and link checks do not prove that
-exercise was completed.
+The repository's agent instructions (AGENTS.md, CLAUDE.md, INIT.md and the
+skills) serve the owner of a copy who builds apps. They do not route to this
+guide, so an assistant opened in this repository starts in that role. Give it
+the maintainer context in your request or in a local, uncommitted file:
+`CLAUDE.local.md` for Claude Code, which adds to CLAUDE.md, or
+`AGENTS.override.md` for Codex, which takes the place of AGENTS.md. Both are
+ignored by Git. Keep maintainer tooling such as review skills in your personal
+assistant configuration or a plugin, not in `.claude/skills/` or
+`.agents/skills/`: those are shared files that template updates deliver to every
+copy.
 
 ## Keep one instruction source
 
@@ -39,7 +27,13 @@ The canonical workflow lives in `.sempods/instructions/app-workflow.md`, and
 `.sempods/skills/app-workflow/SKILL.md` is its canonical skill entry. Root/tool
 adapters only route to it. When changing a command or path, check README, INIT,
 AGENTS, user steps and all adapters together. Verify skill frontmatter and links
-as well as whether the instructions lead to a usable outcome.
+as well as whether the instructions lead to a usable outcome. Keep user-facing
+prose short; point to the SDK reference shipped in the installed package instead
+of copying SDK manuals.
+
+Files an owner's copy removes during setup (this guide, the plan, the vision and
+`CONTRIBUTING.md`) must not be linked from files a copy keeps; use an absolute
+GitHub URL where a pointer is needed. `npm run check` validates local links.
 
 In an instance, preserve the delimited owner section in AGENTS.md, the instance
 setup record in INIT, app code, `apps.json` and app notes. Updates must respect
@@ -78,9 +72,7 @@ the previous release in a copy before tagging, and keep the update tests in
 ## Handoff
 
 Sign off every commit using the configured contributor identity
-(`git commit -s`) and honestly attribute AI assistance. Prefix GitHub text with
-the acting agent's name in brackets. Open a PR linked to the issue, record
-checks and remaining integration work, and request independent review of its
-exact head SHA. Keep a claim until the work is handed off or explicitly
-released. Do not count review of an earlier head, or the author's own checks, as
-independent approval.
+(`git commit -s`) and honestly attribute AI assistance. Open a PR linked to the
+issue, record checks and remaining work, and request independent review of its
+exact head SHA. Do not count review of an earlier head, or the author's own
+checks, as independent approval.

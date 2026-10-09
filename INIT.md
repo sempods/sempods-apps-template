@@ -6,13 +6,11 @@ setup record below on later runs and template updates.
 
 ## Check where you are
 
-Confirm the current repository's identity from its Git remote or GitHub
-metadata, and inspect the worktree and setup record before changing anything. If
-it is `sempods/sempods-apps-template`, or the task is template maintenance, use
-[maintaining](docs/maintaining.md): do not adapt ownership or remove its DCO
-check. A local copy without a Git remote is the owner's instance when the owner
-says so; record that in the setup record. If the identity is unclear, clarify it
-before repository adaptation.
+Inspect the worktree and setup record before changing anything. Setup adapts
+the owner's own copy. If the Git remote is `sempods/sempods-apps-template`
+itself, do not adapt it: tell the user to create their own copy as described in
+the [README](README.md#start-with-your-idea). A local copy without a Git remote
+is the owner's instance when the owner says so; record that in the setup record.
 
 Setup needs the companion skeleton: root `package.json`, `package-lock.json`,
 `.node-version`, `.sempods/VERSION`, `.sempods/scripts/new-app.mjs`,
@@ -51,6 +49,11 @@ Repository or organization rules may still require DCO; report that separately
 rather than changing remote rules or claiming workflow removal changes them. Do
 not invent an author identity or sign-off on the owner's behalf.
 
+Remove the template's contributor documents, which do not apply to the owner's
+apps: `CONTRIBUTING.md`, `docs/maintaining.md`, `docs/plan.md` and
+`docs/vision.md`. Keep `CONTRIBUTING.md` if the owner wants a contribution
+policy of their own, and adapt it. Template updates do not bring them back.
+
 Record the starting template version from `.sempods/VERSION` below; do not
 modify that file or anything under `node_modules`. Preserve LICENSE and imported
 notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
@@ -75,7 +78,7 @@ opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
 
 ## Create the first app and open it
 
-Use the Node version in `.node-version` (M1a starts with 24.15.0) and npm. Check
+Use the Node version in `.node-version` and npm. Check
 `node --version` first. If it differs, switch with the owner's version manager,
 naming the version from `.node-version` explicitly (for example `nvm install
 24.15.0`, `fnm use --install-if-missing 24.15.0`, or with mise prefix each
@@ -120,7 +123,7 @@ SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-
 Template updates follow the
 [update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
 asks for one; do not run an update during this setup. Deployment configuration
-and site building arrive in M3.
+and site building are not available yet.
 
 ## Instance setup record
 
