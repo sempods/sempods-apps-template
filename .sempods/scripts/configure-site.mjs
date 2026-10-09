@@ -84,7 +84,6 @@ function main() {
       console.log(`  ${app.id}: ${clientId} → ${redirectUri}`);
     }
   }
-  console.log('\nBuild it: pnpm run build-site');
 }
 
 if (
