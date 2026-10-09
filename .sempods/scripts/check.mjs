@@ -118,7 +118,7 @@ export function staticProblems(root) {
       problems.push(`apps/${app.id} is listed in apps.json but missing`);
       continue;
     }
-    for (const file of staleGenerated(dir, app))
+    for (const file of staleGenerated(dir, app, manifest.site))
       problems.push(
         `apps/${app.id}/${file} does not match apps.json; regenerate it instead of editing`,
       );

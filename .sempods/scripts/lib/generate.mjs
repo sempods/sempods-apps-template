@@ -3,6 +3,7 @@
 // apps.json, so template updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { SITE_PROFILES, siteIdentity } from './apps.mjs';
 
 const HEADER = `// Generated from apps.json by .sempods/scripts. Do not edit: change apps.json
 // and rerun the script that owns this file.`;
@@ -14,8 +15,38 @@ export const GENERATED_FILES = [
 
 const json = (value) => JSON.stringify(value);
 
-/** Runtime settings for the local profile: dynamic identity on loopback HTTP. */
-export function runtimeSource(app) {
+// build-site selects a published profile through Vite's mode, which only the
+// command line sets; dev, plain builds and tests run the local profile.
+export const PROFILE_MODES = {
+  production: 'sempods-production',
+  preview: 'sempods-preview',
+};
+
+/** A published profile: the did:web identity for one site origin. */
+function publishedProfile(name, origin, app) {
+  const { clientId, redirectUri } = siteIdentity(origin, app);
+  return `
+// ${name === 'production' ? 'Published site' : 'Fixed preview address'}: ${origin}
+const ${name}: BrowserRuntimeOptions = {
+  identity: {
+    kind: 'did-web',
+    clientId: ${json(clientId)},
+    redirectUri: ${json(redirectUri)},
+  },
+  returnTo: app.basePath,
+};
+`;
+}
+
+/**
+ * Runtime settings per profile: local development with a dynamic identity on
+ * loopback HTTP, and the did:web identities of the configured site origins.
+ */
+export function runtimeSource(app, site) {
+  const published = SITE_PROFILES.filter((name) => site?.[name]);
+  const modes = SITE_PROFILES.map(
+    (name) => `  ${json(PROFILE_MODES[name])}: ${json(name)},`,
+  ).join('\n');
   return `${HEADER}
 import type { BrowserRuntimeOptions, Language } from '@sempods/app-sdk';
 
@@ -27,7 +58,8 @@ export const app = {
   pwa: ${app.pwa},
 } as const;
 
-export const runtimeOptions: BrowserRuntimeOptions = {
+// Local development: a dynamic identity, local HTTP only.
+const local: BrowserRuntimeOptions = {
   identity: {
     kind: 'dynamic',
     name: app.title,
@@ -38,9 +70,28 @@ export const runtimeOptions: BrowserRuntimeOptions = {
     },
   },
   returnTo: app.basePath,
-  // Local HTTP only. A deployed app gets a did:web identity on HTTPS (M3).
   development: 'loopback-http',
 };
+${published.map((name) => publishedProfile(name, site[name], app)).join('')}
+export const profiles: Readonly<Record<string, BrowserRuntimeOptions>> = {
+${['local', ...published].map((name) => `  ${name},`).join('\n')}
+};
+
+// pnpm run build-site builds with one of these modes; any other mode is local.
+const modes: Readonly<Record<string, string>> = {
+${modes}
+};
+
+export const profile: string = modes[import.meta.env?.MODE ?? ''] ?? 'local';
+
+function unconfigured(name: string): never {
+  throw new Error(
+    \`apps.json has no site.\${name}; run pnpm run configure-site\`,
+  );
+}
+
+export const runtimeOptions: BrowserRuntimeOptions =
+  profiles[profile] ?? unconfigured(profile);
 `;
 }
 
@@ -98,21 +149,21 @@ export const pwa: Partial<VitePWAOptions> | null = ${pwa};
 `;
 }
 
-export function generatedFiles(app) {
+export function generatedFiles(app, site) {
   return {
-    'src/sempods.generated.ts': runtimeSource(app),
+    'src/sempods.generated.ts': runtimeSource(app, site),
     'vite.sempods.generated.ts': viteSource(app),
   };
 }
 
-export function writeGenerated(appDir, app) {
-  for (const [file, source] of Object.entries(generatedFiles(app)))
+export function writeGenerated(appDir, app, site) {
+  for (const [file, source] of Object.entries(generatedFiles(app, site)))
     writeFileSync(join(appDir, file), source);
 }
 
 /** Lists generated files whose content differs from what apps.json produces. */
-export function staleGenerated(appDir, app) {
-  return Object.entries(generatedFiles(app))
+export function staleGenerated(appDir, app, site) {
+  return Object.entries(generatedFiles(app, site))
     .filter(([file, source]) => {
       try {
         return readFileSync(join(appDir, file), 'utf8') !== source;

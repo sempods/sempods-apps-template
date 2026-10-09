@@ -81,7 +81,7 @@ export function createApp(
       errorOnExist: true,
     });
     fillTokens(appDir, app);
-    writeGenerated(appDir, app);
+    writeGenerated(appDir, app, manifest.site);
     writeApps(root, { ...manifest, apps: [...manifest.apps, app] });
   } catch (error) {
     rmSync(appDir, { recursive: true, force: true });

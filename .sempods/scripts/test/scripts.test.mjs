@@ -13,8 +13,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { invalidId, nextDevPort, validateApps } from '../lib/apps.mjs';
+import {
+  invalidId,
+  invalidOrigin,
+  nextDevPort,
+  validateApps,
+} from '../lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../lib/generate.mjs';
+import { configureSite } from '../configure-site.mjs';
 import { createApp } from '../new-app.mjs';
 import { importedPackages, staticProblems } from '../check.mjs';
 import { scriptArgs } from '../lib/pnpm.mjs';
@@ -77,6 +83,52 @@ describe('apps.json', () => {
     assert.ok(problems.some((p) => p.includes('path must be "/other/"')));
     assert.ok(problems.some((p) => p.includes('language must be')));
   });
+  it('accepts a site with HTTPS origins and a known host', () => {
+    assert.deepEqual(
+      validateApps({
+        schemaVersion: 1,
+        apps: [app],
+        site: {
+          production: 'https://apps.example.org',
+          preview: 'https://preview--apps.netlify.app',
+          host: 'netlify',
+        },
+      }),
+      [],
+    );
+  });
+  it('rejects site origins with a path, port, case, HTTP or loopback', () => {
+    for (const origin of [
+      'http://apps.example.org',
+      'https://apps.example.org/',
+      'https://apps.example.org/apps',
+      'https://apps.example.org:8443',
+      'https://Apps.example.org',
+      'https://user@apps.example.org',
+      'https://localhost',
+      'apps.example.org',
+    ])
+      assert.notEqual(invalidOrigin(origin), undefined, origin);
+    const problems = validateApps({
+      schemaVersion: 1,
+      apps: [app],
+      site: {
+        preview: 'https://a.example.org',
+        host: 'ftp',
+        domain: 'x',
+      },
+    });
+    assert.ok(problems.some((p) => p.includes('site.production is required')));
+    assert.ok(problems.some((p) => p.includes('site.host must be one of')));
+    assert.ok(problems.some((p) => p.includes('site.domain is not a known')));
+    assert.ok(
+      validateApps({
+        schemaVersion: 1,
+        apps: [app],
+        site: { production: 'https://a.org', preview: 'https://a.org' },
+      }).some((p) => p.includes('must differ')),
+    );
+  });
   it('allocates the first free development port', () => {
     assert.equal(nextDevPort({ apps: [] }), 5174);
     assert.equal(
@@ -120,6 +172,52 @@ describe('generated configuration', () => {
       const { runtimeOptions } = await import(pathToFileURL(file).href);
       assert.equal(runtimeOptions.returnTo, '/demo/');
       assert.throws(() => runtimeOptions.identity.redirectUri, ReferenceError);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('adds a did:web profile per configured site origin', () => {
+    const runtime = generatedFiles(app, {
+      production: 'https://apps.example.org',
+      preview: 'https://preview--apps.netlify.app',
+    })['src/sempods.generated.ts'];
+    for (const host of ['apps.example.org', 'preview--apps.netlify.app']) {
+      assert.match(runtime, new RegExp(`clientId: "did:web:${host}:demo"`));
+      assert.match(
+        runtime,
+        new RegExp(`redirectUri: "https://${host}/demo/callback"`),
+      );
+    }
+    assert.match(runtime, /^  local,\n  production,\n  preview,$/m);
+    assert.match(runtime, /"sempods-production": "production"/);
+    // Only the local profile allows loopback HTTP.
+    assert.equal(runtime.match(/development: 'loopback-http'/g).length, 1);
+    const localOnly = generatedFiles(app)['src/sempods.generated.ts'];
+    assert.match(localOnly, /^  local,\n\};$/m);
+    assert.doesNotMatch(localOnly, /did-web/);
+  });
+  it('selects the local profile outside a site build', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
+    try {
+      const file = join(dir, 'sempods.generated.mts');
+      writeFileSync(
+        file,
+        generatedFiles(app, { production: 'https://apps.example.org' })[
+          'src/sempods.generated.ts'
+        ],
+      );
+      const { profile, profiles, runtimeOptions } = await import(
+        pathToFileURL(file).href
+      );
+      assert.equal(profile, 'local');
+      assert.deepEqual(Object.keys(profiles), ['local', 'production']);
+      assert.equal(runtimeOptions, profiles.local);
+      assert.deepEqual(profiles.production.identity, {
+        kind: 'did-web',
+        clientId: 'did:web:apps.example.org:demo',
+        redirectUri: 'https://apps.example.org/demo/callback',
+      });
+      assert.equal(profiles.production.development, undefined);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -207,6 +305,112 @@ describe('new-app', () => {
   it('refuses a directory that exists without a manifest entry', () => {
     mkdirSync(join(root, 'apps', 'orphan'), { recursive: true });
     assert.throws(() => createApp(root, { id: 'orphan' }), /already exists/);
+  });
+});
+
+describe('configure-site', () => {
+  let root;
+  const apps = () => JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
+  const runtime = () =>
+    readFileSync(
+      join(root, 'apps', 'konsum', 'src', 'sempods.generated.ts'),
+      'utf8',
+    );
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'sempods-site-'));
+    cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(root, 'apps.json'),
+      '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
+    );
+    createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('records the site and regenerates every app, idempotently', () => {
+    configureSite(root, {
+      production: 'https://apps.example.org',
+      preview: 'https://preview--apps.netlify.app',
+      host: 'netlify',
+    });
+    assert.deepEqual(apps().site, {
+      production: 'https://apps.example.org',
+      preview: 'https://preview--apps.netlify.app',
+      host: 'netlify',
+    });
+    assert.match(runtime(), /did:web:apps\.example\.org:konsum/);
+    const dir = join(root, 'apps', 'konsum');
+    assert.deepEqual(staleGenerated(dir, apps().apps[0], apps().site), []);
+    const before = [readFileSync(join(root, 'apps.json'), 'utf8'), runtime()];
+    configureSite(root, {});
+    assert.deepEqual(
+      [readFileSync(join(root, 'apps.json'), 'utf8'), runtime()],
+      before,
+    );
+    // An app created later gets the site profiles too.
+    createApp(root, { id: 'notes', title: 'Notes', language: 'en' });
+    assert.match(
+      readFileSync(
+        join(root, 'apps', 'notes', 'src', 'sempods.generated.ts'),
+        'utf8',
+      ),
+      /did:web:apps\.example\.org:notes/,
+    );
+  });
+  it('defaults to static hosting and drops the preview on request', () => {
+    configureSite(root, {
+      production: 'https://apps.example.org',
+      preview: 'https://preview.apps.pages.dev',
+    });
+    assert.equal(apps().site.host, 'static');
+    configureSite(root, { noPreview: true });
+    assert.deepEqual(apps().site, {
+      production: 'https://apps.example.org',
+      host: 'static',
+    });
+    assert.doesNotMatch(runtime(), /preview\.apps\.pages\.dev/);
+  });
+  it('changes the production origin only when asked to', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    assert.throws(
+      () => configureSite(root, { production: 'https://other.example.org' }),
+      /new identity.*--change-domain/,
+    );
+    configureSite(root, {
+      production: 'https://other.example.org',
+      changeDomain: true,
+    });
+    assert.equal(apps().site.production, 'https://other.example.org');
+    assert.match(runtime(), /did:web:other\.example\.org:konsum/);
+  });
+  it('writes nothing for invalid input', () => {
+    const before = readFileSync(join(root, 'apps.json'), 'utf8');
+    assert.throws(
+      () => configureSite(root, { production: 'http://apps.example.org' }),
+      /site\.production must be an HTTPS origin/,
+    );
+    assert.throws(() => configureSite(root, {}), /--production/);
+    assert.throws(
+      () =>
+        configureSite(root, {
+          production: 'https://apps.example.org',
+          host: 'ftp',
+        }),
+      /site\.host/,
+    );
+    assert.equal(readFileSync(join(root, 'apps.json'), 'utf8'), before);
+  });
+  it('lets check report generated files behind the site', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const manifest = apps();
+    manifest.site.production = 'https://moved.example.org';
+    writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
+    assert.deepEqual(
+      staleGenerated(join(root, 'apps', 'konsum'), manifest.apps[0], manifest.site),
+      ['src/sempods.generated.ts'],
+    );
   });
 });
 

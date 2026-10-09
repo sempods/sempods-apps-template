@@ -6,6 +6,34 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.6.0
+
+### Changes
+
+- `pnpm run configure-site --production <origin> [--preview <origin>]
+  [--host netlify|cloudflare-pages|static]` records where the apps are
+  published in a new optional `site` field of `apps.json` (schemaVersion stays
+  1) and regenerates every app. Each app's `src/sempods.generated.ts` now holds
+  `profiles`: the unchanged local profile and one `did:web` profile per origin
+  (`did:web:<host>:<id>`, callback `https://<host>/<id>/callback`). Only the
+  Vite build modes `sempods-production` and `sempods-preview` select a
+  published profile; development, plain builds, `vite preview` and tests stay
+  local. Changing the production origin needs `--change-domain`.
+
+### Upgrade notes
+
+1. `update-template` regenerates `src/sempods.generated.ts` in every app.
+   `app` and `runtimeOptions` keep their names and, outside a site build,
+   their local values, so no owner file has to change.
+2. An app that switched identities by itself before this release, for example
+   with a `src/identity.ts` that picks a `did:web` identity in production
+   builds (#24), should move to `configure-site`. Ask the owner first, run
+   `pnpm run configure-site --production <the published origin>`, then let the
+   app import `runtimeOptions` from `src/sempods.generated.ts` again and remove
+   the interim file and its tests.
+3. Choose the production origin once. A later change gives every app a new
+   identity: every sign-in and Pod grant has to be made again.
+
 ## 0.5.0
 
 ### Changes
