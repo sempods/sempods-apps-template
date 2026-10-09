@@ -622,10 +622,10 @@ export async function applyRelease(
       return report;
     };
     // A copy from before pnpm keeps its resolved versions: pnpm converts the
-    // npm lockfile, which then goes.
+    // npm lockfile, which then goes. While it exists it is authoritative, so
+    // the import replaces any pnpm-lock.yaml already there.
     if (npmLock) {
-      if (!existsSync(join(instance, 'pnpm-lock.yaml')) && !pnpmRun(['import']))
-        return failed('pnpm import');
+      if (!pnpmRun(['import'])) return failed('pnpm import');
       rmSync(join(instance, NPM_LOCKFILE));
       report.removed.push(NPM_LOCKFILE);
     }

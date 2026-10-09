@@ -614,6 +614,18 @@ describe('update-template', () => {
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
   });
 
+  it('converts the npm lockfile even when a pnpm lockfile exists', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    file(instance, 'pnpm-lock.yaml', 'stale\n');
+    const calls = [];
+    await applyRelease(release, instance, {
+      pnpmRun: (args) => calls.push(args[0]) > 0,
+    });
+    assert.deepEqual(calls, ['import', 'install']);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+  });
+
   it('stays unfinished until the npm lockfile is converted', async () => {
     const { release, instance } = setup();
     file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
