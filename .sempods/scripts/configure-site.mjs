@@ -37,12 +37,12 @@ export function configureSite(
     throw new Error(
       `site.production is ${current.production}. Changing it gives every app a new identity, so every login and Pod grant must be made again. Rerun with --change-domain if that is intended.`,
     );
+  const nextPreview = noPreview ? undefined : (preview ?? current?.preview);
   const site = {
     production: production ?? current?.production,
-    ...(noPreview ? {} : { preview: preview ?? current?.preview }),
+    ...(nextPreview && { preview: nextPreview }),
     host: host ?? current?.host ?? 'static',
   };
-  if (site.preview === undefined) delete site.preview;
   if (site.production === undefined)
     throw new Error('Name the published site: --production <https-origin>.');
   const next = { ...manifest, site };
