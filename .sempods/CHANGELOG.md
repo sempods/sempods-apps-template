@@ -31,6 +31,13 @@ alone: owner files, configuration choices and the SDK migration.
   Vite build modes `sempods-production` and `sempods-preview` select a
   published profile; development, plain builds, `vite preview` and tests stay
   local. Changing the production origin needs `--change-domain`.
+- pnpm no longer enforces a minimum release age at install time
+  (`minimumReleaseAge: 0` in `pnpm-workspace.yaml`). With pnpm's default, a
+  dependency younger than a day whose exact pin has no older alternative was
+  installed anyway, added to `minimumReleaseAgeExclude` in
+  `pnpm-workspace.yaml`, and the next `pnpm run` stopped because that setting
+  had changed. New releases now wait in a three-day Dependabot `cooldown` for
+  both npm entries instead, before they reach the lockfile.
 - `pnpm run build-site [--profile production|preview]` (or
   `SEMPODS_SITE_PROFILE`) builds every app with that profile into one static
   folder, `site-dist/<id>/`, and leaves each app's local `dist/` alone. It
@@ -71,7 +78,13 @@ alone: owner files, configuration choices and the SDK migration.
    callback paths must answer `200` without a redirect, and on Cloudflare
    remove catch-all rewrites to `index.html`, which there also replace scripts
    and `did.json`. Replace it with `build-site` with the owner's agreement.
-7. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
+7. `pnpm-workspace.yaml` and `.github/dependabot.yml` are shared files that
+   `update-template` merges. If pnpm had added entries to
+   `minimumReleaseAgeExclude` in a copy, the merge keeps them or reports a
+   conflict. Remove the entries pnpm added and the former `@sempods/*` line;
+   keep exclusions the owner added on purpose and ask when unsure. An
+   owner's own Dependabot cooldown choice stays.
+8. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
    and the template self-test; local and manual SDK updates remain available.
 
 ## 0.5.0
