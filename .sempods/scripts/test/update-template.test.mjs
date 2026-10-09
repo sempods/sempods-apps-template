@@ -176,7 +176,7 @@ function templateFiles(root, v) {
  * A template repository with two 0.1.0 commits and a tagged 0.2.0, and an
  * instance created from the first commit, then adapted by its owner.
  */
-function setup({ tagOld = false } = {}) {
+function setup({ tagOld = false, dev = false } = {}) {
   const release = join(work, 'template');
   mkdirSync(release);
   git(release, 'init', '-q', '-b', 'main');
@@ -206,7 +206,10 @@ function setup({ tagOld = false } = {}) {
   file(release, '.sempods/instructions/later.md', '# Later\n');
   // Owner-adapted after setup; the release keeps this later text.
   file(release, 'LICENSE', 'MIT-0, revised\n');
+  // With `dev`, the follow-up is a merged part of 0.2.0 before its tag.
+  if (dev) file(release, '.sempods/VERSION', '0.2.0-dev\n');
   commit(release, 'template 0.1.0, follow-up');
+  const followUpCommit = git(release, 'rev-parse', 'HEAD').trim();
   templateFiles(release, '0.2.0');
   file(
     release,
@@ -229,7 +232,7 @@ function setup({ tagOld = false } = {}) {
   git(instance, 'init', '-q', '-b', 'main');
   execFileSync('sh', [
     '-c',
-    `git -C "${release}" archive ${first} | tar -x -C "${instance}"`,
+    `git -C "${release}" archive ${dev ? followUpCommit : first} | tar -x -C "${instance}"`,
   ]);
   // The owner's own work.
   const agents = read(instance, 'AGENTS.md').replace(
@@ -577,6 +580,16 @@ describe('update-template', () => {
     assert.ok(!existsSync(join(instance, '.template-update-pending')));
   });
 
+  it('updates a copy made from main before the release was tagged', async () => {
+    const { release, instance } = setup({ dev: true });
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0-dev\n');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.unchanged, undefined);
+    assert.equal(report.exact, false);
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+    assert.match(read(instance, 'README.md'), /Third line, released\./);
+  });
+
   it('refuses a release older than the repository', async () => {
     const { release, instance } = setup();
     file(instance, '.sempods/VERSION', '0.3.0\n');
@@ -609,5 +622,6 @@ describe('update decisions', () => {
     );
     assert.match(upgradeNotes(changelog, '0.1.0'), /Three\.[\s\S]*Two\./);
     assert.doesNotMatch(upgradeNotes(changelog, '0.2.0'), /Two\./);
+    assert.match(upgradeNotes(changelog, '0.2.0-dev'), /Two\./);
   });
 });

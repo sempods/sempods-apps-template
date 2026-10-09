@@ -49,15 +49,15 @@ function gitOk(cwd, args) {
   return result.stdout;
 }
 
+// Releases and their tags are plain semver. While the PRs of one release are
+// merged, main carries its prerelease (for example 0.5.0-dev), which sorts
+// before the release, so a copy made then still updates to it.
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
 export function compareVersions(a, b) {
-  const [x, y] = [a, b].map((v) => {
-    const match = SEMVER.exec(v ?? '');
-    if (!match) throw new Error(`not a version: ${JSON.stringify(v)}`);
-    return match.slice(1).map(Number);
-  });
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
-  return 0;
+  for (const v of [a, b])
+    if (!EXACT_VERSION.test(v ?? ''))
+      throw new Error(`not a version: ${JSON.stringify(v)}`);
+  return compareSdk(a, b);
 }
 
 const readText = (path) =>
