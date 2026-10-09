@@ -33,7 +33,7 @@ of copying SDK manuals.
 
 Files an owner's copy removes during setup (this guide, the plan, the vision and
 `CONTRIBUTING.md`) must not be linked from files a copy keeps; use an absolute
-GitHub URL where a pointer is needed. `npm run check` validates local links.
+GitHub URL where a pointer is needed. `pnpm run check` validates local links.
 
 In an instance, preserve the delimited owner section in AGENTS.md, the instance
 setup record in INIT, app code, `apps.json` and app notes. Updates must respect

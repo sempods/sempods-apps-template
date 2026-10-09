@@ -17,10 +17,15 @@ it.
 1. **Start clean.** The working tree must have no uncommitted changes, so the
    update is one reviewable diff. Work on a new branch, for example
    `template-update-<version>`.
-2. **Run the update.** `npm run update-template` applies the newest tagged
-   release; `npm run update-template -- <version>` a specific one. It clones the
+2. **Run the update.** `pnpm run update-template` applies the newest tagged
+   release; `pnpm run update-template <version>` a specific one. It clones the
    template with the owner's existing Git access and runs that release's own
    script. Never ask for a token; if access fails, tell the owner.
+
+   A copy before template 0.5.0 still uses npm: run `npm run update-template`
+   there. From 0.5.0 the update itself needs pnpm (`pnpm --version`; install it
+   as `docs/start.md` says). It converts `package-lock.json` with
+   `pnpm import`, so the copy keeps its resolved versions, then deletes it.
 
    A repository with template 0.1.0 has no `update-template` script yet. Run
    the release copy directly:
@@ -41,7 +46,8 @@ it.
      the owner wants the template's.
    - **Changelog** gives upgrade notes per release. Apply them in order; they
      include SDK migrations that may need app changes.
-4. **Verify.** Run `npm ci` and `npm run check -- --standalone all`. Then list
+4. **Verify.** Run `pnpm install --frozen-lockfile` and
+   `pnpm run check --standalone all`. Then list
    what the owner should try on the Pod for each app.
 5. **Hand over.** With a GitHub remote, open a pull request "Update the template
    to <version>" whose description contains the report, the decisions made and

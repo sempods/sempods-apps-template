@@ -2,9 +2,7 @@
   "name": "my-sempods-apps",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "apps/*"
-  ],
+  "packageManager": "pnpm@11.28.2",
   "engines": {
     "node": ">=24.15.0"
   },
@@ -23,10 +21,5 @@
     "remark-validate-links": "13.1.0",
     "typescript": "6.0.3",
     "unified-engine": "11.2.2"
-  },
-  "overrides": {
-    "unified-engine": {
-      "glob": "13.0.6"
-    }
   }
 }

@@ -12,6 +12,7 @@
     ".agents/skills/*/SKILL.md",
     ".claude/skills/*/SKILL.md",
     ".npmrc",
+    "pnpm-workspace.yaml",
     ".gitignore",
     ".node-version",
     ".github/dependabot.yml",

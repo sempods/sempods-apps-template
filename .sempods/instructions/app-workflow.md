@@ -8,16 +8,21 @@ local instructions.
 ## Get the matching reference
 
 The installed SDK ships its app-author reference at its own version. After
-`npm ci`, read `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`, then the
-guides it links in the same directory: `quickstart.md` and `react-authoring.md`
+`pnpm install`, read `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`,
+then the guides it links in the same directory: `quickstart.md` and `react-authoring.md`
 for API questions, and the others as the task needs. Inspect the installed
 public types when needed. The root and every app use one exact SDK version, and
-`npm run check` verifies it, so this reference applies to all apps. Assistants
+`pnpm run check` verifies it, so this reference applies to all apps. Assistants
 do not look into `node_modules` by themselves: open these files explicitly. Do
 not substitute the latest online guide for the installed one, edit anything
 under `node_modules`, or adopt the SDK's contributor rules for app work. Report
-a missing reference (for example before `npm ci`) before implementing
+a missing reference (for example before `pnpm install`) before implementing
 SDK-dependent behavior.
+
+This repository uses pnpm. The SDK's guides show npm commands; use the pnpm
+equivalent: `pnpm install` for `npm install`, `pnpm add --dir apps/<id> <pkg>`
+for adding to an app, `pnpm run <script> <args>` for `npm run <script> --
+<args>`.
 
 ## Build one useful interaction
 
@@ -66,20 +71,23 @@ Keep the screen consistent with the SDK's UI:
 For a new app, run the root command with the chosen values:
 
 ```sh
-npm run new-app -- konsum --title "Einkaufsliste" --language de
-npm run dev -- konsum
+pnpm run new-app konsum --title "Einkaufsliste" --language de
+pnpm run dev konsum
 ```
 
 The interface also accepts `--no-pwa` at creation. Generation never overwrites
 an app: check `apps.json` and the folder before invoking it. The first app adds
-its dependency tree to `package-lock.json` (several thousand lines); that is
+its dependency tree to `pnpm-lock.yaml` (several thousand lines); that is
 expected, so point the owner to the app's own files when they review the change.
 For an existing app, work in its existing folder and skip generation. Keep
-Node/npm consistent with the root setup; do not switch package managers. Use
-`npm ci` when restoring the committed dependency tree. If a requested feature
-needs an additional dependency, declare it in that app's own manifest and update
-the root npm lockfile; preserve exact SDK versions and do not install another
-SDK copy from a local checkout.
+Node and pnpm consistent with the root setup; do not switch package managers.
+Use `pnpm install --frozen-lockfile` when restoring the committed dependency
+tree. If a requested feature needs an additional dependency, add it to that
+app's own manifest (`pnpm add --dir apps/<id> <pkg>`), which also updates the
+root `pnpm-lock.yaml`; preserve exact SDK versions and do not install another
+SDK copy from a local checkout. Dependencies run no install scripts; if one
+needs it, ask the owner before approving it under `allowBuilds` in
+`pnpm-workspace.yaml`.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
@@ -103,7 +111,7 @@ customization space.
 
 ## Try it and recover deliberately
 
-Run `npm run check` from the root and test the domain behavior affected by the
+Run `pnpm run check` from the root and test the domain behavior affected by the
 change. Use the
 local-testing guide (`local-testing.md` in the installed SDK's `docs/`) for the
 actual Pod exercise, its section on apps that only read for such an app, and
@@ -149,10 +157,10 @@ strength of this workflow alone; follow the user's authorized scope.
 
 ## Update the SDK
 
-Run `npm run sdk-update -- latest` (the npm dist-tag) or name an exact release,
-for example `npm run sdk-update -- 0.3.0`. It coordinates both SDK packages in
-the root, skeleton and every app in `apps.json`, regenerates the npm lockfile,
-verifies the shipped reference and runs `npm run check`. Other manifest fields
+Run `pnpm run sdk-update latest` (the npm dist-tag) or name an exact release,
+for example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in
+the root, skeleton and every app in `apps.json`, regenerates `pnpm-lock.yaml`,
+verifies the shipped reference and runs `pnpm run check`. Other manifest fields
 are preserved. Already at that version with a matching lockfile, installed
 packages and reference is a clean no-op; an intentional downgrade requires `--allow-downgrade`. Failed installs or checks leave a
 reviewable diff and a local checkpoint: diagnose it and rerun the same update
@@ -163,7 +171,7 @@ pass.
 Use the printed release and migration links pinned to that version and the
 newly installed reference. A patch update is merged when checks pass; automatic
 merging requires the owner's choice. Before 1.0 a minor update may break apps:
-follow the SDK migration guide, adapt the apps, run `npm run check --
+follow the SDK migration guide, adapt the apps, run `pnpm run check
 --standalone all`, and list what the owner should try on the Pod before merging.
 Record changed behavior, checks and remaining Pod/device evidence in app notes
 and the PR. The owner controls merging.
