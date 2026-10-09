@@ -46,8 +46,17 @@ const RESERVED = ['did.json', '_redirects', '_headers', '404.html', 'callback'];
 // from the address; without this, same-origin requests carry them in Referer.
 // New apps set it in index.html; this covers apps created before 0.6.0.
 const REFERRER = '<meta name="referrer" content="strict-origin" />';
+// Policies that send no path or query, not even to the same origin.
+const NO_PATH = new Set(['no-referrer', 'strict-origin', 'origin']);
+const REFERRER_META = /<meta\s+[^>]*name=["']?referrer["']?[^>]*>/i;
 function withReferrerPolicy(html) {
-  if (/<meta\s+name=["']?referrer["']?/i.test(html)) return html;
+  const existing = REFERRER_META.exec(html)?.[0];
+  if (existing) {
+    // The last valid token of a comma-separated list applies.
+    const content = /content=["']?([^"'>]*)/i.exec(existing)?.[1] ?? '';
+    const policy = content.split(',').map((t) => t.trim().toLowerCase()).at(-1);
+    return NO_PATH.has(policy) ? html : html.replace(existing, REFERRER);
+  }
   return html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${REFERRER}`);
 }
 

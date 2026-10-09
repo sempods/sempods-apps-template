@@ -136,6 +136,24 @@ describe('build-site', () => {
     }
   });
 
+  it('replaces a referrer policy that would send the callback query', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const page = (meta) => (appDir, mode, outDir) => {
+      build(appDir, mode, outDir);
+      writeFileSync(
+        join(outDir, 'index.html'),
+        `<!doctype html><html><head><meta name="referrer" content="${meta}" /></head></html>`,
+      );
+      return true;
+    };
+    buildSite(root, { build: page('unsafe-url') });
+    assert.match(read('konsum/callback.html'), /content="strict-origin"/);
+    assert.doesNotMatch(read('konsum/callback.html'), /unsafe-url/);
+    buildSite(root, { build: page('no-referrer') });
+    assert.match(read('konsum/callback.html'), /content="no-referrer"/);
+    assert.doesNotMatch(read('konsum/callback.html'), /strict-origin/);
+  });
+
   it('rewrites only the callbacks on Netlify', () => {
     configureSite(root, {
       production: 'https://apps.example.org',
