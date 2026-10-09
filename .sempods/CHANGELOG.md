@@ -15,8 +15,7 @@ alone: owner files, configuration choices and the SDK migration.
   behavior and data access in everyday terms.
 - Setup reaches the first local interaction before adapting inherited files
   and offering optional review ownership and automatic SDK updates. Deferred
-  preferences do not block setup completion. The maintainer guide includes a
-  copyable prompt for explicit template work.
+  preferences do not block setup completion.
 - Scheduled SDK update jobs require `sdkAutoUpdates: true` in the owner's
   `apps.json` on the default branch, even if Actions permits PR creation or an
   organization-level variable enables updates elsewhere. A read-only job
