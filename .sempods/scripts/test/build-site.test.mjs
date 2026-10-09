@@ -155,12 +155,14 @@ describe('build-site', () => {
       read('konsum/callback.html').match(/<meta[^>]*referrer[^>]*>/gi);
     buildSite(root, {
       build: page(
-        '<meta name="referrer" content="no-referrer"><META NAME = "Referrer" content="unsafe-url">',
+        '<meta name="referrer" content="no-referrer"><META NAME = "Referrer" content="unsafe-url">' +
+          '<meta data-note="a > b" name="referrer" content="unsafe-url">',
       ),
     });
     assert.deepEqual(metas(), [
       '<meta name="referrer" content="strict-origin" />',
     ]);
+    assert.doesNotMatch(read('konsum/callback.html'), /unsafe-url|a > b/);
     // Unknown tokens do not count; the last valid one is kept if it is strict.
     buildSite(root, {
       build: page('<meta content="no-referrer, bogus" name=\'referrer\'>'),

@@ -60,18 +60,31 @@ const POLICIES = new Set([
   'unsafe-url',
 ]);
 const NO_PATH = new Set(['no-referrer', 'strict-origin', 'origin']);
-const REFERRER_META = /<meta\b[^>]*\bname\s*=\s*["']?referrer\b["']?[^>]*>/gi;
+// A meta tag whose quoted attribute values may contain `>`, and its
+// attributes, quoted, unquoted or bare.
+const META_TAG = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+const ATTRIBUTE = /([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+function attributes(tag) {
+  const found = new Map();
+  for (const [, name, double, single, bare] of tag
+    .slice(5, -1)
+    .matchAll(ATTRIBUTE))
+    if (!found.has(name.toLowerCase()))
+      found.set(name.toLowerCase(), double ?? single ?? bare ?? '');
+  return found;
+}
 function withReferrerPolicy(html) {
-  const declared = (html.match(REFERRER_META) ?? [])
-    .flatMap((meta) =>
-      (/\bcontent\s*=\s*["']?([^"'>]*)/i.exec(meta)?.[1] ?? '').split(','),
-    )
+  const referrers = (html.match(META_TAG) ?? []).filter(
+    (tag) => attributes(tag).get('name')?.trim().toLowerCase() === 'referrer',
+  );
+  const declared = referrers
+    .flatMap((tag) => (attributes(tag).get('content') ?? '').split(','))
     .map((token) => token.trim().toLowerCase())
     .filter((token) => POLICIES.has(token))
     .at(-1);
   const policy = NO_PATH.has(declared) ? declared : 'strict-origin';
-  return html
-    .replace(REFERRER_META, '')
+  return referrers
+    .reduce((text, tag) => text.replace(tag, ''), html)
     .replace(
       /<head(\s[^>]*)?>/i,
       (head) => `${head}\n    <meta name="referrer" content="${policy}" />`,
