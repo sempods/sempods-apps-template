@@ -143,20 +143,29 @@ describe('build-site', () => {
 
   it('replaces a referrer policy that would send the callback query', () => {
     configureSite(root, { production: 'https://apps.example.org' });
-    const page = (meta) => (appDir, mode, outDir) => {
+    const page = (head) => (appDir, mode, outDir) => {
       build(appDir, mode, outDir);
       writeFileSync(
         join(outDir, 'index.html'),
-        `<!doctype html><html><head><meta name="referrer" content="${meta}" /></head></html>`,
+        `<!doctype html><html><head>${head}</head></html>`,
       );
       return true;
     };
-    buildSite(root, { build: page('unsafe-url') });
-    assert.match(read('konsum/callback.html'), /content="strict-origin"/);
-    assert.doesNotMatch(read('konsum/callback.html'), /unsafe-url/);
-    buildSite(root, { build: page('no-referrer') });
-    assert.match(read('konsum/callback.html'), /content="no-referrer"/);
-    assert.doesNotMatch(read('konsum/callback.html'), /strict-origin/);
+    const metas = () =>
+      read('konsum/callback.html').match(/<meta[^>]*referrer[^>]*>/gi);
+    buildSite(root, {
+      build: page(
+        '<meta name="referrer" content="no-referrer"><META NAME = "Referrer" content="unsafe-url">',
+      ),
+    });
+    assert.deepEqual(metas(), [
+      '<meta name="referrer" content="strict-origin" />',
+    ]);
+    // Unknown tokens do not count; the last valid one is kept if it is strict.
+    buildSite(root, {
+      build: page('<meta content="no-referrer, bogus" name=\'referrer\'>'),
+    });
+    assert.deepEqual(metas(), ['<meta name="referrer" content="no-referrer" />']);
   });
 
   it('rewrites only the callbacks on Netlify', () => {

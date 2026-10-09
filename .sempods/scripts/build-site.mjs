@@ -45,19 +45,37 @@ const RESERVED = ['did.json', '_redirects', '_headers', '404.html', 'callback'];
 // The callback page loads its scripts before the SDK scrubs code and state
 // from the address; without this, same-origin requests carry them in Referer.
 // New apps set it in index.html; this covers apps created before 0.6.0.
-const REFERRER = '<meta name="referrer" content="strict-origin" />';
-// Policies that send no path or query, not even to the same origin.
+// The page keeps exactly one referrer meta, first in <head>: its own policy
+// when that sends no path or query, even to the same origin, else
+// strict-origin. Every existing referrer meta goes, because the last valid
+// policy among them would apply.
+const POLICIES = new Set([
+  'no-referrer',
+  'no-referrer-when-downgrade',
+  'same-origin',
+  'origin',
+  'strict-origin',
+  'origin-when-cross-origin',
+  'strict-origin-when-cross-origin',
+  'unsafe-url',
+]);
 const NO_PATH = new Set(['no-referrer', 'strict-origin', 'origin']);
-const REFERRER_META = /<meta\s+[^>]*name=["']?referrer["']?[^>]*>/i;
+const REFERRER_META = /<meta\b[^>]*\bname\s*=\s*["']?referrer\b["']?[^>]*>/gi;
 function withReferrerPolicy(html) {
-  const existing = REFERRER_META.exec(html)?.[0];
-  if (existing) {
-    // The last valid token of a comma-separated list applies.
-    const content = /content=["']?([^"'>]*)/i.exec(existing)?.[1] ?? '';
-    const policy = content.split(',').map((t) => t.trim().toLowerCase()).at(-1);
-    return NO_PATH.has(policy) ? html : html.replace(existing, REFERRER);
-  }
-  return html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${REFERRER}`);
+  const declared = (html.match(REFERRER_META) ?? [])
+    .flatMap((meta) =>
+      (/\bcontent\s*=\s*["']?([^"'>]*)/i.exec(meta)?.[1] ?? '').split(','),
+    )
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => POLICIES.has(token))
+    .at(-1);
+  const policy = NO_PATH.has(declared) ? declared : 'strict-origin';
+  return html
+    .replace(REFERRER_META, '')
+    .replace(
+      /<head(\s[^>]*)?>/i,
+      (head) => `${head}\n    <meta name="referrer" content="${policy}" />`,
+    );
 }
 
 /** Removes a file or directory and reports whether there was one. */
