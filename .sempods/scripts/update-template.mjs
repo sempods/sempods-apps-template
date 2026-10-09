@@ -562,6 +562,11 @@ export async function applyRelease(
     rootPath,
   );
   write(rootPath, `${JSON.stringify(newRoot, null, 2)}\n`);
+  // pnpm refuses to work in a project that declares another package manager.
+  if (newRoot.packageManager && !newRoot.packageManager.startsWith('pnpm@'))
+    report.review.push(
+      `${rootPath} packageManager: ${newRoot.packageManager} was kept; pnpm installs only once it names pnpm (the template pins ${parse(readText(join(release, rootPath))).packageManager})`,
+    );
   const skeletonBases = bases.read(policy.skeletonManifest).map(parse);
   for (const file of appManifests) {
     const manifest = parse(readText(join(instance, file)));
@@ -625,10 +630,15 @@ export async function applyRelease(
       report.removed.push(NPM_LOCKFILE);
     }
     if (!pnpmRun(INSTALL)) return failed('pnpm install');
-  } else if (npmLock)
+  } else if (npmLock) {
+    // Without the conversion the copy still has npm's dependency state, so the
+    // update stays unfinished and a rerun with installation converts it.
+    report.unfinished = true;
     report.review.push(
-      `${NPM_LOCKFILE}: convert it with pnpm import, delete it, then run pnpm install`,
+      `${NPM_LOCKFILE}: run the update again without --no-install, so pnpm import converts it`,
     );
+    return report;
+  }
   write('.sempods/VERSION', readText(join(release, '.sempods', 'VERSION')));
   write(CHECKPOINT, null);
   return report;

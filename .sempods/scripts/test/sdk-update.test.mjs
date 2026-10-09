@@ -20,6 +20,7 @@ import {
   installedStateComplete,
   SDK,
 } from '../sdk-update.mjs';
+import { readLockfile } from '../lib/lockfile.mjs';
 
 describe('sdk-update (offline registry and pnpm fixtures)', () => {
   let root;
@@ -396,5 +397,36 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       /ships no app-author reference/,
     );
     assert.deepEqual(runs, [['install', '--no-frozen-lockfile']]);
+  });
+});
+
+describe('lockfile reader', () => {
+  it('keeps importer entries apart around keys with colons', () => {
+    const lock = readLockfile(
+      [
+        'importers:',
+        '  apps/one:',
+        '    dependencies:',
+        "      '@sempods/app-sdk':",
+        '        specifier: 0.5.0',
+        '        version: 0.5.0(react@19.3.0)',
+        "      'tool:x':",
+        '        specifier: github:owner/tool',
+        '        version: https://codeload.github.com/owner/tool/tar.gz/abc',
+        'packages:',
+        "  '@sempods/app-sdk@0.5.0':",
+        "  'tool@https://codeload.github.com/owner/tool/tar.gz/abc':",
+      ].join('\n'),
+    );
+    const deps = lock.importers['apps/one'].dependencies;
+    assert.equal(deps['@sempods/app-sdk'], '0.5.0');
+    assert.equal(
+      deps['tool:x'],
+      'https://codeload.github.com/owner/tool/tar.gz/abc',
+    );
+    assert.ok(lock.packages.has('@sempods/app-sdk@0.5.0'));
+    assert.ok(
+      lock.packages.has('tool@https://codeload.github.com/owner/tool/tar.gz/abc'),
+    );
   });
 });

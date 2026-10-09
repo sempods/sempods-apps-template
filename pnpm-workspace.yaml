@@ -6,6 +6,10 @@ packages:
 saveExact: true
 engineStrict: true
 
+# Scripts fail on dependencies out of sync with the manifests instead of
+# installing on their own, so check never rewrites pnpm-lock.yaml.
+verifyDepsBeforeRun: error
+
 # Dependencies run no install scripts: pnpm fails an install that would need
 # one (strictDepBuilds). Approve a package deliberately under allowBuilds.
 

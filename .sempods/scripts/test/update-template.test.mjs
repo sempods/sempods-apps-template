@@ -614,14 +614,38 @@ describe('update-template', () => {
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
   });
 
-  it('lists the lockfile conversion when it does not install', async () => {
+  it('stays unfinished until the npm lockfile is converted', async () => {
     const { release, instance } = setup();
     file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
     const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.unfinished, true);
     assert.ok(existsSync(join(instance, 'package-lock.json')));
     assert.ok(
       report.review.some((item) => item.includes('pnpm import')),
       formatReport(report),
+    );
+    assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+    const done = await applyRelease(release, instance, {
+      pnpmRun: (args) => {
+        if (args[0] === 'import') file(instance, 'pnpm-lock.yaml', 'lock\n');
+        return true;
+      },
+    });
+    assert.equal(done.resumed, true);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+  });
+
+  it('names a kept packageManager that is not pnpm', async () => {
+    const { release, instance } = setup();
+    const root = JSON.parse(read(instance, 'package.json'));
+    root.packageManager = 'npm@11.6.0';
+    file(instance, 'package.json', json(root));
+    commit(instance, 'npm as package manager');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.match(
+      report.review.join('\n'),
+      /packageManager: npm@11\.6\.0 was kept; pnpm installs only once it names pnpm/,
     );
   });
 

@@ -159,7 +159,7 @@ export function staticProblems(root) {
 
 const run = (args, cwd) => pnpm(args, { cwd }).status === 0;
 
-function standalone(root, id) {
+function standalone(root, id, packageManager) {
   const work = mkdtempSync(join(tmpdir(), `sempods-${id}-`));
   try {
     cpSync(join(root, 'apps', id), work, {
@@ -173,7 +173,7 @@ function standalone(root, id) {
     // The copy installs with the root's pinned pnpm, not whichever pnpm or
     // Corepack default would serve a manifest without packageManager.
     const manifest = readJson(join(work, 'package.json'));
-    manifest.packageManager = readJson(join(root, 'package.json')).packageManager;
+    manifest.packageManager = packageManager;
     writeFileSync(
       join(work, 'package.json'),
       `${JSON.stringify(manifest, null, 2)}\n`,
@@ -230,10 +230,11 @@ async function main() {
       : values.standalone
         ? [values.standalone]
         : [];
+  const { packageManager } = readJson(join(root, 'package.json'));
   for (const id of isolated)
     step(
       `apps/${id}: standalone install, lint, build and tests`,
-      apps.includes(id) && standalone(root, id),
+      apps.includes(id) && standalone(root, id, packageManager),
     );
 
   if (failures.length > 0) {

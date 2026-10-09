@@ -32,7 +32,9 @@ alone: owner files, configuration choices and the SDK migration.
   `packageManager` and drops `workspaces` and its npm `overrides`;
   `pnpm-workspace.yaml` lists `apps/*` and carries the former `.npmrc`
   settings: exact versions, a strict Node engine and no dependency install
-  scripts (pnpm's `strictDepBuilds`). The glob override moves there too.
+  scripts (pnpm's `strictDepBuilds`). Scripts fail on dependencies out of
+  sync with the manifests instead of installing on their own
+  (`verifyDepsBeforeRun: error`). The glob override moves there too.
   `pnpm-lock.yaml` replaces `package-lock.json`, and `.npmrc` is gone. SDK
   releases are exempt from pnpm's one-day minimum release age, so
   `sdk-update` works on release day. The scripts, CI, the SDK update workflow
@@ -57,10 +59,17 @@ alone: owner files, configuration choices and the SDK migration.
    sets `packageManager`, removes `workspaces` and the template's `overrides`
    from `package.json`, removes an unchanged `.npmrc`, converts
    `package-lock.json` with `pnpm import` (the copy keeps its resolved
-   versions), deletes it and installs with pnpm. Then:
+   versions), deletes it and installs with pnpm. With `--no-install` the update
+   stays unfinished until it runs again with installation. Then:
    - an owner-changed `.npmrc` stays: pnpm 11 reads only registry, auth and
      network settings from it. Move other settings to `pnpm-workspace.yaml`
      (camelCase, for example `saveExact: true`) with the owner's agreement;
+   - owner globs in `package.json` `workspaces` beyond `apps/*` are kept, but
+     pnpm ignores that field. Add them to `packages` in `pnpm-workspace.yaml`
+     and remove the field, with the owner's agreement;
+   - an owner-set `packageManager` that is not pnpm is kept and stops pnpm;
+     the report names it. Set it to the template's pnpm version with the
+     owner's agreement, then run the update again;
    - owner entries in `package.json` `overrides` use npm's syntax, which pnpm
      ignores. Move them to `overrides` in `pnpm-workspace.yaml`, written
      `parent>child: version`;

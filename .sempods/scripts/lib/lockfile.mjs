@@ -15,7 +15,8 @@ export function readLockfile(text) {
   const packages = new Set();
   let top, importer, section, name;
   for (const line of text.split(/\r?\n/)) {
-    const match = /^( *)([^ ][^:]*):(?: (.*))?$/.exec(line);
+    // Quoted keys may contain colons, for example tarball or git specs.
+    const match = /^( *)('[^']*'|"[^"]*"|[^ '"][^:]*):(?: (.*))?$/.exec(line);
     if (!match) continue;
     const [, { length: indent }, rawKey, value] = match;
     const key = unquote(rawKey);
