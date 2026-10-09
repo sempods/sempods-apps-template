@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
-import { ifPresent, readJsonIfPresent } from './lib/json.mjs';
+import { ifPresent } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { SDK } from './sdk-update.mjs';
@@ -40,7 +40,7 @@ function appBuild(appDir, mode, outDir) {
 // left out: did.json (written here), host files that hosts read only at the
 // site root (Cloudflare would serve a nested 404.html), and an extensionless
 // `callback`, which would answer the callback path before the app shell.
-const RESERVED = ['did.json', '_redirects', '_headers', '404.html', 'callback'];
+const RESERVED = ['did.json', '_redirects', '404.html', 'callback'];
 
 /** Removes a file or directory and reports whether there was one. */
 const removeIfPresent = (path) =>
@@ -66,7 +66,7 @@ function copyLicences(roots, appOut, appId) {
   }
 }
 
-/** The overview entry of a built app: apps.json, then its PWA manifest. */
+/** The overview entry of a built app; #46 builds a richer one on this. */
 function overviewEntry(app, outDir) {
   const entry = {
     id: app.id,
@@ -74,26 +74,7 @@ function overviewEntry(app, outDir) {
     language: app.language,
     href: app.path,
   };
-  const manifest = readJsonIfPresent(join(outDir, 'manifest.webmanifest'));
-  if (manifest) {
-    const { name, description, icons = [] } = manifest;
-    if (name) entry.title = name;
-    if (description) entry.description = description;
-    const size = (icon) => Number(String(icon.sizes).split('x')[0]) || 0;
-    const largest = icons.reduce(
-      (best, icon) => (!best || size(icon) > size(best) ? icon : best),
-      undefined,
-    );
-    // Icon URLs are relative to the manifest, not to the overview at /.
-    if (largest?.src) {
-      const base = new URL(`${app.path}manifest.webmanifest`, 'https://site.invalid');
-      const url = new URL(largest.src, base);
-      entry.icon =
-        url.origin === base.origin
-          ? `${url.pathname}${url.search}${url.hash}`
-          : url.href;
-    }
-  } else if (existsSync(join(outDir, 'icon-192.png')))
+  if (existsSync(join(outDir, 'icon-192.png')))
     entry.icon = `${app.path}icon-192.png`;
   return entry;
 }

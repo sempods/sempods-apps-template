@@ -34,8 +34,8 @@ alone: owner files, configuration choices and the SDK migration.
 - `pnpm run build-site [--profile production|preview]` (or
   `SEMPODS_SITE_PROFILE`) builds every app with that profile into one static
   folder, `site-dist/<id>/`, and leaves each app's local `dist/` alone. It
-  writes an accessible overview page at `/` from `apps.json` and the apps' PWA
-  manifests, `did.json` per app, the SDK's licence notices, and the routing
+  writes an accessible overview page at `/` from `apps.json` and each app's
+  `icon-192.png`, `did.json` per app, the SDK's licence notices, and the routing
   for the configured host: Netlify gets one `_redirects` rule per callback;
   Cloudflare Pages and other static hosts get `<id>/callback.html`. Every
   site has a top-level `404.html`. The skeleton's `index.html` sets the

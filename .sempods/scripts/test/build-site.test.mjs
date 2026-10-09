@@ -39,18 +39,6 @@ describe('build-site', () => {
       join(outDir, 'index.html'),
       `<!doctype html><html><head><title>x</title></head><p>${mode}</p></html>`,
     );
-    if (appDir.endsWith('konsum'))
-      writeFileSync(
-        join(outDir, 'manifest.webmanifest'),
-        JSON.stringify({
-          name: 'Einkaufsliste',
-          description: 'Was noch fehlt',
-          icons: [
-            { src: '/konsum/icon-192.png', sizes: '192x192' },
-            { src: '/konsum/icon-512.png', sizes: '512x512' },
-          ],
-        }),
-      );
     return true;
   };
   beforeEach(() => {
@@ -147,38 +135,18 @@ describe('build-site', () => {
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
   });
 
-  it('lists every app on the overview, from its manifest when there is one', () => {
+  it('lists every app on the overview from apps.json and its icon', () => {
     configureSite(root, { production: 'https://apps.example.org' });
+    rmSync(join(root, 'apps', 'notes', 'public', 'icon-192.png'));
     buildSite(root, { build });
     const html = read('index.html');
     assert.match(html, /<html lang="en">/);
     assert.match(html, /<a href="\/konsum\/" lang="de">/);
-    assert.match(html, /<img src="\/konsum\/icon-512\.png" alt=""/);
-    assert.match(html, /Einkaufsliste/);
-    assert.match(html, /Was noch fehlt/);
-    // Without a manifest: apps.json and the app's icon.
+    assert.match(html, /<img src="\/konsum\/icon-192\.png" alt=""/);
+    assert.match(html, /Einkauf/);
+    // Without an icon, a letter stands in.
     assert.match(html, /<a href="\/notes\/" lang="en">/);
-    assert.match(html, /<img src="\/notes\/icon-192\.png" alt=""/);
-  });
-
-  it('resolves relative manifest icons against the app path', () => {
-    configureSite(root, { production: 'https://apps.example.org' });
-    const relative = (appDir, mode, outDir) => {
-      build(appDir, mode, outDir);
-      if (appDir.endsWith('konsum'))
-        writeFileSync(
-          join(outDir, 'manifest.webmanifest'),
-          JSON.stringify({
-            icons: [{ src: 'icons/app.svg?v=2#app', sizes: '512x512' }],
-          }),
-        );
-      return true;
-    };
-    buildSite(root, { build: relative });
-    assert.match(
-      read('index.html'),
-      /<img src="\/konsum\/icons\/app\.svg\?v=2#app"/,
-    );
+    assert.match(html, /<span class="letter" aria-hidden="true">N<\/span>/);
   });
 
   it('replaces a did.json the app ships with the site identity', () => {

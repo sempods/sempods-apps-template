@@ -23,6 +23,3 @@ export function ifPresent(operation) {
     throw error;
   }
 }
-
-/** Reads a JSON file, or returns undefined when there is none. */
-export const readJsonIfPresent = (path) => ifPresent(() => readJson(path));

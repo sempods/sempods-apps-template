@@ -151,8 +151,8 @@ Scripts (deterministic, tested in CI):
 - `build-site` (M3): builds every app with a published profile into its path
   of one static folder (`site-dist/<id>/`, leaving the app's local `dist/`),
   writes `did.json` per app and the SDK's notices, and generates the overview
-  page from `apps.json` and each app's PWA manifest (#46 builds a richer app
-  overview on that data). It fails if the chosen profile is not configured,
+  page from `apps.json` and each app's icon (#46 builds a richer app overview
+  on that data model). It fails if the chosen profile is not configured,
   and links to separate app pages; it does not mount multiple app runtimes in
   a host. Each page keeps one SDK runtime owner. Routing is host-specific
   because hosts disagree on rewrites: Netlify serves files before rules, so
