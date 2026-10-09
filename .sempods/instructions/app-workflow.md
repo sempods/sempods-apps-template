@@ -98,11 +98,12 @@ needs it, ask the owner before approving it under `allowBuilds` in
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
-path/port. The optional root field `sdkAutoUpdates` records the owner's boolean
-choice for scheduled SDK updates; app generation and template updates preserve
-it. Do not infer that choice from organization settings. Do not invent
-deployment-profile fields, which the template does
-not provide yet.
+path/port. An optional `site` records where the apps are published; only
+`pnpm run configure-site` writes it, and it regenerates every app's
+configuration from it. The optional root field `sdkAutoUpdates` records the
+owner's boolean choice for scheduled SDK updates; app generation and template
+updates preserve it. Do not infer that choice from organization settings. Do
+not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
 Run the development server as its own process and stop only that process (its
@@ -198,7 +199,9 @@ repository setting. Never ask for a token.
 ## Later capabilities
 
 Template updates follow the
-[update-template skill](../skills/update-template/SKILL.md). Production profiles
-(`configure-app`) and combined hosting (`build-site`) are not available yet.
-Until they are, capture the request and consult the installed SDK's
-`deployment.md` without implementing a parallel configuration mechanism.
+[update-template skill](../skills/update-template/SKILL.md). Published identities
+come from `pnpm run configure-site` (production and a fixed preview address,
+each a `did:web` per app); do not configure identities by hand or add a
+parallel configuration mechanism. Combined hosting (`build-site`) is not
+available yet: capture the request and consult the installed SDK's
+`deployment.md`.

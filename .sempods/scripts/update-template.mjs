@@ -591,9 +591,10 @@ export async function applyRelease(
     pathToFileURL(join(instance, '.sempods', 'scripts', 'lib', name)).href;
   const { readApps } = await import(lib('apps.mjs'));
   const { writeGenerated } = await import(lib('generate.mjs'));
-  for (const app of readApps(instance).apps)
+  const { apps, site } = readApps(instance);
+  for (const app of apps)
     if (existsSync(join(instance, 'apps', app.id)))
-      writeGenerated(join(instance, 'apps', app.id), app);
+      writeGenerated(join(instance, 'apps', app.id), app, site);
 
   // Owner files are never rewritten; mentions of retired template paths are listed.
   for (const file of walk(join(instance, 'apps')).map((f) => `apps/${f}`))

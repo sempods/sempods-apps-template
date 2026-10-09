@@ -35,7 +35,7 @@ INIT.md                one-time setup conversation; marked done afterwards
 apps.json              app metadata, stable paths/ports, deployment profiles, PWA choice
 apps/<id>/             one app, quickstart layout (Vite, React, app-sdk); owner code
                        plus generated configuration files the code imports
-.sempods/              template-owned: scripts (new-app, configure-app, sdk-update,
+.sempods/              template-owned: scripts (new-app, configure-site, sdk-update,
                        update-template, check, build-site), skills, shared
                        instructions, VERSION; replaced as a whole on update
 package.json           workspace root; package scripts are thin calls into .sempods/
@@ -119,13 +119,20 @@ Scripts (deterministic, tested in CI):
   must not overwrite an existing app. Generate PWA configuration by default,
   with a documented per-app opt-out; registration runs only from the production
   app entry.
-- `configure-app` (M3): an idempotent command applies explicit local, production
-  or preview profiles to an existing app from `apps.json`. It derives DID,
-  callback, `returnTo`, asset base and PWA paths together, without touching user
-  screens or data. Production has no loopback flag; local development keeps
-  working after deployment setup. Preview identities never silently inherit the
-  production DID. Fail on incomplete or inconsistent configuration rather than
-  inferring a production identity from the current browser hostname.
+- `configure-site` (M3; planned as `configure-app`, renamed because the domain
+  is site-wide): an idempotent command records the production origin, an
+  optional fixed preview origin and the host in `apps.json` (`site`) and
+  regenerates every app. The generated configuration holds a local profile and
+  one `did:web` profile per origin (`did:web:<host>:<id>`, callback
+  `https://<host>/<id>/callback`, `returnTo` `/<id>/`), without touching user
+  screens or data. Only Vite's build mode, which `build-site` sets
+  (`sempods-production`, `sempods-preview`), selects a published profile;
+  development, plain builds and tests stay local, so local development keeps
+  working after deployment setup. Production has no loopback flag. Preview
+  identities never inherit the production DID. Changing the production origin
+  needs an explicit flag, because it changes every identity. Fail on incomplete
+  or inconsistent configuration rather than inferring a production identity
+  from the current browser hostname.
 - `sdk-update <version>`: sets one exact shared version of both SDK packages for
   the root, the skeleton and all apps, and updates manifests and lockfile
   together. The SDK ships its app-author reference in the package (from 0.3.0),
@@ -310,7 +317,7 @@ template material.
   create/change/reload/delete flow using the default UI; visual customization
   alone is not an SDK gap.
 - **M3, site.** `build-site`, overview page, deployment instructions (Netlify as
-  the documented example), `configure-app`, `did:web` per app and default PWA.
+  the documented example), `configure-site`, `did:web` per app and default PWA.
   Accept with two apps on one origin: direct routes/callbacks, separate
   identities and session namespaces, both usable concurrently, local development
   after production setup, and a separately configured preview. Check app-scoped

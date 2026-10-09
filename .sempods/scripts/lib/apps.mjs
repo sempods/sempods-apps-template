@@ -5,6 +5,26 @@ import { join } from 'node:path';
 export const SCHEMA_VERSION = 1;
 export const FIRST_DEV_PORT = 5174;
 export const LANGUAGES = ['en', 'de'];
+// Where the site is published (configure-site): one origin per profile and the
+// host whose routing build-site writes for.
+export const SITE_PROFILES = ['production', 'preview'];
+export const SITE_HOSTS = ['netlify', 'cloudflare-pages', 'static'];
+const SITE_KEYS = new Set([...SITE_PROFILES, 'host']);
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+// Special-use names that public DNS does not resolve (RFC 6761, 6762, 7686,
+// 8375 and ICANN's .internal): a did:web there cannot reach the site.
+const NON_PUBLIC_SUFFIXES = [
+  'localhost',
+  'local',
+  'home.arpa',
+  'internal',
+  'test',
+  'invalid',
+  'example',
+  'onion',
+];
+// One DNS label: letters, digits and inner hyphens, at most 63 characters.
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
 // Paths the site itself uses, and directory names that would confuse the
@@ -41,6 +61,69 @@ export function invalidId(id) {
   return undefined;
 }
 
+/** Returns a reason when `value` cannot be a site origin, otherwise undefined. */
+export function invalidOrigin(value) {
+  const reason =
+    'must be an HTTPS origin without a path or port, such as https://apps.example.org';
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return reason;
+  }
+  // The origin round trip rejects a path, query, credentials, a port and
+  // uppercase: did:web and the callback derive from exactly this host.
+  if (url.protocol !== 'https:' || url.origin !== value || url.port)
+    return reason;
+  const host = url.hostname;
+  if (
+    LOOPBACK.has(host) ||
+    NON_PUBLIC_SUFFIXES.some((s) => host === s || host.endsWith(`.${s}`))
+  )
+    return 'must be a public host, not a local or reserved name; local development keeps its own profile';
+  // did:web names a host by its fully qualified domain name, never by an IP
+  // address; the URL parser alone accepts empty or hyphen-edged labels.
+  const labels = url.hostname.split('.');
+  if (
+    labels.length < 2 ||
+    url.hostname.length > 253 ||
+    !labels.every((label) => DNS_LABEL.test(label)) ||
+    /^\d+$/.test(labels.at(-1))
+  )
+    return 'must name a domain, such as https://apps.example.org; did:web allows no IP address or single-label host';
+  return undefined;
+}
+
+/** The did:web identity and callback of an app published at `origin`. */
+export function siteIdentity(origin, app) {
+  return {
+    clientId: `did:web:${new URL(origin).hostname}:${app.id}`,
+    redirectUri: `${origin}${app.path}callback`,
+  };
+}
+
+/** Lists every problem of the optional site configuration. */
+export function validateSite(site) {
+  if (site === undefined) return [];
+  if (site === null || typeof site !== 'object' || Array.isArray(site))
+    return ['site must be an object'];
+  const problems = [];
+  for (const key of Object.keys(site))
+    if (!SITE_KEYS.has(key)) problems.push(`site.${key} is not a known field`);
+  if (site.production === undefined)
+    problems.push('site.production is required once site is set');
+  for (const profile of SITE_PROFILES) {
+    if (site[profile] === undefined) continue;
+    const reason = invalidOrigin(site[profile]);
+    if (reason) problems.push(`site.${profile} ${reason}`);
+  }
+  if (site.preview !== undefined && site.preview === site.production)
+    problems.push('site.preview must differ from site.production');
+  if (site.host !== undefined && !SITE_HOSTS.includes(site.host))
+    problems.push(`site.host must be one of ${SITE_HOSTS.join(', ')}`);
+  return problems;
+}
+
 export function appsFile(root) {
   return join(root, 'apps.json');
 }
@@ -68,6 +151,7 @@ export function validateApps(manifest) {
   const problems = [];
   if (manifest?.schemaVersion !== SCHEMA_VERSION)
     problems.push(`schemaVersion must be ${SCHEMA_VERSION}`);
+  problems.push(...validateSite(manifest?.site));
   if (
     manifest?.sdkAutoUpdates !== undefined &&
     typeof manifest.sdkAutoUpdates !== 'boolean'

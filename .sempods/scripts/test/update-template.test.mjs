@@ -179,7 +179,7 @@ function templateFiles(root, v) {
  * A template repository with two 0.1.0 commits and a tagged 0.2.0, and an
  * instance created from the first commit, then adapted by its owner.
  */
-function setup({ tagOld = false, dev = false } = {}) {
+function setup({ tagOld = false, dev = false, site = false } = {}) {
   const release = join(work, 'template');
   mkdirSync(release);
   git(release, 'init', '-q', '-b', 'main');
@@ -263,7 +263,12 @@ function setup({ tagOld = false, dev = false } = {}) {
   file(
     instance,
     'apps.json',
-    json({ schemaVersion: 1, apps: [app], sdkAutoUpdates: true }),
+    json({
+      schemaVersion: 1,
+      apps: [app],
+      sdkAutoUpdates: true,
+      ...(site ? { site: { production: 'https://apps.example.org' } } : {}),
+    }),
   );
   file(
     instance,
@@ -662,6 +667,19 @@ describe('update-template', () => {
     assert.match(
       report.review.join('\n'),
       /packageManager: npm@11\.6\.0 was kept; pnpm installs only once it names pnpm/,
+    );
+  });
+
+  it('regenerates app configuration with the site profiles', async () => {
+    const { release, instance } = setup({ site: true });
+    await applyRelease(release, instance, { install: false });
+    const generated = read(instance, 'apps/demo/src/sempods.generated.ts');
+    assert.match(generated, /did:web:apps\.example\.org:demo/);
+    assert.deepEqual(
+      staleGenerated(join(instance, 'apps/demo'), app, {
+        production: 'https://apps.example.org',
+      }),
+      [],
     );
   });
 
