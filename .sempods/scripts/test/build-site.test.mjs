@@ -133,7 +133,7 @@ describe('build-site', () => {
       '/konsum/callback /konsum/index.html 200\n/notes/callback /notes/index.html 200\n',
     );
     assert.equal(existsSync(join(root, 'site-dist', 'konsum', 'callback.html')), false);
-    assert.equal(existsSync(join(root, 'site-dist', '404.html')), false);
+    assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
   });
 
   it('lists every app on the overview, from its manifest when there is one', () => {

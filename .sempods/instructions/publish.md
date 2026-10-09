@@ -30,7 +30,7 @@ pnpm run configure-site --production https://apps.example.org \
 
 The command writes `site` in `apps.json` and regenerates every app's
 configuration. Local development is unchanged: `pnpm run dev <id>`, plain
-builds and tests keep the local identity. Do not configure identities by hand.
+builds and tests keep the local identity.
 
 ## 2. Build the site
 
@@ -42,8 +42,9 @@ pnpm run build-site --profile preview  # the fixed preview address
 It builds every app into `site-dist/<id>/` with the published identity and
 writes the overview, `did.json` per app (`/<id>/did.json`, needed by some
 Pods), the SDK's licence notices and the routing files the host needs.
-`site-dist/` is build output; do not commit it. `apps/<id>/dist` keeps the
-app's local build, so `pnpm run preview` in an app still works locally.
+`site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
+touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
+identity.
 
 A build only works on the origin it was made for: opened anywhere else, the SDK
 stops with a configuration error. Previews on other addresses, such as one per
@@ -67,10 +68,11 @@ Every host, whatever it is:
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
-### Netlify (tested)
+### Netlify
 
 Use `--host netlify`: `build-site` writes `_redirects` with one rule per app,
-`/<id>/callback /<id>/index.html 200`. Write this `netlify.toml` in the
+`/<id>/callback /<id>/index.html 200`, and a top-level `404.html` that Netlify
+serves for unknown paths. Write this `netlify.toml` in the
 repository root when the owner asks for Netlify (the template ships none):
 
 ```toml
@@ -103,8 +105,6 @@ output directory `site-dist`. For the fixed preview address, set the variable
 `https://preview.<project>.pages.dev` then shows the `preview` branch. Commit
 addresses (`https://<hash>.<project>.pages.dev`) have no working sign-in.
 
-Check the host requirements above with `curl` after the first deployment.
-
 ### Cloudflare Workers and other hosts
 
 The `static` layout (`callback.html` per app, top-level `404.html`) suits hosts
@@ -130,5 +130,4 @@ the first sign-in.
    Falling back to another identity is not a fix.
 
 Record the published addresses, identities, what was checked and what was not
-in each app's `NOTES.md`. A working build is no evidence of a working
-sign-in, and installed PWAs need evidence from the device itself.
+in each app's `NOTES.md`.

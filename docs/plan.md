@@ -158,7 +158,7 @@ Scripts (deterministic, tested in CI):
   because hosts disagree on rewrites: Netlify serves files before rules, so
   one rule per callback (`/<id>/callback /<id>/index.html 200`) suffices;
   Cloudflare applies rules before files, so the callback ships as
-  `callback.html` with a top-level `404.html`. Hosts serve `/<id>/callback`
+  `callback.html`. Every site gets a top-level `404.html`. Hosts serve `/<id>/callback`
   with `200` and no redirect, because the SDK matches the callback path
   exactly. The publish guide states this contract for any host; only Netlify
   is tested live.

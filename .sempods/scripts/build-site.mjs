@@ -115,11 +115,11 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   }
 
   writeFileSync(join(out, 'index.html'), renderOverview(entries));
+  // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve
+  // the overview for every unknown path.
+  writeFileSync(join(out, '404.html'), renderNotFound(entries));
   if (host === 'netlify')
     writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
-  // Without a top-level 404.html, Cloudflare Pages serves the overview for
-  // every unknown path.
-  else writeFileSync(join(out, '404.html'), renderNotFound(entries));
   return out;
 }
 
