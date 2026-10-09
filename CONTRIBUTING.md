@@ -26,7 +26,7 @@ you have tested and can explain. There is no CLA.
 
 ## Working on the template
 
-Read [AGENTS.md](AGENTS.md) and [template maintenance](docs/maintaining.md).
+Read [template maintenance](docs/maintaining.md).
 Open an issue before a large change. Keep SDK changes in the SDK repository.
 Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all` and
 `node .sempods/scripts/self-test.mjs` with the Node version in `.node-version`.

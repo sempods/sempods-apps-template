@@ -39,6 +39,15 @@ alone: owner files, configuration choices and the SDK migration.
   and all instructions use pnpm; the app workflow names the pnpm equivalents of
   the npm commands in the SDK's guides. The scripts ignore a leading `--`, so
   `pnpm run check -- --standalone all` works as well.
+- The agent instructions serve only the owner who builds apps. AGENTS.md,
+  CLAUDE.md, INIT.md and the app workflow no longer route to template
+  maintenance or mention its milestones, so an assistant no longer switches to
+  the maintainer role or claims template issues. `docs/app-workflow.md`, a
+  pointer to the same workflow, is removed.
+- Setup removes the template's contributor documents (`CONTRIBUTING.md`,
+  `docs/maintaining.md`, `docs/plan.md`, `docs/vision.md`) from a new copy.
+  `.gitignore` ignores the personal instruction files `CLAUDE.local.md` and
+  `AGENTS.override.md`.
 
 ### Upgrade notes
 
@@ -94,6 +103,12 @@ alone: owner files, configuration choices and the SDK migration.
    `tsconfig.json` references and exclude `src/**/*.test.ts` and
    `src/**/*.test.tsx` from its `tsconfig.app.json`. An app whose tests already
    read Node APIs some other way can keep them.
+7. The contributor documents `CONTRIBUTING.md`, `docs/maintaining.md`,
+   `docs/plan.md` and `docs/vision.md` describe work on the template, not on
+   the owner's apps. Offer to remove them; keep `CONTRIBUTING.md` if the owner
+   adapted it for their own repository. First check that no kept file links to
+   them, so `pnpm run check` stays green. Template updates do not bring them
+   back once removed.
 
 ## 0.4.0
 

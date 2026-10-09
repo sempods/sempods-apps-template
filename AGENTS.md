@@ -17,21 +17,8 @@ For creating or changing an app:
 
 The [skill](.sempods/skills/app-workflow/SKILL.md) routes to the same workflow;
 skill discovery is optional. To pick up a newer template release, follow the
-[update-template skill](.sempods/skills/update-template/SKILL.md). [User steps](docs/start.md) stay short and plain.
-[Workflow entry](docs/app-workflow.md) is a pointer, not another set of rules.
-
-Tool entries: [CLAUDE.md](CLAUDE.md), the Codex skills
-([app workflow](.agents/skills/app-workflow/SKILL.md),
-[update](.agents/skills/update-template/SKILL.md)) and the Claude skills
-([app workflow](.claude/skills/app-workflow/SKILL.md),
-[update](.claude/skills/update-template/SKILL.md)). They route here or to the
-canonical skills.
-
-If the task is to maintain **the template itself**, read
-[template maintenance](docs/maintaining.md) instead of running instance setup.
-Do not apply INIT's repository adaptations to `sempods/sempods-apps-template`.
-The SDK repository's contributor instructions govern SDK contributions, not
-this app repo.
+[update-template skill](.sempods/skills/update-template/SKILL.md).
+[User steps](docs/start.md) describe the same journey for the owner.
 
 ## Owner instructions
 
