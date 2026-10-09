@@ -66,7 +66,8 @@ Every host, whatever it is:
 - does not cache or log full callback URLs, and sends no `Referrer-Policy`
   weaker than `strict-origin`. `build-site` sets `strict-origin` in every app
   page, so same-origin requests from the callback page carry no `code` or
-  `state`.
+  `state`, and for Netlify and Cloudflare Pages it also writes `_headers`
+  with that policy. Other hosts set the header themselves.
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 

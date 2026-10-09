@@ -185,6 +185,10 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   // the overview for every unknown path.
   writeFileSync(join(out, '404.html'), renderNotFound(entries));
   if (netlify) writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
+  // Netlify and Cloudflare Pages read this file; Cloudflare otherwise sends
+  // strict-origin-when-cross-origin, weaker than the pages' own policy.
+  if (site.host === 'netlify' || site.host === 'cloudflare-pages')
+    writeFileSync(join(out, '_headers'), '/*\n  Referrer-Policy: strict-origin\n');
   return { apps, site, warnings };
 }
 

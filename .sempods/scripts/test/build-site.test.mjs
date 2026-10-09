@@ -133,6 +133,11 @@ describe('build-site', () => {
       );
       assert.equal(exists('_redirects'), false);
       assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
+      assert.equal(
+        exists('_headers'),
+        host === 'cloudflare-pages',
+        `${host} _headers`,
+      );
     }
   });
 
@@ -165,6 +170,7 @@ describe('build-site', () => {
       '/konsum/callback /konsum/index.html 200!\n/notes/callback /notes/index.html 200!\n',
     );
     assert.equal(exists('konsum/callback.html'), false);
+    assert.equal(read('_headers'), '/*\n  Referrer-Policy: strict-origin\n');
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
   });
 

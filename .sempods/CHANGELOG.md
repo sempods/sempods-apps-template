@@ -40,7 +40,8 @@ alone: owner files, configuration choices and the SDK migration.
   Cloudflare Pages and other static hosts get `<id>/callback.html`. Every
   site has a top-level `404.html`. Every app page gets the referrer policy
   `strict-origin`, so the callback's `code` and `state` stay out of `Referer`
-  headers; the skeleton's `index.html` sets it for new apps.
+  headers; the skeleton's `index.html` sets it for new apps, and Netlify and
+  Cloudflare Pages sites get a `_headers` file with the same policy.
 - The new [publish guide](instructions/publish.md) states what any host must
   provide, with sections for Netlify and Cloudflare Pages. The app workflow, `docs/start.md`, `README.md` and
   `INIT.md` point to it.
