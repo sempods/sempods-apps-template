@@ -16,6 +16,11 @@ alone: owner files, configuration choices and the SDK migration.
   create-only condition as `unconfirmed` instead of `exists`, shows no Context
   view until startup settles and ships a guide for apps that only read. The
   skeleton code needs no change.
+- The app workflow asks early whether an app writes data or only reads it. For
+  an app that only reads, such as a data explorer, it records that decision and
+  the contexts the app needs in `NOTES.md`, takes the vocabulary from the stored
+  data, keeps write hooks and operations out of the app and tests it with the
+  read-only section of the installed SDK's `local-testing.md`.
 
 ### Upgrade notes
 
@@ -39,6 +44,8 @@ alone: owner files, configuration choices and the SDK migration.
 3. Apps that copied the 0.4 overview recipe's `EditInContext` keep working. To
    replace it with `useContextEditor`, ask the owner first: the row no longer
    selects its Context.
+4. For an existing app that only reads, add that decision and the contexts it
+   reads to its `NOTES.md` when you next work on it.
 
 ## 0.4.0
 

@@ -23,9 +23,10 @@ SDK-dependent behavior.
 ## Build one useful interaction
 
 Use the user's request and existing notes to choose the next interaction. Ask
-only for missing choices that affect it: what the app should do, UI language,
-data vocabulary and test target. Briefly describe the screen and data change in
-the user's language, then build it. Start from the skeleton's layout:
+only for missing choices that affect it: what the app should do, whether it
+writes data or only reads it, UI language, data vocabulary and test target.
+Briefly describe the screen and any data change in the user's language, then
+build it. Start from the skeleton's layout:
 `AppAccess` beside `TargetScreen`, with a header that reopens data access, and
 the SDK's components. Ordinary visual customization is welcome. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
@@ -40,6 +41,13 @@ Write exact IRIs (`https://schema.org/`, not `http://`), choose a fixed text
 language or `language: null`, and the enum/flag values. If the test context
 already holds data the app should show, read how it is stored before deciding.
 Record the vocabulary in `NOTES.md`.
+
+An app that only reads, such as a data explorer, takes its vocabulary from how
+the data is already stored; there is nothing to choose for writing. Record under
+Decisions in `NOTES.md` that it only reads and which contexts it needs. A Pod
+cannot be asked for read access only, so keeping the app read-only is its own
+restriction: use no write hooks or write operations, as the installed
+`local-testing.md` describes.
 
 Keep the screen consistent with the SDK's UI:
 
@@ -98,11 +106,12 @@ customization space.
 Run `npm run check` from the root and test the domain behavior affected by the
 change. Use the
 local-testing guide (`local-testing.md` in the installed SDK's `docs/`) for the
-actual Pod exercise and
+actual Pod exercise, its section on apps that only read for such an app, and
 recovery (`migration.md`) when something fails.
 Use a dedicated test context and synthetic data; the user signs in themselves.
 Never request credentials, export browser storage or put tokens in notes/logs. A
-missing Pod still allows UI work, but not a claim of working login or writes.
+missing Pod still allows UI work, but not a claim of working login, reads or
+writes.
 
 Keep failures, conflicts and unconfirmed writes visible through SDK recovery. Do
 not blindly retry a mutation, clear sessions to hide a failure, or silently
@@ -118,7 +127,8 @@ establish installation or offline support.
 ## Leave a useful handoff
 
 Update the app's existing `NOTES.md`, preserving owner decisions and earlier
-useful evidence. Record the app purpose and vocabulary, UI/content language,
+useful evidence. Record the app purpose and vocabulary, whether it only reads
+and which contexts it needs, UI/content language,
 installed SDK version, test target (no private data), exact local
 URL/run command, changed behavior, checks/results, unresolved outcomes and the
 next useful step. Distinguish the initial template version in INIT from later
