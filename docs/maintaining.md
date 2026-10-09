@@ -56,7 +56,10 @@ Apache-2.0 notice; template MIT-0 does not replace it.
 
 Every file of a copy has an owner, and `update-template` treats it accordingly.
 `.sempods/update-policy.json` is the machine-readable form of this table; the
-release's own policy governs its update. A file the policy does not name is
+release's own policy governs its update. Two kinds of files are not named
+there but are still rewritten: each app's generated configuration
+(`src/sempods.generated.ts`, `vite.sempods.generated.ts`), regenerated from
+`apps.json`, and `pnpm-lock.yaml`. Any other file the policy does not name is
 owner-owned: `update-template` never changes it.
 
 | Owner                      | Files                                                                                                                              | On update                                                                                                   | Policy key                     |
