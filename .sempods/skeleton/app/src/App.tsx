@@ -9,6 +9,7 @@ import {
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
 import { app, runtimeOptions } from './sempods.generated.ts';
+import { startMessage } from './start.ts';
 
 // One runtime for the app's lifetime, created outside rendering.
 const runtime = createBrowserRuntime(runtimeOptions);
@@ -68,11 +69,5 @@ function Frame() {
 // Replace this screen with your app. It renders once a Pod context is chosen.
 function Start() {
   const { language } = useSdkLocale();
-  return (
-    <p>
-      {language === 'de'
-        ? 'Verbunden. Beschreibe deinem Assistenten, was diese App tun soll.'
-        : 'Connected. Tell your assistant what this app should do.'}
-    </p>
-  );
+  return <p>{startMessage(language)}</p>;
 }
