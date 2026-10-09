@@ -10,6 +10,18 @@ alone: owner files, configuration choices and the SDK migration.
 
 ### Changes
 
+- The assistant assumes no developer knowledge, builds small steps the owner
+  can try and chooses routine SDK and RDF details itself. It asks about app
+  behavior and data access in everyday terms.
+- Setup reaches the first local interaction before adapting inherited files
+  and offering optional review ownership and automatic SDK updates. Deferred
+  preferences do not block setup completion. The maintainer guide includes a
+  copyable prompt for explicit template work.
+- Scheduled SDK update jobs require `sdkAutoUpdates: true` in the owner's
+  `apps.json` on the default branch, even if Actions permits PR creation or an
+  organization-level variable enables updates elsewhere. A read-only job
+  checks the committed choice first; manual dispatch remains available.
+  App generation and template updates preserve this owner-owned field.
 - `pnpm run configure-site --production <origin> [--preview <origin>]
   [--host netlify|cloudflare-pages|static]` records where the apps are
   published in a new optional `site` field of `apps.json` (schemaVersion stays
@@ -22,17 +34,28 @@ alone: owner files, configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. `update-template` regenerates `src/sempods.generated.ts` in every app.
+1. Shared AGENTS.md and INIT.md changes preserve existing owner and setup
+   records. Do not repeat completed setup. For an incomplete setup, build the
+   first local interaction before offering optional repository preferences.
+2. Scheduled SDK updates now skip the update job unless `sdkAutoUpdates` in
+   `apps.json` on the default branch is `true`. If a copy used weekly updates,
+   explain this change and use its recorded owner choice, or ask if no choice
+   is recorded. Follow INIT's activation steps and verify both the committed field
+   and the Actions PR setting. Leave a deferred choice inactive. Record the
+   result without treating PR creation permission alone as an opt-in.
+3. `update-template` regenerates `src/sempods.generated.ts` in every app.
    `app` and `runtimeOptions` keep their names and, outside a site build,
    their local values, so no owner file has to change.
-2. An app that switched identities by itself before this release, for example
+4. An app that switched identities by itself before this release, for example
    with a `src/identity.ts` that picks a `did:web` identity in production
    builds (#24), should move to `configure-site`. Ask the owner first, run
    `pnpm run configure-site --production <the published origin>`, then let the
    app import `runtimeOptions` from `src/sempods.generated.ts` again and remove
    the interim file and its tests.
-3. Choose the production origin once. A later change gives every app a new
+5. Choose the production origin once. A later change gives every app a new
    identity: every sign-in and Pod grant has to be made again.
+6. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
+   and the template self-test; local and manual SDK updates remain available.
 
 ## 0.5.0
 
