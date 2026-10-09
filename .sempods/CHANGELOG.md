@@ -6,6 +6,40 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.5.0
+
+### Changes
+
+- The SDK is 0.5.0 (`@sempods/app-sdk` and `@sempods/client-sdk`) for the
+  root tooling and the app skeleton. 0.5 edits a Pod-overview row in its own
+  Context (`useContextEditor`, `runtime.bindContext`), reports a failed
+  create-only condition as `unconfirmed` instead of `exists`, shows no Context
+  view until startup settles and ships a guide for apps that only read. The
+  skeleton code needs no change.
+
+### Upgrade notes
+
+1. `update-template` updates the root and skeleton manifests. Then run
+   `npm run sdk-update -- 0.5.0` so every registered app moves to the same SDK
+   version, and run `npm run check -- --standalone all`.
+2. Review the SDK migration
+   [From 0.4 to 0.5](https://github.com/sempods/sempods-typescript/blob/v0.5.0/docs/migration.md#from-04-to-05)
+   for each app:
+   - code that chose a new address after a creation reported `exists` must
+     keep the item unconfirmed and let the person settle it; `useCreation`
+     already does;
+   - fake runtimes and test doubles typed as `BrowserRuntime` need
+     `bindContext`, and exhaustive switches over `LeaveGuard['scope']` or
+     `OAuthProblem` need the new cases;
+   - tests that act on a view right after rendering wait for startup to
+     settle, and end-to-end tests no longer find the chooser while the first
+     Context catalogue loads;
+   - code that read a `created`, `saved` or `removed` outcome after another
+     write on the same target now sees `null`.
+3. Apps that copied the 0.4 overview recipe's `EditInContext` keep working. To
+   replace it with `useContextEditor`, ask the owner first: the row no longer
+   selects its Context.
+
 ## 0.4.0
 
 ### Changes
