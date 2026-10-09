@@ -11,6 +11,18 @@ export const SITE_PROFILES = ['production', 'preview'];
 export const SITE_HOSTS = ['netlify', 'cloudflare-pages', 'static'];
 const SITE_KEYS = new Set([...SITE_PROFILES, 'host']);
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+// Special-use names that public DNS does not resolve (RFC 6761, 6762, 7686,
+// 8375 and ICANN's .internal): a did:web there cannot reach the site.
+const NON_PUBLIC_SUFFIXES = [
+  'localhost',
+  'local',
+  'home.arpa',
+  'internal',
+  'test',
+  'invalid',
+  'example',
+  'onion',
+];
 // One DNS label: letters, digits and inner hyphens, at most 63 characters.
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -63,9 +75,12 @@ export function invalidOrigin(value) {
   // uppercase: did:web and the callback derive from exactly this host.
   if (url.protocol !== 'https:' || url.origin !== value || url.port)
     return reason;
-  // Names under .localhost resolve to the visitor's own machine.
-  if (LOOPBACK.has(url.hostname) || url.hostname.endsWith('.localhost'))
-    return 'must be a public host; local development keeps its own profile';
+  const host = url.hostname;
+  if (
+    LOOPBACK.has(host) ||
+    NON_PUBLIC_SUFFIXES.some((s) => host === s || host.endsWith(`.${s}`))
+  )
+    return 'must be a public host, not a local or reserved name; local development keeps its own profile';
   // did:web names a host by its fully qualified domain name, never by an IP
   // address; the URL parser alone accepts empty or hyphen-edged labels.
   const labels = url.hostname.split('.');
