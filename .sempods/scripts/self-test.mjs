@@ -19,6 +19,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readJson } from './lib/json.mjs';
 import { pnpm } from './lib/pnpm.mjs';
 
 const FIXTURE = 'self-test';
@@ -61,46 +62,46 @@ function publish(copy) {
   const production = 'https://apps.example.org';
   const preview = 'https://preview--apps.example.org';
   // check built the local profile into dist/; build-site must leave it there.
-  const localBuild = readdirSync(join(dir, 'dist', 'assets')).sort().join();
-  for (const host of ['netlify', 'static']) {
-    const configure = [join(scripts, 'configure-site.mjs')];
-    configure.push('--production', production, '--preview', preview);
-    if (run(process.execPath, [...configure, '--host', host], copy) !== 0)
-      throw new Error(`configure-site failed for ${host}`);
-    if (run(process.execPath, [join(scripts, 'build-site.mjs')], copy) !== 0)
-      throw new Error(`build-site failed for ${host}`);
-    const site = join(copy, 'site-dist');
-    const expected = [
-      'index.html',
-      `${FIXTURE}/index.html`,
-      `${FIXTURE}/did.json`,
-      `${FIXTURE}/sw.js`,
-      `${FIXTURE}/manifest.webmanifest`,
-      `${FIXTURE}/licenses/app-sdk/NOTICE`,
-      host === 'netlify' ? '_redirects' : `${FIXTURE}/callback.html`,
-    ];
-    for (const file of expected)
-      if (!existsSync(join(site, file)))
-        throw new Error(`build-site for ${host} wrote no ${file}`);
-    const did = JSON.parse(readFileSync(join(site, FIXTURE, 'did.json'), 'utf8'));
-    if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
-      throw new Error(`unexpected did.json id ${did.id}`);
-  }
-  if (readdirSync(join(dir, 'dist', 'assets')).sort().join() !== localBuild)
+  const assets = (path) => readdirSync(join(path, 'assets')).sort();
+  const localBuild = assets(join(dir, 'dist')).join();
+  // One real build; the routing per host is covered by build-site's tests.
+  const configure = [join(scripts, 'configure-site.mjs'), '--host', 'static'];
+  configure.push('--production', production, '--preview', preview);
+  if (run(process.execPath, configure, copy) !== 0)
+    throw new Error('configure-site failed');
+  if (run(process.execPath, [join(scripts, 'build-site.mjs')], copy) !== 0)
+    throw new Error('build-site failed');
+  const site = join(copy, 'site-dist');
+  for (const file of [
+    'index.html',
+    '404.html',
+    `${FIXTURE}/index.html`,
+    `${FIXTURE}/callback.html`,
+    `${FIXTURE}/sw.js`,
+    `${FIXTURE}/manifest.webmanifest`,
+    `${FIXTURE}/licenses/app-sdk/NOTICE`,
+  ])
+    if (!existsSync(join(site, file)))
+      throw new Error(`build-site wrote no ${file}`);
+  const did = readJson(join(site, FIXTURE, 'did.json'));
+  if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
+    throw new Error(`unexpected did.json id ${did.id}`);
+  if (assets(join(dir, 'dist')).join() !== localBuild)
     throw new Error('build-site changed the local build in dist/');
   // The shipped bundle itself must select the profile: Vite inlines the build
-  // mode as the key that picks it, `production` in a plain build.
-  const selects = (assets, mode) =>
-    readdirSync(assets)
+  // mode as the key that picks it (`production` in a plain build).
+  const SELECTS_PRODUCTION = /\[\s*[`'"]sempods-production[`'"]\s*\]/;
+  const selects = (path) =>
+    assets(path)
       .filter((file) => file.endsWith('.js'))
       .some((file) =>
-        new RegExp(`\\[\\s*[\`'"]${mode}[\`'"]\\s*\\]`).test(
-          readFileSync(join(assets, file), 'utf8'),
+        SELECTS_PRODUCTION.test(
+          readFileSync(join(path, 'assets', file), 'utf8'),
         ),
       );
-  if (!selects(join(copy, 'site-dist', FIXTURE, 'assets'), 'sempods-production'))
+  if (!selects(join(site, FIXTURE)))
     throw new Error('the site bundle does not select the production profile');
-  if (selects(join(dir, 'dist', 'assets'), 'sempods-production'))
+  if (selects(join(dir, 'dist')))
     throw new Error('the local bundle selects a published profile');
 
   const test = join(dir, 'src', 'site-profile.test.ts');
@@ -142,7 +143,7 @@ function publish(copy) {
   } finally {
     rmSync(test);
   }
-  console.log('✓ site build per host and profile selection');
+  console.log('✓ site build and profile selection');
 }
 
 const tracked = spawnSync('git', ['ls-files', '-z'], {

@@ -1,15 +1,7 @@
 // The site's static overview and not-found pages. They run no script and no
 // SDK runtime; each entry links to its app's own page. The entry shape is the
 // data model a richer app overview builds on (#46).
-
-const escape = (text) =>
-  String(text).replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        c
-      ],
-  );
+import { escapeHtml as escape } from './html.mjs';
 
 const TEXT = {
   en: {
@@ -66,11 +58,10 @@ ${body}
 
 function card(entry) {
   // The name follows as text, so the icon is decorative.
+  const letter = [...entry.title.trim()][0]?.toUpperCase() ?? '?';
   const icon = entry.icon
     ? `<img src="${escape(entry.icon)}" alt="" width="64" height="64" />`
-    : `<span class="letter" aria-hidden="true">${escape(
-        [...entry.title.trim()][0]?.toUpperCase() ?? '?',
-      )}</span>`;
+    : `<span class="letter" aria-hidden="true">${escape(letter)}</span>`;
   const description = entry.description
     ? `\n          <span class="description">${escape(entry.description)}</span>`
     : '';

@@ -28,9 +28,10 @@ describe('build-site', () => {
   let root;
   let builds;
   const read = (path) => readFileSync(join(root, 'site-dist', path), 'utf8');
+  const exists = (path) => existsSync(join(root, 'site-dist', path));
   // Stands in for the app's `vite build`: what the PWA build would write.
   const build = (appDir, mode, outDir) => {
-    builds.push({ app: appDir.split(/[\\/]/).pop(), mode, outDir });
+    builds.push([appDir.split(/[\\/]/).pop(), mode, outDir]);
     mkdirSync(outDir, { recursive: true });
     // Vite copies public/ into the output.
     cpSync(join(appDir, 'public'), outDir, { recursive: true });
@@ -95,7 +96,7 @@ describe('build-site', () => {
     });
     buildSite(root, { profile: 'preview', build });
     assert.deepEqual(
-      builds.map(({ app, mode, outDir }) => [app, mode, outDir]),
+      builds,
       [
         ['konsum', 'sempods-preview', join(root, 'site-dist', 'konsum')],
         ['notes', 'sempods-preview', join(root, 'site-dist', 'notes')],
@@ -125,7 +126,7 @@ describe('build-site', () => {
         read('konsum/callback.html'),
         /<meta name="referrer" content="strict-origin" \/>/,
       );
-      assert.equal(existsSync(join(root, 'site-dist', '_redirects')), false);
+      assert.equal(exists('_redirects'), false);
       assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
     }
   });
@@ -140,7 +141,7 @@ describe('build-site', () => {
       read('_redirects'),
       '/konsum/callback /konsum/index.html 200!\n/notes/callback /notes/index.html 200!\n',
     );
-    assert.equal(existsSync(join(root, 'site-dist', 'konsum', 'callback.html')), false);
+    assert.equal(exists('konsum/callback.html'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
   });
 
@@ -175,15 +176,16 @@ describe('build-site', () => {
     assert.match(read('index.html'), /<img src="\/konsum\/icons\/app\.png"/);
   });
 
-  it('rejects a did.json the app ships for another identity', () => {
+  it('replaces a did.json the app ships with the site identity', () => {
     configureSite(root, { production: 'https://apps.example.org' });
-    writeFileSync(
-      join(root, 'apps', 'konsum', 'public', 'did.json'),
-      JSON.stringify({ id: 'did:web:old.example.org:konsum' }),
-    );
-    assert.throws(
-      () => buildSite(root, { build }),
-      /ships a did\.json for another identity/,
+    writeFileSync(join(root, 'apps', 'konsum', 'public', 'did.json'), '{');
+    const { warnings } = buildSite(root, { build });
+    assert.deepEqual(warnings, [
+      'apps/konsum/public/did.json is not published: build-site writes this file itself.',
+    ]);
+    assert.equal(
+      JSON.parse(read('konsum/did.json')).id,
+      'did:web:apps.example.org:konsum',
     );
   });
 
@@ -200,14 +202,8 @@ describe('build-site', () => {
     assert.equal(builds.length, 0);
   });
 
-  it('needs the SDK licence and names an unreadable did.json', () => {
+  it('needs the SDK licence', () => {
     configureSite(root, { production: 'https://apps.example.org' });
-    writeFileSync(join(root, 'apps', 'konsum', 'public', 'did.json'), '{');
-    assert.throws(
-      () => buildSite(root, { build }),
-      /apps\/konsum\/public\/did\.json is not valid JSON/,
-    );
-    rmSync(join(root, 'apps', 'konsum', 'public', 'did.json'));
     rmSync(join(root, 'node_modules', '@sempods', 'client-sdk', 'LICENSE'));
     assert.throws(
       () => buildSite(root, { build }),
@@ -224,12 +220,12 @@ describe('build-site', () => {
     writeFileSync(join(root, 'apps', 'konsum', 'public', '404.html'), 'own');
     const { warnings, apps, site } = buildSite(root, { build });
     assert.deepEqual(warnings, [
-      'apps/konsum/public/_redirects was left out: hosts read it only at the site root, which build-site writes.',
-      'apps/konsum/public/404.html was left out: hosts read it only at the site root, which build-site writes.',
+      'apps/konsum/public/_redirects is not published: build-site writes this file itself.',
+      'apps/konsum/public/404.html is not published: build-site writes this file itself.',
     ]);
     // Cloudflare Pages would otherwise serve the nested 404.html.
-    assert.equal(existsSync(join(root, 'site-dist', 'konsum', '404.html')), false);
-    assert.equal(existsSync(join(root, 'site-dist', 'konsum', '_redirects')), false);
+    assert.equal(exists('konsum/404.html'), false);
+    assert.equal(exists('konsum/_redirects'), false);
     assert.equal(site.production, 'https://apps.example.org');
     assert.deepEqual(
       apps.map((app) => app.id),
@@ -256,7 +252,7 @@ describe('overview page', () => {
       { id: 'a', title: 'Ä<b>', language: 'de', href: '/a/' },
     ]);
     assert.match(html, /<html lang="de">/);
-    assert.match(html, /Ä&lt;b&gt;/);
+    assert.match(html, /Ä&#60;b&#62;/);
     assert.match(html, /<span class="letter" aria-hidden="true">Ä<\/span>/);
     assert.match(html, /:focus-visible/);
     assert.match(html, /color-scheme: light dark/);

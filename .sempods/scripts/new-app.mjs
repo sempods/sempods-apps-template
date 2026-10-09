@@ -20,12 +20,10 @@ import {
   writeApps,
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
+import { escapeHtml } from './lib/html.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 const TEXT = new Set(['.json', '.html', '.md', '.ts', '.tsx', '.css']);
-
-const escapeHtml = (text) =>
-  text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function fillTokens(dir, app) {
   // Directory entries carry their type, so no separate stat precedes the read

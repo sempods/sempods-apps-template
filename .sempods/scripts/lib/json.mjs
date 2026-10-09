@@ -9,3 +9,17 @@ export function readJson(path) {
     throw new Error(`${path} is not valid JSON: ${error.message}`);
   }
 }
+
+/**
+ * Reads a JSON file, or returns undefined when there is none. It reads
+ * directly rather than checking first, because the file could change between
+ * the check and the read.
+ */
+export function readJsonIfPresent(path) {
+  try {
+    return readJson(path);
+  } catch (error) {
+    if (error.code === 'ENOENT') return undefined;
+    throw error;
+  }
+}

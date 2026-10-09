@@ -17,12 +17,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
-import { readJson } from './lib/json.mjs';
+import { readJsonIfPresent } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { SDK } from './sdk-update.mjs';
 
 export const SITE_DIR = 'site-dist';
-const SDK = ['app-sdk', 'client-sdk'];
 
 /** Runs the app's own build script with a site mode into `outDir`. */
 function appBuild(appDir, mode, outDir) {
@@ -34,9 +34,10 @@ function appBuild(appDir, mode, outDir) {
   return pnpm(args, { cwd: appDir }).status === 0;
 }
 
-// Host files only count at the site root, which build-site writes; an app's
-// own copies are removed, or Cloudflare would serve its nested 404.html.
-const HOST_FILES = ['_redirects', '_headers', '404.html'];
+// build-site owns these files in the output: an app's own copies are replaced
+// (did.json) or left out (host files, which hosts read only at the site root;
+// Cloudflare would serve a nested 404.html).
+const OWNED_FILES = ['did.json', '_redirects', '_headers', '404.html'];
 
 // The callback page loads its scripts before the SDK scrubs code and state
 // from the address; without this, same-origin requests carry them in Referer.
@@ -46,16 +47,7 @@ function withReferrerPolicy(html) {
   return html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${REFERRER}`);
 }
 
-// Read or copy directly and treat a missing file as absent, rather than
-// checking first: the file could change between the check and the use.
-function readJsonIfPresent(path) {
-  try {
-    return readJson(path);
-  } catch (error) {
-    if (error.code === 'ENOENT') return undefined;
-    throw error;
-  }
-}
+/** Copies a file and reports false when there is none (no check-then-use). */
 function copyIfPresent(from, to) {
   try {
     copyFileSync(from, to);
@@ -63,6 +55,26 @@ function copyIfPresent(from, to) {
   } catch (error) {
     if (error.code === 'ENOENT') return false;
     throw error;
+  }
+}
+
+/** The SDK's Apache-2.0 notices, which travel with the published code. */
+function copyLicences(roots, appOut, appId) {
+  for (const pkg of SDK) {
+    const to = join(appOut, 'licenses', pkg.split('/')[1]);
+    mkdirSync(to, { recursive: true });
+    let copied = false;
+    for (const base of roots) {
+      const from = join(base, 'node_modules', pkg);
+      if (!copyIfPresent(join(from, 'LICENSE'), join(to, 'LICENSE'))) continue;
+      copyIfPresent(join(from, 'NOTICE'), join(to, 'NOTICE'));
+      copied = true;
+      break;
+    }
+    if (!copied)
+      throw new Error(
+        `${pkg} with its LICENSE is not installed for apps/${appId}; run pnpm install.`,
+      );
   }
 }
 
@@ -80,7 +92,10 @@ function overviewEntry(app, outDir) {
     if (name) entry.title = name;
     if (description) entry.description = description;
     const size = (icon) => Number(String(icon.sizes).split('x')[0]) || 0;
-    const largest = [...icons].sort((a, b) => size(b) - size(a))[0];
+    const largest = icons.reduce(
+      (best, icon) => (!best || size(icon) > size(best) ? icon : best),
+      undefined,
+    );
     // Icon URLs are relative to the manifest, not to the overview at /.
     if (largest?.src) {
       const base = new URL(`${app.path}manifest.webmanifest`, 'https://site.invalid');
@@ -102,7 +117,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       `apps.json has no site.${profile}; run pnpm run configure-site first.`,
     );
   if (apps.length === 0) throw new Error('There are no apps to publish yet.');
-  const host = site.host ?? 'static';
+  const netlify = site.host === 'netlify';
   const out = join(root, SITE_DIR);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
@@ -130,59 +145,29 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
         `apps/${app.id}: the build wrote no index.html to ${SITE_DIR}/${app.id}; the app's build script must end with vite build.`,
       );
 
-    // Some Pods resolve the did:web document before they accept the app.
-    const { clientId } = siteIdentity(site[profile], app);
-    const didFile = join(appOut, 'did.json');
-    let shipped;
-    try {
-      shipped = readJsonIfPresent(didFile);
-    } catch {
-      throw new Error(
-        `apps/${app.id}/public/did.json is not valid JSON; remove it, build-site writes ${clientId}.`,
-      );
-    }
-    if (shipped && shipped.id !== clientId)
-      throw new Error(
-        `apps/${app.id} ships a did.json for another identity; remove it, build-site writes ${clientId}.`,
-      );
-    writeFileSync(
-      didFile,
-      `${JSON.stringify({ '@context': 'https://www.w3.org/ns/did/v1', id: clientId }, null, 2)}\n`,
-    );
-
-    // The SDK's Apache-2.0 notices travel with the published code.
-    for (const name of SDK) {
-      const to = join(appOut, 'licenses', name);
-      mkdirSync(to, { recursive: true });
-      const copied = [appDir, root].some((base) => {
-        const from = join(base, 'node_modules', '@sempods', name);
-        if (!copyIfPresent(join(from, 'LICENSE'), join(to, 'LICENSE')))
-          return false;
-        copyIfPresent(join(from, 'NOTICE'), join(to, 'NOTICE'));
-        return true;
-      });
-      if (!copied)
-        throw new Error(
-          `@sempods/${name} with its LICENSE is not installed for apps/${app.id}; run pnpm install.`,
-        );
-    }
-
-    for (const file of HOST_FILES)
+    for (const file of OWNED_FILES)
       if (existsSync(join(appOut, file))) {
         rmSync(join(appOut, file));
         warnings.push(
-          `apps/${app.id}/public/${file} was left out: hosts read it only at the site root, which build-site writes.`,
+          `apps/${app.id}/public/${file} is not published: build-site writes this file itself.`,
         );
       }
 
+    // Some Pods resolve the did:web document before they accept the app.
+    const { clientId, redirectUri } = siteIdentity(site[profile], app);
+    writeFileSync(
+      join(appOut, 'did.json'),
+      `${JSON.stringify({ '@context': 'https://www.w3.org/ns/did/v1', id: clientId }, null, 2)}\n`,
+    );
+    copyLicences([appDir, root], appOut, app.id);
     writeFileSync(index, withReferrerPolicy(readFileSync(index, 'utf8')));
 
     // The callback must answer 200 at its exact path with its query intact.
-    // Forced (200!), so no file at that path, such as a callback.html the app
-    // ships, can shadow the rewrite.
-    if (host === 'netlify')
-      redirects.push(`${app.path}callback ${app.path}index.html 200!`);
-    else copyFileSync(index, join(appOut, 'callback.html'));
+    // On Netlify the rewrite is forced (200!), so no file at that path can
+    // shadow it.
+    const callback = new URL(redirectUri).pathname;
+    if (netlify) redirects.push(`${callback} ${app.path}index.html 200!`);
+    else copyFileSync(index, join(out, `${callback.slice(1)}.html`));
 
     entries.push(overviewEntry(app, appOut));
   }
@@ -191,8 +176,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve
   // the overview for every unknown path.
   writeFileSync(join(out, '404.html'), renderNotFound(entries));
-  if (host === 'netlify')
-    writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
+  if (netlify) writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
   return { out, apps, site, warnings };
 }
 
