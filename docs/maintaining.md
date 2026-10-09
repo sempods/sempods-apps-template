@@ -56,19 +56,17 @@ Apache-2.0 notice; template MIT-0 does not replace it.
 
 Every file of a copy has an owner, and `update-template` treats it accordingly.
 `.sempods/update-policy.json` is the machine-readable form of this table; the
-release's own policy governs its update. Two kinds of files are not named
-there but are still rewritten: each app's generated configuration
-(`src/sempods.generated.ts`, `vite.sempods.generated.ts`), regenerated from
-`apps.json`, and `pnpm-lock.yaml`. Any other file the policy does not name is
-owner-owned: `update-template` never changes it.
+release's own policy governs its update. Apart from the generated files, a
+file the policy does not name is owner-owned: `update-template` never changes
+it.
 
 | Owner                      | Files                                                                                                                              | On update                                                                                                   | Policy key                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                 | Replace or regenerate as a whole.                                                                           | `replace`                      |
+| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION)                                                              | Replace as a whole.                                                                                         | `replace`                      |
 | Owner                      | App code, `apps.json`, the owner section of AGENTS.md, the setup record in INIT.md, each app's development notes                   | Preserve; never overwrite.                                                                                  | `sections`; unnamed files      |
 | Shared                     | Template part of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, skill adapters, workspace, Git, CI and Dependabot files | Three-way merge with the copy's template version as base; a file the owner changed goes to review.         | `shared`                       |
 | Shared manifests           | Root and app `package.json` files                                                                                                  | Update only template tooling and SDK entries; keep app dependencies, scripts and metadata.                  | `rootManifest`, `appManifests` |
-| Generated dependency state | `pnpm-lock.yaml`                                                                                                                   | Regenerate from the updated manifests with the pinned pnpm version, then install frozen and run all checks. |                                |
+| Generated                  | Each app's `src/sempods.generated.ts` and `vite.sempods.generated.ts`; `pnpm-lock.yaml`                                            | Regenerate from `apps.json`, and the lockfile from the updated manifests with the pinned pnpm version.      | none                           |
 | Template reference         | `docs/vision.md`, `docs/maintaining.md`                                                                                            | Replace if the copy still has them; INIT removes them.                                                      | `replaceIfPresent`             |
 | Owner after setup          | `LICENSE`, `CONTRIBUTING.md`, `.github/CODEOWNERS`, the DCO workflow                                                               | Preserve; report a template change for review.                                                              | `ownerAfterSetup`              |
 | Retired                    | Template paths that a release no longer ships                                                                                      | Remove and report.                                                                                          | `retired`, `ownerReferences`   |
@@ -77,12 +75,6 @@ Keep a removed shared file in `shared` while copies from before its removal can
 still update: the merge deletes it there only if the owner left it unchanged.
 When an upgrade needs a change to an owner-owned file, the upgrade notes explain
 the migration for review; the update never overwrites it.
-
-`update-template` applies a tagged release until `.sempods/` is published as an
-npm package ([#10](https://github.com/sempods/sempods-apps-template/issues/10)).
-Updates then arrive as version pull requests like SDK updates, but they still
-regenerate app configuration and run the checks explicitly: dependencies run no
-install scripts.
 
 ## Template decisions
 
