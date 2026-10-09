@@ -162,6 +162,51 @@ describe('build-site', () => {
     );
   });
 
+  it('refuses generated configuration behind apps.json', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.site.production = 'https://moved.example.org';
+    writeFileSync(file, JSON.stringify(manifest));
+    assert.throws(
+      () => buildSite(root, { build }),
+      /apps\/konsum\/src\/sempods\.generated\.ts does not match apps\.json; run pnpm run configure-site/,
+    );
+    assert.equal(builds.length, 0);
+  });
+
+  it('needs the SDK licence and names an unreadable did.json', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    writeFileSync(join(root, 'apps', 'konsum', 'public', 'did.json'), '{');
+    assert.throws(
+      () => buildSite(root, { build }),
+      /apps\/konsum\/public\/did\.json is not valid JSON/,
+    );
+    rmSync(join(root, 'apps', 'konsum', 'public', 'did.json'));
+    rmSync(join(root, 'node_modules', '@sempods', 'client-sdk', 'LICENSE'));
+    assert.throws(
+      () => buildSite(root, { build }),
+      /@sempods\/client-sdk with its LICENSE is not installed/,
+    );
+  });
+
+  it('warns about host files an app ships, which hosts ignore there', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    writeFileSync(
+      join(root, 'apps', 'konsum', 'public', '_redirects'),
+      '/* /index.html 200\n',
+    );
+    const { warnings, apps, site } = buildSite(root, { build });
+    assert.deepEqual(warnings, [
+      'apps/konsum/public/_redirects is ignored: hosts read it only at the site root, which build-site writes.',
+    ]);
+    assert.equal(site.production, 'https://apps.example.org');
+    assert.deepEqual(
+      apps.map((app) => app.id),
+      ['konsum', 'notes'],
+    );
+  });
+
   it('stops when an app build fails or writes nowhere', () => {
     configureSite(root, { production: 'https://apps.example.org' });
     assert.throws(

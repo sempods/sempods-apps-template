@@ -88,6 +88,20 @@ function publish(copy) {
   }
   if (readdirSync(join(dir, 'dist', 'assets')).sort().join() !== localBuild)
     throw new Error('build-site changed the local build in dist/');
+  // The shipped bundle itself must select the profile: Vite inlines the build
+  // mode as the key that picks it, `production` in a plain build.
+  const selects = (assets, mode) =>
+    readdirSync(assets)
+      .filter((file) => file.endsWith('.js'))
+      .some((file) =>
+        new RegExp(`\\[\\s*[\`'"]${mode}[\`'"]\\s*\\]`).test(
+          readFileSync(join(assets, file), 'utf8'),
+        ),
+      );
+  if (!selects(join(copy, 'site-dist', FIXTURE, 'assets'), 'sempods-production'))
+    throw new Error('the site bundle does not select the production profile');
+  if (selects(join(dir, 'dist', 'assets'), 'sempods-production'))
+    throw new Error('the local bundle selects a published profile');
 
   const test = join(dir, 'src', 'site-profile.test.ts');
   writeFileSync(test, PROFILE_TEST);

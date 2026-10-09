@@ -22,6 +22,7 @@ import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
+import { readJson } from './lib/json.mjs';
 import { checkLinks } from './lib/links.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
@@ -30,7 +31,6 @@ export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
 
-const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
 // Build output, installed packages and static files are not app source.
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'dev-dist', 'public']);

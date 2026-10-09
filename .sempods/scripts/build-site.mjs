@@ -8,15 +8,15 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
-import { PROFILE_MODES } from './lib/generate.mjs';
+import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
+import { readJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
 
@@ -25,12 +25,16 @@ const SDK = ['app-sdk', 'client-sdk'];
 
 /** Runs the app's own build script with a site mode into `outDir`. */
 function appBuild(appDir, mode, outDir) {
-  // pnpm appends these to the script's final `vite build`.
-  const args = ['run', 'build', '--mode', mode, '--outDir', outDir];
-  return pnpm([...args, '--emptyOutDir'], { cwd: appDir }).status === 0;
+  // pnpm appends these to the script's final `vite build`. The output path is
+  // relative to the app, so no user directory name passes through the Windows
+  // shell (lib/pnpm.mjs).
+  const args = ['run', 'build', '--mode', mode, '--outDir'];
+  args.push(relative(appDir, outDir), '--emptyOutDir');
+  return pnpm(args, { cwd: appDir }).status === 0;
 }
 
-const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
+// Host files only count at the site root; an app's own copies are ignored.
+const HOST_FILES = ['_redirects', '_headers', '404.html'];
 
 /** The overview entry of a built app: apps.json, then its PWA manifest. */
 function overviewEntry(app, outDir) {
@@ -53,7 +57,7 @@ function overviewEntry(app, outDir) {
   return entry;
 }
 
-/** Builds the site for `profile`; returns the output directory. */
+/** Builds the site for `profile`; returns what it built and any warnings. */
 export function buildSite(root, { profile = 'production', build = appBuild } = {}) {
   if (!SITE_PROFILES.includes(profile))
     throw new Error(`The profile is one of ${SITE_PROFILES.join(', ')}.`);
@@ -68,8 +72,18 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
+  // A hand edit of apps.json would build one identity and publish another.
+  for (const app of apps) {
+    const stale = staleGenerated(join(root, 'apps', app.id), app, site);
+    if (stale.length > 0)
+      throw new Error(
+        `apps/${app.id}/${stale[0]} does not match apps.json; run pnpm run configure-site to regenerate it.`,
+      );
+  }
+
   const entries = [];
   const redirects = [];
+  const warnings = [];
   for (const app of apps) {
     const appDir = join(root, 'apps', app.id);
     const appOut = join(out, app.id);
@@ -84,7 +98,16 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     // Some Pods resolve the did:web document before they accept the app.
     const { clientId } = siteIdentity(site[profile], app);
     const didFile = join(appOut, 'did.json');
-    if (existsSync(didFile) && readJson(didFile).id !== clientId)
+    let shipped;
+    if (existsSync(didFile))
+      try {
+        shipped = readJson(didFile);
+      } catch {
+        throw new Error(
+          `apps/${app.id}/public/did.json is not valid JSON; remove it, build-site writes ${clientId}.`,
+        );
+      }
+    if (shipped && shipped.id !== clientId)
       throw new Error(
         `apps/${app.id} ships a did.json for another identity; remove it, build-site writes ${clientId}.`,
       );
@@ -97,14 +120,23 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     for (const name of SDK) {
       const from = [appDir, root]
         .map((base) => join(base, 'node_modules', '@sempods', name))
-        .find((dir) => existsSync(dir));
-      if (!from) continue;
+        .find((dir) => existsSync(join(dir, 'LICENSE')));
+      if (!from)
+        throw new Error(
+          `@sempods/${name} with its LICENSE is not installed for apps/${app.id}; run pnpm install.`,
+        );
       const to = join(appOut, 'licenses', name);
       mkdirSync(to, { recursive: true });
       for (const file of ['LICENSE', 'NOTICE'])
         if (existsSync(join(from, file)))
           copyFileSync(join(from, file), join(to, file));
     }
+
+    for (const file of HOST_FILES)
+      if (existsSync(join(appOut, file)))
+        warnings.push(
+          `apps/${app.id}/public/${file} is ignored: hosts read it only at the site root, which build-site writes.`,
+        );
 
     // The callback must answer 200 at its exact path with its query intact.
     if (host === 'netlify')
@@ -120,7 +152,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   writeFileSync(join(out, '404.html'), renderNotFound(entries));
   if (host === 'netlify')
     writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
-  return out;
+  return { out, apps, site, warnings };
 }
 
 function main() {
@@ -131,8 +163,8 @@ function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
   const profile =
     values.profile ?? process.env.SEMPODS_SITE_PROFILE ?? 'production';
-  buildSite(root, { profile });
-  const { apps, site } = readApps(root);
+  const { apps, site, warnings } = buildSite(root, { profile });
+  for (const warning of warnings) console.warn(`build-site: ${warning}`);
   console.log(`\nBuilt ${SITE_DIR}/ for ${site[profile]} (${profile}):`);
   for (const app of apps) console.log(`  ${site[profile]}${app.path}`);
 }
