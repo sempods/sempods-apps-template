@@ -12,6 +12,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -169,6 +170,14 @@ function standalone(root, id) {
     // The workspace settings (no install scripts, Node version, release age)
     // apply here too; its package pattern matches nothing in the copy.
     cpSync(join(root, 'pnpm-workspace.yaml'), join(work, 'pnpm-workspace.yaml'));
+    // The copy installs with the root's pinned pnpm, not whichever pnpm or
+    // Corepack default would serve a manifest without packageManager.
+    const manifest = readJson(join(work, 'package.json'));
+    manifest.packageManager = readJson(join(root, 'package.json')).packageManager;
+    writeFileSync(
+      join(work, 'package.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
     // Installs, lints, builds and tests without the workspace, so a package that
     // only another app or the root tooling provides fails here.
     return (
