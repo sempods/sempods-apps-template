@@ -50,20 +50,26 @@ Apache-2.0 notice; template MIT-0 does not replace it.
 
 ## Release the template
 
-A change that copies should receive is a release. In the same PR, raise
-`.sempods/VERSION` (semver; before 1.0 a minor release for changes that need
-upgrade work) and add a section to `.sempods/CHANGELOG.md` with its changes and
-upgrade notes written for the assistant that applies them. Name what
-`update-template` cannot do alone: owner files to adapt, configuration choices,
-SDK migrations. New shared files, retired paths and owner sections belong in
-`.sempods/update-policy.json`; the new release's policy governs its update.
+A change that copies should receive belongs to a release, and one release can
+collect several PRs. The first PR of a release raises `.sempods/VERSION`
+(semver; before 1.0 a minor release for changes that need upgrade work) and adds
+a section to `.sempods/CHANGELOG.md` with its changes and upgrade notes written
+for the assistant that applies them; later PRs of the same release extend that
+section instead of raising the version again. Name what `update-template` cannot
+do alone: owner files to adapt, configuration choices, SDK migrations. New shared
+files, retired paths and owner sections belong in `.sempods/update-policy.json`;
+the new release's policy governs its update.
 
-After the merge, the owner tags `v<version>` on the merge commit;
-`update-template` only offers tagged releases. Tags are never moved. The repository ruleset `protect-release-tags` protects
-`refs/tags/v*` against updates and deletion, with no bypass actors; new tags
-remain allowed. This GitHub setting is not installed by template updates. Verify an
-upgrade from the previous release in a copy before tagging, and keep the update
-tests in `.sempods/scripts/test/` passing.
+Merge a release's PRs in one go, then the owner tags `v<version>` on the last
+merge commit; `update-template` only offers tagged releases. In between, `main`
+carries the new version without its tag. A copy created from `main` then would
+later be updated against the tag's tree instead of the one it received, so keep
+that window short. Tags are never moved. The repository ruleset
+`protect-release-tags` protects `refs/tags/v*` against updates and deletion,
+with no bypass actors; new tags remain allowed. This GitHub setting is not
+installed by template updates. Verify an upgrade from the previous release in a
+copy before tagging, and keep the update tests in `.sempods/scripts/test/`
+passing.
 
 ## Handoff
 
