@@ -260,7 +260,11 @@ function setup({ tagOld = false, dev = false } = {}) {
   const root = JSON.parse(read(instance, 'package.json'));
   root.scripts.mine = 'echo mine';
   file(instance, 'package.json', json(root));
-  file(instance, 'apps.json', json({ schemaVersion: 1, apps: [app] }));
+  file(
+    instance,
+    'apps.json',
+    json({ schemaVersion: 1, apps: [app], sdkAutoUpdates: true }),
+  );
   file(
     instance,
     'apps/demo/package.json',

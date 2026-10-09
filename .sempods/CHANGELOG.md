@@ -6,6 +6,37 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.6.0
+
+### Changes
+
+- The assistant assumes no developer knowledge, builds small steps the owner
+  can try and chooses routine SDK and RDF details itself. It asks about app
+  behavior and data access in everyday terms.
+- Setup reaches the first local interaction before adapting inherited files
+  and offering optional review ownership and automatic SDK updates. Deferred
+  preferences do not block setup completion. The maintainer guide includes a
+  copyable prompt for explicit template work.
+- Scheduled SDK update jobs require `sdkAutoUpdates: true` in the owner's
+  `apps.json` on the default branch, even if Actions permits PR creation or an
+  organization-level variable enables updates elsewhere. A read-only job
+  checks the committed choice first; manual dispatch remains available.
+  App generation and template updates preserve this owner-owned field.
+
+### Upgrade notes
+
+1. Shared AGENTS.md and INIT.md changes preserve existing owner and setup
+   records. Do not repeat completed setup. For an incomplete setup, build the
+   first local interaction before offering optional repository preferences.
+2. Scheduled SDK updates now skip the update job unless `sdkAutoUpdates` in
+   `apps.json` on the default branch is `true`. If a copy used weekly updates,
+   explain this change and use its recorded owner choice, or ask if no choice
+   is recorded. Follow INIT's activation steps and verify both the committed field
+   and the Actions PR setting. Leave a deferred choice inactive. Record the
+   result without treating PR creation permission alone as an opt-in.
+3. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
+   and the template self-test; local and manual SDK updates remain available.
+
 ## 0.5.0
 
 ### Changes
