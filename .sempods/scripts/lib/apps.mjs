@@ -11,6 +11,8 @@ export const SITE_PROFILES = ['production', 'preview'];
 export const SITE_HOSTS = ['netlify', 'cloudflare-pages', 'static'];
 const SITE_KEYS = new Set([...SITE_PROFILES, 'host']);
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+// One DNS label: letters, digits and inner hyphens, at most 63 characters.
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
 // Paths the site itself uses, and directory names that would confuse the
@@ -63,11 +65,14 @@ export function invalidOrigin(value) {
     return reason;
   if (LOOPBACK.has(url.hostname))
     return 'must be a public host; local development keeps its own profile';
-  // did:web names a host by its domain name, never by an IP address.
+  // did:web names a host by its fully qualified domain name, never by an IP
+  // address; the URL parser alone accepts empty or hyphen-edged labels.
+  const labels = url.hostname.split('.');
   if (
-    url.hostname.startsWith('[') ||
-    /^\d+(\.\d+){3}$/.test(url.hostname) ||
-    !url.hostname.includes('.')
+    labels.length < 2 ||
+    url.hostname.length > 253 ||
+    !labels.every((label) => DNS_LABEL.test(label)) ||
+    /^\d+$/.test(labels.at(-1))
   )
     return 'must name a domain, such as https://apps.example.org; did:web allows no IP address or single-label host';
   return undefined;

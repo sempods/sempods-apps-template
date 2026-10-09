@@ -122,6 +122,10 @@ describe('apps.json', () => {
       'https://192.0.2.1',
       'https://[2001:db8::2]',
       'https://intranet',
+      'https://a..example.org',
+      'https://-bad.example.org',
+      'https://bad-.example.org',
+      `https://${'a'.repeat(64)}.example.org`,
       'apps.example.org',
     ])
       assert.notEqual(invalidOrigin(origin), undefined, origin);
@@ -198,10 +202,10 @@ describe('generated configuration', () => {
       preview: 'https://preview--apps.netlify.app',
     })['src/sempods.generated.ts'];
     for (const host of ['apps.example.org', 'preview--apps.netlify.app']) {
-      assert.match(runtime, new RegExp(`clientId: "did:web:${host}:demo"`));
-      assert.match(
-        runtime,
-        new RegExp(`redirectUri: "https://${host}/demo/callback"`),
+      assert.ok(runtime.includes(`clientId: "did:web:${host}:demo"`), host);
+      assert.ok(
+        runtime.includes(`redirectUri: "https://${host}/demo/callback"`),
+        host,
       );
     }
     assert.match(runtime, /^  local,\n  production,\n  preview,$/m);
