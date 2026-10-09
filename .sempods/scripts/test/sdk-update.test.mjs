@@ -39,7 +39,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
   // pnpm-lock.yaml as pnpm writes it: importers with exact specifiers, the
   // app SDK with its React peer suffix, and one entry per resolved package.
   const LOCK = 'pnpm-lock.yaml';
-  const writeLock = (importers, packages) => {
+  const writeLock = ({ importers, packages }) => {
     const entry = ([name, version]) => [
       `      '${name}':`,
       `        specifier: ${version.replace(/\(.*/, '')}`,
@@ -85,8 +85,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ version }));
     }
-    const lock = lockFor(version);
-    writeLock(lock.importers, lock.packages);
+    writeLock(lockFor(version));
     const reference = join(
       root,
       'node_modules/@sempods/app-sdk/docs/ai-app-builder.md',
@@ -251,17 +250,17 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       () => {
         const lock = lockFor('0.3.0');
         lock.importers['.'].devDependencies[SDK[0]] = '0.2.0(react@19.3.0)';
-        writeLock(lock.importers, lock.packages);
+        writeLock(lock);
       },
       () => {
         const lock = lockFor('0.3.0');
         lock.importers['apps/two'].dependencies[SDK[1]] = '0.2.0';
-        writeLock(lock.importers, lock.packages);
+        writeLock(lock);
       },
       () => {
         const lock = lockFor('0.3.0');
         lock.packages[0] = `${SDK[0]}@0.2.0`;
-        writeLock(lock.importers, lock.packages);
+        writeLock(lock);
       },
       () =>
         writeFileSync(

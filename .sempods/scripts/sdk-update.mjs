@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // One release for the root tooling, skeleton and every registered app.
-import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   existsSync,
@@ -13,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
-import { INSTALL, scriptArgs } from './lib/pnpm.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 export const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
 // SemVer 2.0: numeric identifiers cannot have leading zeroes.
@@ -46,12 +45,11 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-function pnpm(root, args, capture = false) {
-  const result = spawnSync('pnpm', args, {
+function pnpmOrThrow(root, args, capture = false) {
+  const result = pnpm(args, {
     cwd: root,
     stdio: capture ? 'pipe' : 'inherit',
     encoding: 'utf8',
-    shell: process.platform === 'win32',
   });
   if (result.status !== 0)
     throw new Error(
@@ -62,7 +60,7 @@ function pnpm(root, args, capture = false) {
 
 export function registryLookup(root, name, version) {
   try {
-    return pnpm(
+    return pnpmOrThrow(
       root,
       ['view', `${name}@${version}`, 'version', 'dependencies', '--json'],
       true,
@@ -199,7 +197,7 @@ export function applyUpdate(
   root,
   plan,
   {
-    run = (args) => pnpm(root, args),
+    run = (args) => pnpmOrThrow(root, args),
     referenceExists = () =>
       existsSync(
         join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),

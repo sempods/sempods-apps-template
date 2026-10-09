@@ -16,6 +16,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pnpm } from './lib/pnpm.mjs';
 
 const FIXTURE = 'self-test';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -61,11 +62,11 @@ try {
   const expectedCompiler = JSON.parse(
     readFileSync(join(copy, 'apps', FIXTURE, 'package.json'), 'utf8'),
   ).devDependencies.typescript;
-  const compiler = spawnSync(
-    'pnpm',
-    ['--dir', join(copy, 'apps', FIXTURE), 'exec', 'tsc', '--version'],
-    { cwd: copy, encoding: 'utf8', shell: process.platform === 'win32' },
-  );
+  const compiler = pnpm(['exec', 'tsc', '--version'], {
+    cwd: join(copy, 'apps', FIXTURE),
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
   if (
     compiler.status !== 0 ||
     compiler.stdout.trim() !== `Version ${expectedCompiler}`

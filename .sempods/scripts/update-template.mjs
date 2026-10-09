@@ -33,7 +33,7 @@ import {
   EXACT_VERSION,
   PENDING_UPDATE,
 } from './sdk-update.mjs';
-import { INSTALL, scriptArgs } from './lib/pnpm.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
 const here = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -367,11 +367,7 @@ export async function applyRelease(
     afterReplace = () => {},
     // pnpm's output goes to stderr, so stdout carries only the report.
     pnpmRun = (args) =>
-      spawnSync('pnpm', args, {
-        cwd: instance,
-        stdio: ['ignore', 2, 2],
-        shell: process.platform === 'win32',
-      }).status === 0,
+      pnpm(args, { cwd: instance, stdio: ['ignore', 2, 2] }).status === 0,
   } = {},
 ) {
   const pending = readText(join(instance, CHECKPOINT));
@@ -610,14 +606,8 @@ export async function applyRelease(
     from,
   );
   report.resumed = Boolean(resumed);
-  // A copy from before pnpm keeps its resolved versions: pnpm converts the npm
-  // lockfile, which then goes.
-  const npmLock = existsSync(join(instance, NPM_LOCKFILE));
-  if (npmLock && !install)
-    report.review.push(
-      `${NPM_LOCKFILE}: convert it with pnpm import, delete it, then run pnpm install`,
-    );
   // Complete only once the dependencies are installed; until then a rerun resumes.
+  const npmLock = existsSync(join(instance, NPM_LOCKFILE));
   if (install) {
     const failed = (step) => {
       report.unfinished = true;
@@ -626,15 +616,19 @@ export async function applyRelease(
       );
       return report;
     };
-    if (npmLock && !existsSync(join(instance, 'pnpm-lock.yaml'))) {
-      if (!pnpmRun(['import'])) return failed('pnpm import');
-    }
+    // A copy from before pnpm keeps its resolved versions: pnpm converts the
+    // npm lockfile, which then goes.
     if (npmLock) {
+      if (!existsSync(join(instance, 'pnpm-lock.yaml')) && !pnpmRun(['import']))
+        return failed('pnpm import');
       rmSync(join(instance, NPM_LOCKFILE));
       report.removed.push(NPM_LOCKFILE);
     }
     if (!pnpmRun(INSTALL)) return failed('pnpm install');
-  }
+  } else if (npmLock)
+    report.review.push(
+      `${NPM_LOCKFILE}: convert it with pnpm import, delete it, then run pnpm install`,
+    );
   write('.sempods/VERSION', readText(join(release, '.sempods', 'VERSION')));
   write(CHECKPOINT, null);
   return report;

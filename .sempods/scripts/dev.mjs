@@ -15,7 +15,5 @@ if (!app) {
   process.exit(2);
 }
 console.log(`${app.title}: http://127.0.0.1:${app.devPort}${app.path}`);
-const result = pnpm(['--dir', join(root, 'apps', app.id), 'run', 'dev'], {
-  cwd: root,
-});
+const result = pnpm(['run', 'dev'], { cwd: join(root, 'apps', app.id) });
 process.exit(result.status ?? 1);

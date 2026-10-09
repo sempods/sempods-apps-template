@@ -2,7 +2,7 @@
 // fresh CI checkout without node_modules can read it. pnpm writes the lockfile
 // with two-space indentation and one key per line.
 
-const unquote = (key) => key.replace(/^(['"])(.*)\1$/, '$2');
+const unquote = (text) => text.replace(/^(['"])(.*)\1$/, '$2');
 
 /**
  * Locked versions: `importers` maps an importer path ('.' or 'apps/<id>') to
@@ -15,19 +15,23 @@ export function readLockfile(text) {
   const packages = new Set();
   let top, importer, section, name;
   for (const line of text.split(/\r?\n/)) {
-    const match = /^( *)([^ #][^:]*|'[^']*'|"[^"]*"):(?: (.*))?$/.exec(line);
+    const match = /^( *)([^ ][^:]*):(?: (.*))?$/.exec(line);
     if (!match) continue;
-    const indent = match[1].length;
-    const key = unquote(match[2].trim());
-    const value = match[3]?.trim();
+    const [, { length: indent }, rawKey, value] = match;
+    const key = unquote(rawKey);
     if (indent === 0) top = key;
     else if (top === 'packages' && indent === 2) packages.add(key);
-    else if (top !== 'importers') continue;
-    else if (indent === 2) importers[(importer = key)] = {};
-    else if (indent === 4) importers[importer][(section = key)] = {};
-    else if (indent === 6) name = key;
-    else if (indent === 8 && key === 'version' && value)
-      importers[importer][section][name] = unquote(value).replace(/\(.*$/, '');
+    else if (top === 'importers') {
+      if (indent === 2) {
+        importer = key;
+        importers[importer] = {};
+      } else if (indent === 4) {
+        section = key;
+        importers[importer][section] = {};
+      } else if (indent === 6) name = key;
+      else if (indent === 8 && key === 'version' && value)
+        importers[importer][section][name] = unquote(value).replace(/\(.*$/, '');
+    }
   }
   return { importers, packages };
 }

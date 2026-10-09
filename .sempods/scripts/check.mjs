@@ -216,13 +216,10 @@ async function main() {
     }),
   );
   for (const app of readAppsSafe(root)) {
-    const dir = ['--dir', join(root, 'apps', app.id)];
-    step(`apps/${app.id}: lint`, run([...dir, 'run', 'lint'], root));
-    step(
-      `apps/${app.id}: typecheck and build`,
-      run([...dir, 'run', 'build'], root),
-    );
-    step(`apps/${app.id}: tests`, run([...dir, 'run', 'test'], root));
+    const dir = join(root, 'apps', app.id);
+    step(`apps/${app.id}: lint`, run(['run', 'lint'], dir));
+    step(`apps/${app.id}: typecheck and build`, run(['run', 'build'], dir));
+    step(`apps/${app.id}: tests`, run(['run', 'test'], dir));
   }
   // Outside the workspace, an app finds only what its own package.json
   // declares, including CLIs its scripts call.
