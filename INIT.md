@@ -24,7 +24,8 @@ scripts, configuration or a replacement SDK reference to work around it.
 
 Use the request and recorded answers. Ask only for missing information needed
 for the first useful interaction. Use the requested UI language, or the owner's
-language when supported (`de` or `en`). Choose a short app ID from the idea,
+language when supported (`de` or `en`); otherwise use `en` and tell the owner.
+Choose a short app ID from the idea,
 such as `konsum`, and tell the owner; the generator validates allowed IDs and
 reserved names. Record choices and progress as they become known.
 
@@ -73,8 +74,10 @@ manifest or choose another ID silently to make setup pass. A failed command
 leaves setup in progress; diagnose it before proceeding.
 
 Continue with the [app workflow](.sempods/instructions/app-workflow.md) for the
-first useful interaction. If a test Pod is available, let the user sign in in
-the browser and select their test context. Run `pnpm run check` in another
+first useful interaction. Once the owner can try the screen, ask once whether
+they have a test Pod for trying it with data, unless the setup record answers
+that. If so, let the user sign in in the browser and select their test context;
+otherwise record Pod testing as pending. Run `pnpm run check` in another
 terminal and report its result.
 
 ## Adapt the user's copy
@@ -112,12 +115,13 @@ owner and enable automatic SDK update PRs. Use choices already given. If the
 owner has not chosen these preferences, leave them deferred; do not wait for an
 answer to finish local setup. If the owner wants review rules, ask for the
 GitHub user/team unless it is known; do not infer a handle from a display name.
-Update `.github/CODEOWNERS` while
-preserving owner-created entries. Record the owner's name if provided; it is
-not a prerequisite for setup.
+Update `.github/CODEOWNERS` while preserving owner-created entries. Record the
+owner's name if provided; it is not a prerequisite for setup.
 
-Record deferred preferences individually in the existing setup record and
-continue app work. Do not inspect remote settings for deferred automatic
+Record each preference in its existing setup record field and continue app
+work: `deferred` for an open choice, otherwise the choice and what you
+verified, for example `enabled; sdkAutoUpdates true on the default branch; PR
+creation allowed` or `pending; PR creation not yet allowed`. Do not inspect remote settings for deferred automatic
 updates or repeat deferred questions on a resumed run unless the owner asks to
 revisit them.
 

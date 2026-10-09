@@ -15,8 +15,7 @@ alone: owner files, configuration choices and the SDK migration.
   behavior and data access in everyday terms.
 - Setup reaches the first local interaction before adapting inherited files
   and offering optional review ownership and automatic SDK updates. Deferred
-  preferences do not block setup completion. The maintainer guide includes a
-  copyable prompt for explicit template work.
+  preferences do not block setup completion.
 - Scheduled SDK update jobs require `sdkAutoUpdates: true` in the owner's
   `apps.json` on the default branch, even if Actions permits PR creation or an
   organization-level variable enables updates elsewhere. A read-only job
@@ -51,8 +50,9 @@ alone: owner files, configuration choices and the SDK migration.
   site has a top-level `404.html`. The skeleton's `index.html` sets the
   referrer policy `strict-origin` for new apps.
 - The new [publish guide](instructions/publish.md) states what any host must
-  provide, with sections for Netlify and Cloudflare Pages. The app workflow, `docs/start.md`, `README.md` and
-  `INIT.md` point to it.
+  provide, with sections for Netlify (tested live on a two-app site with a
+  preview address) and Cloudflare Pages (not tested by the template). The app
+  workflow, `docs/start.md`, `README.md` and `INIT.md` point to it.
 
 ### Upgrade notes
 

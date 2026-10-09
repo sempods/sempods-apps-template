@@ -69,7 +69,7 @@ Every host, whatever it is:
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
-### Netlify
+### Netlify (tested)
 
 Use `--host netlify`: `build-site` writes `_redirects` with one rule per app,
 `/<id>/callback /<id>/index.html 200!` (forced, so no file at that path shadows

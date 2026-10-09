@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -13,17 +14,27 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
-const workflow = readFileSync(
-  new URL('../../../.github/workflows/sdk-update.yml', import.meta.url),
-  'utf8',
+// These tests guard the template's own workflow. A copy may merge or adapt
+// sdk-update.yml, so they skip there instead of failing the copy's checks.
+// Setup removes the maintainer guide from a copy and updates do not restore it.
+const template = existsSync(
+  new URL('../../../docs/maintaining.md', import.meta.url),
 );
+const workflow = template
+  ? readFileSync(
+      new URL('../../../.github/workflows/sdk-update.yml', import.meta.url),
+      'utf8',
+    )
+  : '';
 const gate = workflow.match(/^    if: >-\n((?:      .*\n)+)/m);
-assert.ok(gate, 'SDK preference job must have an explicit event gate');
 const script = workflow.match(
   /          node --input-type=module <<'JS'\n([\s\S]*?)          JS/,
 );
-assert.ok(script, 'SDK preference job must read the repository choice');
-const source = script[1].replace(/^          /gm, '');
+if (template) {
+  assert.ok(gate, 'SDK preference job must have an explicit event gate');
+  assert.ok(script, 'SDK preference job must read the repository choice');
+}
+const source = script?.[1].replace(/^          /gm, '');
 const upstream = 'sempods/sempods-apps-template';
 const instance = 'owner/apps';
 
@@ -57,7 +68,9 @@ const choice = (event, sdkAutoUpdates, inherited = 'true') => {
   return readFileSync(output, 'utf8').trim();
 };
 
-describe('SDK update workflow', () => {
+describe('SDK update workflow', {
+  skip: !template && 'the workflow is shared with the owner in a copy',
+}, () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'sempods-sdk-preference-'));
     const lib = join(root, '.sempods/scripts/lib');

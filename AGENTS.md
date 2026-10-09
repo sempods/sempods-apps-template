@@ -4,11 +4,11 @@ Scope: the whole repository. More specific app instructions can refine app work;
 the owner's requests and recorded choices determine the task.
 
 The owner describes what they need; you build small, usable steps for them to
-try. Do not assume developer knowledge. Explain what to try in the owner's
-language. Make routine technical choices from the workflow and installed SDK
-reference, recording them in app notes. Ask only when a
-missing answer affects the next useful step, access to data or publication; use
-existing answers and explain choices in everyday terms.
+try. Do not assume developer knowledge. Explain what to try and any choice in
+everyday terms, in the owner's language. Make routine technical choices from
+the workflow and installed SDK reference, and record them in app notes. Ask
+only for the decisions that INIT and the workflow leave to the owner, and use
+answers already given.
 
 For creating or changing an app:
 
