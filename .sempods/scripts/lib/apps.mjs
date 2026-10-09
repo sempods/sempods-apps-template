@@ -63,6 +63,13 @@ export function invalidOrigin(value) {
     return reason;
   if (LOOPBACK.has(url.hostname))
     return 'must be a public host; local development keeps its own profile';
+  // did:web names a host by its domain name, never by an IP address.
+  if (
+    url.hostname.startsWith('[') ||
+    /^\d+(\.\d+){3}$/.test(url.hostname) ||
+    !url.hostname.includes('.')
+  )
+    return 'must name a domain, such as https://apps.example.org; did:web allows no IP address or single-label host';
   return undefined;
 }
 

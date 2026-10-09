@@ -119,6 +119,9 @@ describe('apps.json', () => {
       'https://Apps.example.org',
       'https://user@apps.example.org',
       'https://localhost',
+      'https://192.0.2.1',
+      'https://[2001:db8::2]',
+      'https://intranet',
       'apps.example.org',
     ])
       assert.notEqual(invalidOrigin(origin), undefined, origin);
