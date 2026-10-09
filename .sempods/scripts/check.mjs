@@ -166,7 +166,7 @@ function standalone(root, id, packageManager) {
       filter: (src) =>
         !/[\\/](node_modules|dist)([\\/]|$)/.test(src.slice(root.length)),
     });
-    // The workspace settings (no install scripts, Node version, release age)
+    // The workspace settings (no install scripts, Node version, overrides)
     // apply here too; its package pattern matches nothing in the copy.
     cpSync(join(root, 'pnpm-workspace.yaml'), join(work, 'pnpm-workspace.yaml'));
     // The copy installs with the root's pinned pnpm, not whichever pnpm or

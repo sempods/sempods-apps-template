@@ -13,10 +13,13 @@ verifyDepsBeforeRun: error
 # Dependencies run no install scripts: pnpm fails an install that would need
 # one (strictDepBuilds). Approve a package deliberately under allowBuilds.
 
-# Releases of the sempods SDK install on their release day; every other
-# package waits pnpm's default day (minimumReleaseAge).
-minimumReleaseAgeExclude:
-  - '@sempods/*'
+# Local installs have no minimum release age: pnpm would otherwise install a
+# dependency younger than a day anyway when nothing older fits, add it to this
+# file and stop the next `pnpm run` (verifyDepsBeforeRun). Dependabot applies
+# a cooldown to regular version updates (.github/dependabot.yml). That is no
+# universal age guarantee: local dependency changes, security updates and
+# pnpm fallback paths can admit younger releases.
+minimumReleaseAge: 0
 
 overrides:
   # The Markdown link check (unified-engine 11 and its npm config loader)

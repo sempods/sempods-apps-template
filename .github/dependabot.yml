@@ -26,6 +26,11 @@ updates:
     schedule:
       interval: 'weekly'
     versioning-strategy: 'increase'
+    # Regular version updates wait three days; Dependabot also attempts an age
+    # gate for newly resolved transitive dependencies. Security updates skip
+    # it. The SDK is updated through sdk-update and ignored here.
+    cooldown:
+      default-days: 3
     ignore:
       - dependency-name: '@sempods/*'
       # The root import checker requires the TypeScript 6 compiler API.
@@ -64,6 +69,11 @@ updates:
     schedule:
       interval: 'weekly'
     versioning-strategy: 'increase'
+    # Regular version updates wait three days; Dependabot also attempts an age
+    # gate for newly resolved transitive dependencies. Security updates skip
+    # it. The SDK is updated through sdk-update and ignored here.
+    cooldown:
+      default-days: 3
     ignore:
       - dependency-name: '@sempods/*'
       # Match the Node 24 runtime baseline; review runtime and typings together.
