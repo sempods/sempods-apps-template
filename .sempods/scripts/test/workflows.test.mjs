@@ -14,12 +14,16 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
+const upstream = 'sempods/sempods-apps-template';
+const instance = 'owner/apps';
+
 // These tests guard the template's own workflow. A copy may merge or adapt
 // sdk-update.yml, so they skip there instead of failing the copy's checks.
-// Setup removes the maintainer guide from a copy and updates do not restore it.
-const template = existsSync(
-  new URL('../../../docs/maintaining.md', import.meta.url),
-);
+// CI names the repository; locally, the maintainer guide marks the template
+// (setup removes it from a copy and updates do not restore it).
+const template =
+  process.env.GITHUB_REPOSITORY === upstream ||
+  existsSync(new URL('../../../docs/maintaining.md', import.meta.url));
 const workflow = template
   ? readFileSync(
       new URL('../../../.github/workflows/sdk-update.yml', import.meta.url),
@@ -35,8 +39,6 @@ if (template) {
   assert.ok(script, 'SDK preference job must read the repository choice');
 }
 const source = script?.[1].replace(/^          /gm, '');
-const upstream = 'sempods/sempods-apps-template';
-const instance = 'owner/apps';
 
 // The event gate uses the string-comparison subset shared by Actions and JS.
 // The preference tests execute the actual workflow script against a fixture.

@@ -16,6 +16,8 @@ alone: owner files, configuration choices and the SDK migration.
 - The template's plan is retired: `docs/plan.md` is gone, and setup no longer
   lists it among the contributor documents it removes.
 - `.gitignore` no longer lists `netlify-dist/`, which no script writes.
+- `.sempods/README.md` lists `configure-site`, `build-site`, `sdk-update` and
+  the shared instructions.
 
 ### Upgrade notes
 
