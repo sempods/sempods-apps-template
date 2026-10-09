@@ -4,6 +4,7 @@
 // local development keeps its own profile.
 // Usage: pnpm run configure-site --production <origin> [--preview <origin> |
 //        --no-preview] [--host netlify|cloudflare-pages|static] [--change-domain]
+import { callbackUrl, checkDidWeb } from '@sempods/client-sdk/oauth/host';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +49,23 @@ export function configureSite(
   const next = { ...manifest, site };
   const problems = validateApps(next);
   if (problems.length > 0) throw new Error(problems.join('; '));
+  // The SDK's own checks, so a site is accepted exactly when the runtime
+  // would accept its identities (canonical HTTPS callback, no loopback,
+  // did:web matching the callback).
+  for (const profile of SITE_PROFILES) {
+    if (!site[profile]) continue;
+    const { clientId, redirectUri } = siteIdentity(site[profile], {
+      id: 'app',
+      path: '/app/',
+    });
+    try {
+      checkDidWeb(clientId, callbackUrl(redirectUri, false));
+    } catch {
+      throw new Error(
+        `site.${profile} ${site[profile]} is not a published address the SDK accepts: use a public HTTPS host, such as https://apps.example.org.`,
+      );
+    }
+  }
   writeApps(root, next);
   for (const app of next.apps) {
     const dir = join(root, 'apps', app.id);
@@ -84,6 +102,7 @@ function main() {
       console.log(`  ${app.id}: ${clientId} → ${redirectUri}`);
     }
   }
+  console.log('\nBuild it: pnpm run build-site (see .sempods/instructions/publish.md)');
 }
 
 if (

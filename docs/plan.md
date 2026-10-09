@@ -148,12 +148,21 @@ Scripts (deterministic, tested in CI):
   install/build proves portability beyond an import lint. Use a reusable
   Markdown checker and a small navigation check; do not invent a parser or
   change sempods-spec tooling.
-- `build-site` (M3): builds every app into its path of one publish folder,
-  writes the per-app SPA fallbacks and generates the overview page from
-  `apps.json`. It consumes validated profiles, fails if a production identity is
-  missing, and links to separate app pages; it does not mount multiple app
-  runtimes in a host. Each page keeps one SDK runtime owner. Preserve dependency
-  notices in the output.
+- `build-site` (M3): builds every app with a published profile into its path
+  of one static folder (`site-dist/<id>/`, leaving the app's local `dist/`),
+  writes `did.json` per app and the SDK's notices, and generates the overview
+  page from `apps.json` and each app's icon (#46 builds a richer app overview
+  on that data model). It fails if the chosen profile is not configured,
+  and links to separate app pages; it does not mount multiple app runtimes in
+  a host. Each page keeps one SDK runtime owner. Routing is host-specific
+  because hosts disagree on rewrites: Netlify serves files before rules, so
+  one forced rule per callback (`/<id>/callback /<id>/index.html 200!`)
+  suffices and no app file can shadow it;
+  Cloudflare applies rules before files, so the callback ships as
+  `callback.html`. Every site gets a top-level `404.html`. Hosts serve `/<id>/callback`
+  with `200` and no redirect, because the SDK matches the callback path
+  exactly. The publish guide states this contract for any host; only Netlify
+  is tested live.
 
 The assistant: the conversation, vocabulary, screens and tests of each app, and
 keeping the owner's decisions in the app's development notes. It never edits
@@ -316,8 +325,9 @@ template material.
   automatic mutation retry. Acceptance includes domain tests and an observed
   create/change/reload/delete flow using the default UI; visual customization
   alone is not an SDK gap.
-- **M3, site.** `build-site`, overview page, deployment instructions (Netlify as
-  the documented example), `configure-site`, `did:web` per app and default PWA.
+- **M3, site.** `build-site`, overview page, host-neutral deployment
+  instructions (Netlify tested, Cloudflare Pages documented, Workers deferred),
+  `configure-site`, `did:web` per app and default PWA.
   Accept with two apps on one origin: direct routes/callbacks, separate
   identities and session namespaces, both usable concurrently, local development
   after production setup, and a separately configured preview. Check app-scoped

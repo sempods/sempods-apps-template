@@ -118,20 +118,6 @@ describe('apps.json', () => {
       'https://apps.example.org:8443',
       'https://Apps.example.org',
       'https://user@apps.example.org',
-      'https://localhost',
-      'https://foo.localhost',
-      'https://app.local',
-      'https://app.home.arpa',
-      'https://app.internal',
-      'https://app.test',
-      'https://app.example',
-      'https://192.0.2.1',
-      'https://[2001:db8::2]',
-      'https://intranet',
-      'https://a..example.org',
-      'https://-bad.example.org',
-      'https://bad-.example.org',
-      `https://${'a'.repeat(64)}.example.org`,
       'apps.example.org',
     ])
       assert.notEqual(invalidOrigin(origin), undefined, origin);
@@ -421,6 +407,20 @@ describe('configure-site', () => {
     });
     assert.equal(apps().site.production, 'https://other.example.org');
     assert.match(runtime(), /did:web:other\.example\.org:konsum/);
+  });
+  it('accepts only addresses the SDK accepts as published identities', () => {
+    const before = readFileSync(join(root, 'apps.json'), 'utf8');
+    for (const origin of [
+      'https://localhost',
+      'https://[2001:db8::2]',
+      'https://a..example.org',
+    ])
+      assert.throws(
+        () => configureSite(root, { production: origin }),
+        /is not a published address the SDK accepts/,
+        origin,
+      );
+    assert.equal(readFileSync(join(root, 'apps.json'), 'utf8'), before);
   });
   it('writes nothing for invalid input', () => {
     const before = readFileSync(join(root, 'apps.json'), 'utf8');

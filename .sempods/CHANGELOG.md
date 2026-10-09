@@ -31,6 +31,18 @@ alone: owner files, configuration choices and the SDK migration.
   Vite build modes `sempods-production` and `sempods-preview` select a
   published profile; development, plain builds, `vite preview` and tests stay
   local. Changing the production origin needs `--change-domain`.
+- `pnpm run build-site [--profile production|preview]` (or
+  `SEMPODS_SITE_PROFILE`) builds every app with that profile into one static
+  folder, `site-dist/<id>/`, and leaves each app's local `dist/` alone. It
+  writes an accessible overview page at `/` from `apps.json` and each app's
+  `icon-192.png`, `did.json` per app, the SDK's licence notices, and the routing
+  for the configured host: Netlify gets one `_redirects` rule per callback;
+  Cloudflare Pages and other static hosts get `<id>/callback.html`. Every
+  site has a top-level `404.html`. The skeleton's `index.html` sets the
+  referrer policy `strict-origin` for new apps.
+- The new [publish guide](instructions/publish.md) states what any host must
+  provide, with sections for Netlify and Cloudflare Pages. The app workflow, `docs/start.md`, `README.md` and
+  `INIT.md` point to it.
 
 ### Upgrade notes
 
@@ -48,13 +60,18 @@ alone: owner files, configuration choices and the SDK migration.
    their local values, so no owner file has to change.
 4. An app that switched identities by itself before this release, for example
    with a `src/identity.ts` that picks a `did:web` identity in production
-   builds (#24), should move to `configure-site`. Ask the owner first, run
+   builds ([#24](https://github.com/sempods/sempods-apps-template/issues/24)), should move to `configure-site`. Ask the owner first, run
    `pnpm run configure-site --production <the published origin>`, then let the
    app import `runtimeOptions` from `src/sempods.generated.ts` again and remove
    the interim file and its tests.
 5. Choose the production origin once. A later change gives every app a new
    identity: every sign-in and Pod grant has to be made again.
-6. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
+6. `.gitignore` gains `site-dist/`. A copy that published with its own build
+   or host setup before ([#24](https://github.com/sempods/sempods-apps-template/issues/24)) compares it with the publish guide:
+   callback paths must answer `200` without a redirect, and on Cloudflare
+   remove catch-all rewrites to `index.html`, which there also replace scripts
+   and `did.json`. Replace it with `build-site` with the owner's agreement.
+7. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`
    and the template self-test; local and manual SDK updates remain available.
 
 ## 0.5.0
@@ -79,7 +96,9 @@ alone: owner files, configuration choices and the SDK migration.
   what to test first and how to set up a component test.
 - `src/sempods.generated.ts` reads `location` only when the runtime is created,
   no longer on import, so tests in Node can import it.
-- pnpm replaces npm workspaces (#32). `package.json` pins pnpm 11.28.2 in
+- pnpm replaces npm workspaces
+  ([#32](https://github.com/sempods/sempods-apps-template/issues/32)).
+  `package.json` pins pnpm 11.28.2 in
   `packageManager` and drops `workspaces` and its npm `overrides`;
   `pnpm-workspace.yaml` lists `apps/*` and carries the former `.npmrc`
   settings: exact versions, a strict Node engine and no dependency install

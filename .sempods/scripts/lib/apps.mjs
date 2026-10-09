@@ -10,21 +10,6 @@ export const LANGUAGES = ['en', 'de'];
 export const SITE_PROFILES = ['production', 'preview'];
 export const SITE_HOSTS = ['netlify', 'cloudflare-pages', 'static'];
 const SITE_KEYS = new Set([...SITE_PROFILES, 'host']);
-const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
-// Special-use names that public DNS does not resolve (RFC 6761, 6762, 7686,
-// 8375 and ICANN's .internal): a did:web there cannot reach the site.
-const NON_PUBLIC_SUFFIXES = [
-  'localhost',
-  'local',
-  'home.arpa',
-  'internal',
-  'test',
-  'invalid',
-  'example',
-  'onion',
-];
-// One DNS label: letters, digits and inner hyphens, at most 63 characters.
-const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
 // Paths the site itself uses, and directory names that would confuse the
@@ -61,36 +46,21 @@ export function invalidId(id) {
   return undefined;
 }
 
-/** Returns a reason when `value` cannot be a site origin, otherwise undefined. */
+/**
+ * Returns a reason when `value` is not an origin as apps.json records it,
+ * otherwise undefined. configure-site also lets the SDK check the identity.
+ */
 export function invalidOrigin(value) {
-  const reason =
-    'must be an HTTPS origin without a path or port, such as https://apps.example.org';
   let url;
   try {
     url = new URL(value);
   } catch {
-    return reason;
+    url = undefined;
   }
-  // The origin round trip rejects a path, query, credentials, a port and
-  // uppercase: did:web and the callback derive from exactly this host.
-  if (url.protocol !== 'https:' || url.origin !== value || url.port)
-    return reason;
-  const host = url.hostname;
-  if (
-    LOOPBACK.has(host) ||
-    NON_PUBLIC_SUFFIXES.some((s) => host === s || host.endsWith(`.${s}`))
-  )
-    return 'must be a public host, not a local or reserved name; local development keeps its own profile';
-  // did:web names a host by its fully qualified domain name, never by an IP
-  // address; the URL parser alone accepts empty or hyphen-edged labels.
-  const labels = url.hostname.split('.');
-  if (
-    labels.length < 2 ||
-    url.hostname.length > 253 ||
-    !labels.every((label) => DNS_LABEL.test(label)) ||
-    /^\d+$/.test(labels.at(-1))
-  )
-    return 'must name a domain, such as https://apps.example.org; did:web allows no IP address or single-label host';
+  // The origin round trip rejects a path, query, credentials and uppercase:
+  // did:web and the callback derive from exactly this host.
+  if (url?.protocol !== 'https:' || url.origin !== value || url.port)
+    return 'must be an HTTPS origin without a path or port, such as https://apps.example.org';
   return undefined;
 }
 

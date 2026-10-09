@@ -114,7 +114,8 @@ hold connections to it.
 Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,
 callback, base path and PWA configuration. `new-app` creates new apps only;
-rerunning it does not reconfigure an existing app. If a requested configuration
+rerunning it does not reconfigure an existing app. `configure-site` changes the
+published identities of all apps. If a requested configuration
 change needs a command not shipped yet, explain that limitation to the owner;
 they can request it from the template project. Do not delete/recreate the app or
 patch generated files as a workaround. `.sempods/` is template-owned, not app
@@ -163,8 +164,8 @@ versions. Do not mark an unrun check as complete.
 
 Tell the user briefly what they can try, how to open it and what remains
 untested. Keep implementation details in notes unless they help the user's next
-decision. Never publish or perform unrelated changes to real data on the
-strength of this workflow alone; follow the user's authorized scope.
+decision. Publish only when the owner asks, and never change real data beyond
+the user's authorized scope.
 
 ## Update the SDK
 
@@ -196,12 +197,8 @@ and use the local command plus an assistant-created PR with the owner's existing
 GitHub access. [INIT](../../INIT.md#enable-automatic-sdk-update-prs) explains the
 repository setting. Never ask for a token.
 
-## Later capabilities
+## Publish
 
-Template updates follow the
-[update-template skill](../skills/update-template/SKILL.md). Published identities
-come from `pnpm run configure-site` (production and a fixed preview address,
-each a `did:web` per app); do not configure identities by hand or add a
-parallel configuration mechanism. Combined hosting (`build-site`) is not
-available yet: capture the request and consult the installed SDK's
-`deployment.md`.
+When the owner asks to publish, follow the [publish guide](publish.md).
+Published identities come only from `configure-site`; never configure them by
+hand or add a parallel configuration mechanism.

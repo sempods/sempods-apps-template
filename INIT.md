@@ -172,8 +172,8 @@ or repeat ownership changes.
 SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-the-sdk).
 Template updates follow the
 [update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
-asks for one; do not run an update during this setup. Deployment configuration
-and site building are not available yet.
+asks for one; do not run an update during this setup. Publishing follows the
+[publish guide](.sempods/instructions/publish.md) when the owner asks for it.
 
 ## Instance setup record
 

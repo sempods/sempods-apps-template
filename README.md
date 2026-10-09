@@ -6,12 +6,12 @@ assistant. Try the first version, then ask for the next change. Your
 screen.
 
 You need a coding assistant that can work with local files, Node.js 24.15 or
-newer with pnpm, and a Pod account for trying real saves. Your assistant helps with the local setup. No hosting account
-is needed yet.
+newer with pnpm, and a Pod account for trying real saves. Your assistant helps with the local setup. A hosting account
+is needed only to publish.
 
 > **Preview.** This template is new and still changing. Today you can build
-> apps, try them locally against your Pod and bring template and SDK updates
-> into your copy. Publishing apps on your own site comes later.
+> apps, try them locally against your Pod, bring template and SDK updates
+> into your copy and publish all apps together on one site.
 
 ## Start with your idea
 
