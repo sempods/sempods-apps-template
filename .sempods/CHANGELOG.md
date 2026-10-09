@@ -17,19 +17,21 @@ alone: owner files, configuration choices and the SDK migration.
   and offering optional review ownership and automatic SDK updates. Deferred
   preferences do not block setup completion. The maintainer guide includes a
   copyable prompt for explicit template work.
-- Scheduled SDK update jobs require the owner's explicit opt-in through the
-  Actions variable `SEMPODS_SDK_AUTO_UPDATES=true`, even if Actions already
-  permits PR creation. Manual workflow dispatch remains available.
+- Scheduled SDK update jobs require `sdkAutoUpdates: true` in the owner's
+  `apps.json` on the default branch, even if Actions permits PR creation or an
+  organization-level variable enables updates elsewhere. A read-only job
+  checks the committed choice first; manual dispatch remains available.
+  App generation and template updates preserve this owner-owned field.
 
 ### Upgrade notes
 
 1. Shared AGENTS.md and INIT.md changes preserve existing owner and setup
    records. Do not repeat completed setup. For an incomplete setup, build the
    first local interaction before offering optional repository preferences.
-2. Scheduled SDK updates now skip the update job unless
-   `SEMPODS_SDK_AUTO_UPDATES` is `true`. If an existing copy used weekly updates,
+2. Scheduled SDK updates now skip the update job unless `sdkAutoUpdates` in
+   `apps.json` on the default branch is `true`. If a copy used weekly updates,
    explain this change and use its recorded owner choice, or ask if no choice
-   is recorded. Follow INIT's activation steps and verify both the variable
+   is recorded. Follow INIT's activation steps and verify both the committed field
    and the Actions PR setting. Leave a deferred choice inactive. Record the
    result without treating PR creation permission alone as an opt-in.
 3. Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`

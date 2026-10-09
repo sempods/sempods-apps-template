@@ -98,7 +98,10 @@ needs it, ask the owner before approving it under `allowBuilds` in
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
-path/port; do not invent deployment-profile fields, which the template does
+path/port. The optional root field `sdkAutoUpdates` records the owner's boolean
+choice for scheduled SDK updates; app generation and template updates preserve
+it. Do not infer that choice from organization settings. Do not invent
+deployment-profile fields, which the template does
 not provide yet.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
@@ -183,8 +186,8 @@ follow the SDK migration guide, adapt the apps, run `pnpm run check
 Record changed behavior, checks and remaining Pod/device evidence in app notes
 and the PR. The owner controls merging.
 
-The weekly SDK workflow needs the owner's opt-in through the Actions variable
-`SEMPODS_SDK_AUTO_UPDATES=true` and permission for Actions to create PRs. Without
+The weekly SDK workflow needs `sdkAutoUpdates: true` in the owner's `apps.json`
+on the default branch and permission for Actions to create PRs. Without
 the opt-in, scheduled runs skip the update job; manual dispatch still works.
 When enabled, it opens one PR per version and dispatches Check on its branch.
 If Actions may not create PRs, report automatic SDK updates unavailable

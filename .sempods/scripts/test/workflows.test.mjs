@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { describe, it } from 'node:test';
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
 const workflow = readFileSync(
@@ -8,42 +18,84 @@ const workflow = readFileSync(
   'utf8',
 );
 const gate = workflow.match(/^    if: >-\n((?:      .*\n)+)/m);
-assert.ok(gate, 'SDK update job must have an explicit gate');
-
-// Evaluate the actual gate, which uses only string comparisons and boolean
-// operators shared by Actions and JavaScript. Model an unset Actions variable
-// as the empty string; actionlint checks the workflow's Actions syntax.
-const expression = gate[1].trim();
+assert.ok(gate, 'SDK preference job must have an explicit event gate');
+const script = workflow.match(
+  /          node --input-type=module <<'JS'\n([\s\S]*?)          JS/,
+);
+assert.ok(script, 'SDK preference job must read the repository choice');
+const source = script[1].replace(/^          /gm, '');
 const upstream = 'sempods/sempods-apps-template';
 const instance = 'owner/apps';
-const runs = (event, repository, optIn = '') =>
-  runInNewContext(expression, {
+
+// The event gate uses the string-comparison subset shared by Actions and JS.
+// The preference tests execute the actual workflow script against a fixture.
+const allowed = (event, repository) =>
+  runInNewContext(gate[1].trim(), {
     github: { event_name: event, repository },
-    vars: { SEMPODS_SDK_AUTO_UPDATES: optIn },
   });
+
+let root;
+const choice = (event, sdkAutoUpdates, inherited = 'true') => {
+  writeFileSync(
+    join(root, 'apps.json'),
+    JSON.stringify({ schemaVersion: 1, apps: [], sdkAutoUpdates }),
+  );
+  const output = join(root, 'output');
+  writeFileSync(output, '');
+  const result = spawnSync(process.execPath, ['--input-type=module'], {
+    cwd: root,
+    input: source,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      EVENT_NAME: event,
+      GITHUB_OUTPUT: output,
+      SEMPODS_SDK_AUTO_UPDATES: inherited,
+    },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return readFileSync(output, 'utf8').trim();
+};
 
 describe('SDK update workflow', () => {
-  it('skips scheduled updates when the owner has not opted in', () => {
-    for (const choice of ['', 'false', '1', 'yes'])
-      assert.equal(runs('schedule', instance, choice), false, choice);
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'sempods-sdk-preference-'));
+    const lib = join(root, '.sempods/scripts/lib');
+    mkdirSync(lib, { recursive: true });
+    cpSync(new URL('../lib/apps.mjs', import.meta.url), join(lib, 'apps.mjs'));
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('does not enable a deferred or disabled choice from inherited variables', () => {
+    for (const sdkAutoUpdates of [undefined, false])
+      for (const inherited of ['', 'false', 'true'])
+        assert.equal(choice('schedule', sdkAutoUpdates, inherited), 'enabled=false');
   });
 
-  it('runs scheduled updates in an opted-in instance', () => {
-    assert.equal(runs('schedule', instance, 'true'), true);
+  it('enables scheduled updates only from the repository manifest', () => {
+    assert.equal(allowed('schedule', instance), true);
+    assert.equal(choice('schedule', true), 'enabled=true');
   });
 
   it('never runs scheduled updates in the upstream template', () => {
-    for (const choice of ['', 'false', 'true'])
-      assert.equal(runs('schedule', upstream, choice), false, choice);
+    assert.equal(allowed('schedule', upstream), false);
   });
 
   it('keeps manual dispatch available with and without opt-in', () => {
     for (const repository of [upstream, instance])
-      for (const choice of ['', 'false', 'true'])
-        assert.equal(runs('workflow_dispatch', repository, choice), true);
+      assert.equal(allowed('workflow_dispatch', repository), true);
+    for (const sdkAutoUpdates of [undefined, false, true])
+      assert.equal(choice('workflow_dispatch', sdkAutoUpdates), 'enabled=true');
   });
 
-  it('does not allow unrelated events to start the update job', () => {
-    assert.equal(runs('pull_request', instance, 'true'), false);
+  it('does not allow unrelated events to start the preference job', () => {
+    assert.equal(allowed('pull_request', instance), false);
+  });
+
+  it('gates the write-capable job on the read-only preference result', () => {
+    assert.match(workflow, /  update:\n    needs: preference\n    if: needs\.preference\.outputs\.enabled == 'true'/);
+    assert.match(workflow, /permissions:\n  contents: read/);
+    const preference = workflow.split('  preference:')[1].split('  update:')[0];
+    assert.doesNotMatch(preference, /contents: write|pull-requests: write|vars\./);
   });
 });

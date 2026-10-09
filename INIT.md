@@ -123,10 +123,13 @@ revisit them.
 
 ## Enable automatic SDK update PRs
 
-Scheduled SDK updates stay off unless `SEMPODS_SDK_AUTO_UPDATES` is `true`, even
-if Actions already permits PR creation. Leave that variable unset for a new
-copy while the choice is deferred. Manual workflow dispatch and local updates
-remain available. Preserve an existing explicit opt-in on a resumed setup.
+Scheduled SDK updates require the optional root field `sdkAutoUpdates: true`
+in the owner's `apps.json` on the repository's default branch. An absent field
+or `false` keeps the update job off, even if Actions permits PR creation or an
+organization variable enables updates elsewhere. Leave the field absent for a
+new copy while the choice is deferred. A read-only job checks this committed
+choice; manual workflow dispatch and local updates remain available. Preserve
+an existing explicit opt-in on a resumed setup.
 
 When the owner chooses automatic updates, use their existing GitHub access to
 inspect the repository's Actions workflow permissions (for example
@@ -138,13 +141,15 @@ Workflow permissions → Allow GitHub Actions to create and approve pull
 requests**, subject to organization policy. The update job's YAML permissions
 alone do not enable it.
 
-Once PR creation is allowed, set the repository Actions variable
-`SEMPODS_SDK_AUTO_UPDATES` to `true` using the owner's existing access (for
-example `gh variable set SEMPODS_SDK_AUTO_UPDATES --body true --repo <owner>/<repo>`),
-or guide them to **Settings → Secrets and variables → Actions → Variables**.
-Verify the variable and record it alongside the observed Actions setting and
-owner's choice below. If access cannot set or verify it, record activation as
-pending. To turn scheduled updates off, set it to `false`; keep manual dispatch.
+Once PR creation is allowed, add `"sdkAutoUpdates": true` at the root of
+`apps.json`, preserving its app entries and other owner settings. Run
+`pnpm run check` and include this change in the owner's normal commit/PR flow.
+Scheduled updates remain off until the choice reaches the default branch;
+verify the committed field and record it alongside the observed Actions
+setting and owner's choice below. If the change is not yet on the default
+branch, record activation as pending. To turn scheduled updates off, set the
+field to `false` through the same flow; keep manual dispatch. Template updates
+and app generation preserve this owner-owned field.
 
 If it stays disabled, report **automatic SDK updates unavailable**. The local
 `pnpm run sdk-update <version|latest>` command and an assistant-created PR

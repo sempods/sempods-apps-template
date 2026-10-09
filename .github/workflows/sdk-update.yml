@@ -15,14 +15,42 @@ concurrency:
   group: sdk-update
   cancel-in-progress: false
 jobs:
-  update:
-    # Scheduled runs need the owner's explicit opt-in. Manual dispatch is
-    # available without it; the upstream template never runs on the schedule.
+  preference:
+    # Read the owner's committed choice with read-only permissions before
+    # starting the update job. Organization variables cannot enable it.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' &&
-       github.repository != 'sempods/sempods-apps-template' &&
-       vars.SEMPODS_SDK_AUTO_UPDATES == 'true')
+       github.repository != 'sempods/sempods-apps-template')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.choice.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Check scheduled-update preference
+        id: choice
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          import { readApps } from './.sempods/scripts/lib/apps.mjs';
+          const manifest = readApps(process.cwd());
+          const enabled = process.env.EVENT_NAME === 'workflow_dispatch' ||
+            manifest.sdkAutoUpdates === true;
+          appendFileSync(process.env.GITHUB_OUTPUT, `enabled=${enabled}\n`);
+          if (!enabled) console.log('Scheduled SDK updates are not enabled in apps.json.');
+          JS
+  update:
+    needs: preference
+    if: needs.preference.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

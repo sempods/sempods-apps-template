@@ -68,6 +68,11 @@ export function validateApps(manifest) {
   const problems = [];
   if (manifest?.schemaVersion !== SCHEMA_VERSION)
     problems.push(`schemaVersion must be ${SCHEMA_VERSION}`);
+  if (
+    manifest?.sdkAutoUpdates !== undefined &&
+    typeof manifest.sdkAutoUpdates !== 'boolean'
+  )
+    problems.push('sdkAutoUpdates must be true or false when present');
   if (!Array.isArray(manifest?.apps))
     return [...problems, 'apps must be a list'];
   const ids = new Set();
