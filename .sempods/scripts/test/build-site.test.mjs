@@ -34,7 +34,10 @@ describe('build-site', () => {
     mkdirSync(outDir, { recursive: true });
     // Vite copies public/ into the output.
     cpSync(join(appDir, 'public'), outDir, { recursive: true });
-    writeFileSync(join(outDir, 'index.html'), `<!doctype html><p>${mode}</p>`);
+    writeFileSync(
+      join(outDir, 'index.html'),
+      `<!doctype html><html><head><title>x</title></head><p>${mode}</p></html>`,
+    );
     if (appDir.endsWith('konsum'))
       writeFileSync(
         join(outDir, 'manifest.webmanifest'),
@@ -117,6 +120,11 @@ describe('build-site', () => {
       configureSite(root, { production: 'https://apps.example.org', host });
       buildSite(root, { build });
       assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
+      // The callback's query must not leak through Referer headers.
+      assert.match(
+        read('konsum/callback.html'),
+        /<meta name="referrer" content="strict-origin" \/>/,
+      );
       assert.equal(existsSync(join(root, 'site-dist', '_redirects')), false);
       assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
     }
@@ -207,16 +215,21 @@ describe('build-site', () => {
     );
   });
 
-  it('warns about host files an app ships, which hosts ignore there', () => {
+  it('leaves out host files an app ships, which hosts ignore there', () => {
     configureSite(root, { production: 'https://apps.example.org' });
     writeFileSync(
       join(root, 'apps', 'konsum', 'public', '_redirects'),
       '/* /index.html 200\n',
     );
+    writeFileSync(join(root, 'apps', 'konsum', 'public', '404.html'), 'own');
     const { warnings, apps, site } = buildSite(root, { build });
     assert.deepEqual(warnings, [
-      'apps/konsum/public/_redirects is ignored: hosts read it only at the site root, which build-site writes.',
+      'apps/konsum/public/_redirects was left out: hosts read it only at the site root, which build-site writes.',
+      'apps/konsum/public/404.html was left out: hosts read it only at the site root, which build-site writes.',
     ]);
+    // Cloudflare Pages would otherwise serve the nested 404.html.
+    assert.equal(existsSync(join(root, 'site-dist', 'konsum', '404.html')), false);
+    assert.equal(existsSync(join(root, 'site-dist', 'konsum', '_redirects')), false);
     assert.equal(site.production, 'https://apps.example.org');
     assert.deepEqual(
       apps.map((app) => app.id),

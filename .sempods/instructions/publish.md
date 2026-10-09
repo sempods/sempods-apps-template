@@ -63,8 +63,10 @@ Every host, whatever it is:
 - answers `/<id>/did.json` with the JSON document, not with an app page;
 - does not rewrite every path to an `index.html`, which would also replace
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
-- does not cache or log full callback URLs, and keeps the default or a stricter
-  referrer policy.
+- does not cache or log full callback URLs, and sends no `Referrer-Policy`
+  weaker than `strict-origin`. `build-site` sets `strict-origin` in every app
+  page, so same-origin requests from the callback page carry no `code` or
+  `state`.
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
@@ -117,8 +119,8 @@ the first sign-in.
 ## 4. Check the deployment
 
 1. For each app and both addresses:
-   - `curl -sI 'https://<host>/<id>/callback?code=x&state=y'` returns `200` and
-     no `Location`;
+   - `curl -s -o /dev/null -D - 'https://<host>/<id>/callback?code=x&state=y'`
+     (a GET, as the browser sends it) returns `200` and no `Location`;
    - `curl -s 'https://<host>/<id>/did.json'` returns the JSON with
      `"id": "did:web:<host>:<id>"`.
 2. In a fresh browser profile, the owner signs in to each app on the

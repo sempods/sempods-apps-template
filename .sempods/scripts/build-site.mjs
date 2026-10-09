@@ -8,6 +8,7 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -33,8 +34,17 @@ function appBuild(appDir, mode, outDir) {
   return pnpm(args, { cwd: appDir }).status === 0;
 }
 
-// Host files only count at the site root; an app's own copies are ignored.
+// Host files only count at the site root, which build-site writes; an app's
+// own copies are removed, or Cloudflare would serve its nested 404.html.
 const HOST_FILES = ['_redirects', '_headers', '404.html'];
+
+// The callback page loads its scripts before the SDK scrubs code and state
+// from the address; without this, same-origin requests carry them in Referer.
+const REFERRER = '<meta name="referrer" content="strict-origin" />';
+function withReferrerPolicy(html) {
+  if (/<meta\s+name=["']?referrer["']?/i.test(html)) return html;
+  return html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${REFERRER}`);
+}
 
 // Read or copy directly and treat a missing file as absent, rather than
 // checking first: the file could change between the check and the use.
@@ -158,10 +168,14 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     }
 
     for (const file of HOST_FILES)
-      if (existsSync(join(appOut, file)))
+      if (existsSync(join(appOut, file))) {
+        rmSync(join(appOut, file));
         warnings.push(
-          `apps/${app.id}/public/${file} is ignored: hosts read it only at the site root, which build-site writes.`,
+          `apps/${app.id}/public/${file} was left out: hosts read it only at the site root, which build-site writes.`,
         );
+      }
+
+    writeFileSync(index, withReferrerPolicy(readFileSync(index, 'utf8')));
 
     // The callback must answer 200 at its exact path with its query intact.
     // Forced (200!), so no file at that path, such as a callback.html the app
