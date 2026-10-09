@@ -31,7 +31,6 @@ export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
 
-
 // Build output, installed packages and static files are not app source.
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'dev-dist', 'public']);
 

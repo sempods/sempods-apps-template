@@ -94,7 +94,12 @@ describe('build-site', () => {
       production: 'https://apps.example.org',
       preview: 'https://preview.apps.pages.dev',
     });
-    buildSite(root, { profile: 'preview', build });
+    const { apps, site } = buildSite(root, { profile: 'preview', build });
+    assert.equal(site.preview, 'https://preview.apps.pages.dev');
+    assert.deepEqual(
+      apps.map((app) => app.id),
+      ['konsum', 'notes'],
+    );
     assert.deepEqual(
       builds,
       [
@@ -167,13 +172,16 @@ describe('build-site', () => {
         writeFileSync(
           join(outDir, 'manifest.webmanifest'),
           JSON.stringify({
-            icons: [{ src: 'icons/app.png', sizes: '512x512' }],
+            icons: [{ src: 'icons/app.svg?v=2#app', sizes: '512x512' }],
           }),
         );
       return true;
     };
     buildSite(root, { build: relative });
-    assert.match(read('index.html'), /<img src="\/konsum\/icons\/app\.png"/);
+    assert.match(
+      read('index.html'),
+      /<img src="\/konsum\/icons\/app\.svg\?v=2#app"/,
+    );
   });
 
   it('replaces a did.json the app ships with the site identity', () => {
@@ -181,7 +189,7 @@ describe('build-site', () => {
     writeFileSync(join(root, 'apps', 'konsum', 'public', 'did.json'), '{');
     const { warnings } = buildSite(root, { build });
     assert.deepEqual(warnings, [
-      'apps/konsum/public/did.json is not published: build-site writes this file itself.',
+      'apps/konsum/public/did.json is not published: build-site reserves this path.',
     ]);
     assert.equal(
       JSON.parse(read('konsum/did.json')).id,
@@ -218,19 +226,16 @@ describe('build-site', () => {
       '/* /index.html 200\n',
     );
     writeFileSync(join(root, 'apps', 'konsum', 'public', '404.html'), 'own');
-    const { warnings, apps, site } = buildSite(root, { build });
+    writeFileSync(join(root, 'apps', 'konsum', 'public', 'callback'), 'own');
+    const { warnings } = buildSite(root, { build });
     assert.deepEqual(warnings, [
-      'apps/konsum/public/_redirects is not published: build-site writes this file itself.',
-      'apps/konsum/public/404.html is not published: build-site writes this file itself.',
+      'apps/konsum/public/_redirects is not published: build-site reserves this path.',
+      'apps/konsum/public/404.html is not published: build-site reserves this path.',
+      'apps/konsum/public/callback is not published: build-site reserves this path.',
     ]);
     // Cloudflare Pages would otherwise serve the nested 404.html.
     assert.equal(exists('konsum/404.html'), false);
     assert.equal(exists('konsum/_redirects'), false);
-    assert.equal(site.production, 'https://apps.example.org');
-    assert.deepEqual(
-      apps.map((app) => app.id),
-      ['konsum', 'notes'],
-    );
   });
 
   it('stops when an app build fails or writes nowhere', () => {

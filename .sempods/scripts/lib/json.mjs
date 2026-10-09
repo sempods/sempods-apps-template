@@ -11,15 +11,18 @@ export function readJson(path) {
 }
 
 /**
- * Reads a JSON file, or returns undefined when there is none. It reads
- * directly rather than checking first, because the file could change between
- * the check and the read.
+ * Runs a file operation and returns undefined when the file does not exist.
+ * Callers act directly instead of checking first, because the file could
+ * change between the check and the use.
  */
-export function readJsonIfPresent(path) {
+export function ifPresent(operation) {
   try {
-    return readJson(path);
+    return operation();
   } catch (error) {
     if (error.code === 'ENOENT') return undefined;
     throw error;
   }
 }
+
+/** Reads a JSON file, or returns undefined when there is none. */
+export const readJsonIfPresent = (path) => ifPresent(() => readJson(path));

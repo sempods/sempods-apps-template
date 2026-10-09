@@ -3,7 +3,7 @@
 // owner's apps and apps.json are never touched and a fixture can never collide
 // with a real app: generate an app, require a refused rerun without changes,
 // check it including a standalone install/build, then publish it: configure a
-// site, build it per host and assert the profile each build mode selects.
+// site, build it and assert the profile each build mode selects.
 // Usage: node .sempods/scripts/self-test.mjs
 import { spawnSync } from 'node:child_process';
 import {
@@ -53,7 +53,7 @@ it('selects the profile of the build mode', () => {
 });
 `;
 
-/** Configures a site, builds it for real per host and checks the profiles. */
+/** Configures a site, builds it for real and checks the profiles. */
 function publish(copy) {
   const dir = join(copy, 'apps', FIXTURE);
   // Relative to the copy, as the other script runs: the temporary directory
@@ -176,9 +176,7 @@ try {
   // Verify the executable pnpm selects, not just the installed package version.
   // Different root/app compiler versions must not let a workspace build
   // silently run the root's older compiler.
-  const expectedCompiler = JSON.parse(
-    readFileSync(join(copy, 'apps', FIXTURE, 'package.json'), 'utf8'),
-  ).devDependencies.typescript;
+  const expectedCompiler = readJson(join(copy, 'apps', FIXTURE, 'package.json')).devDependencies.typescript;
   const compiler = pnpm(['exec', 'tsc', '--version'], {
     cwd: join(copy, 'apps', FIXTURE),
     encoding: 'utf8',

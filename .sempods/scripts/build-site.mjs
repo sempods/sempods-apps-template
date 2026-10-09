@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
-import { readJsonIfPresent } from './lib/json.mjs';
+import { ifPresent, readJsonIfPresent } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { SDK } from './sdk-update.mjs';
@@ -29,52 +29,49 @@ function appBuild(appDir, mode, outDir) {
   // pnpm appends these to the script's final `vite build`. The output path is
   // relative to the app, so no user directory name passes through the Windows
   // shell (lib/pnpm.mjs).
-  const args = ['run', 'build', '--mode', mode, '--outDir'];
-  args.push(relative(appDir, outDir), '--emptyOutDir');
+  const args = [
+    ...['run', 'build', '--mode', mode],
+    ...['--outDir', relative(appDir, outDir), '--emptyOutDir'],
+  ];
   return pnpm(args, { cwd: appDir }).status === 0;
 }
 
-// build-site owns these files in the output: an app's own copies are replaced
-// (did.json) or left out (host files, which hosts read only at the site root;
-// Cloudflare would serve a nested 404.html).
-const OWNED_FILES = ['did.json', '_redirects', '_headers', '404.html'];
+// Paths build-site reserves in each app's output, so an app's own copies are
+// left out: did.json (written here), host files that hosts read only at the
+// site root (Cloudflare would serve a nested 404.html), and an extensionless
+// `callback`, which would answer the callback path before the app shell.
+const RESERVED = ['did.json', '_redirects', '_headers', '404.html', 'callback'];
 
 // The callback page loads its scripts before the SDK scrubs code and state
 // from the address; without this, same-origin requests carry them in Referer.
+// New apps set it in index.html; this covers apps created before 0.6.0.
 const REFERRER = '<meta name="referrer" content="strict-origin" />';
 function withReferrerPolicy(html) {
   if (/<meta\s+name=["']?referrer["']?/i.test(html)) return html;
   return html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${REFERRER}`);
 }
 
-/** Copies a file and reports false when there is none (no check-then-use). */
-function copyIfPresent(from, to) {
-  try {
-    copyFileSync(from, to);
-    return true;
-  } catch (error) {
-    if (error.code === 'ENOENT') return false;
-    throw error;
-  }
-}
+/** Removes a file or directory and reports whether there was one. */
+const removeIfPresent = (path) =>
+  ifPresent(() => rmSync(path, { recursive: true }) ?? true) ?? false;
+
+/** Copies a file and reports whether there was one to copy. */
+const copyIfPresent = (from, to) =>
+  ifPresent(() => copyFileSync(from, to) ?? true) ?? false;
 
 /** The SDK's Apache-2.0 notices, which travel with the published code. */
 function copyLicences(roots, appOut, appId) {
   for (const pkg of SDK) {
     const to = join(appOut, 'licenses', pkg.split('/')[1]);
     mkdirSync(to, { recursive: true });
-    let copied = false;
-    for (const base of roots) {
-      const from = join(base, 'node_modules', pkg);
-      if (!copyIfPresent(join(from, 'LICENSE'), join(to, 'LICENSE'))) continue;
-      copyIfPresent(join(from, 'NOTICE'), join(to, 'NOTICE'));
-      copied = true;
-      break;
-    }
-    if (!copied)
+    const from = roots
+      .map((base) => join(base, 'node_modules', pkg))
+      .find((dir) => copyIfPresent(join(dir, 'LICENSE'), join(to, 'LICENSE')));
+    if (!from)
       throw new Error(
         `${pkg} with its LICENSE is not installed for apps/${appId}; run pnpm install.`,
       );
+    copyIfPresent(join(from, 'NOTICE'), join(to, 'NOTICE'));
   }
 }
 
@@ -100,7 +97,10 @@ function overviewEntry(app, outDir) {
     if (largest?.src) {
       const base = new URL(`${app.path}manifest.webmanifest`, 'https://site.invalid');
       const url = new URL(largest.src, base);
-      entry.icon = url.origin === base.origin ? url.pathname : url.href;
+      entry.icon =
+        url.origin === base.origin
+          ? `${url.pathname}${url.search}${url.hash}`
+          : url.href;
     }
   } else if (existsSync(join(outDir, 'icon-192.png')))
     entry.icon = `${app.path}icon-192.png`;
@@ -140,18 +140,17 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     if (!build(appDir, PROFILE_MODES[profile], appOut))
       throw new Error(`apps/${app.id}: the build failed.`);
     const index = join(appOut, 'index.html');
-    if (!existsSync(index))
+    const html = ifPresent(() => readFileSync(index, 'utf8'));
+    if (html === undefined)
       throw new Error(
         `apps/${app.id}: the build wrote no index.html to ${SITE_DIR}/${app.id}; the app's build script must end with vite build.`,
       );
 
-    for (const file of OWNED_FILES)
-      if (existsSync(join(appOut, file))) {
-        rmSync(join(appOut, file));
+    for (const file of RESERVED)
+      if (removeIfPresent(join(appOut, file)))
         warnings.push(
-          `apps/${app.id}/public/${file} is not published: build-site writes this file itself.`,
+          `apps/${app.id}/public/${file} is not published: build-site reserves this path.`,
         );
-      }
 
     // Some Pods resolve the did:web document before they accept the app.
     const { clientId, redirectUri } = siteIdentity(site[profile], app);
@@ -160,7 +159,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       `${JSON.stringify({ '@context': 'https://www.w3.org/ns/did/v1', id: clientId }, null, 2)}\n`,
     );
     copyLicences([appDir, root], appOut, app.id);
-    writeFileSync(index, withReferrerPolicy(readFileSync(index, 'utf8')));
+    writeFileSync(index, withReferrerPolicy(html));
 
     // The callback must answer 200 at its exact path with its query intact.
     // On Netlify the rewrite is forced (200!), so no file at that path can
@@ -177,7 +176,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   // the overview for every unknown path.
   writeFileSync(join(out, '404.html'), renderNotFound(entries));
   if (netlify) writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
-  return { out, apps, site, warnings };
+  return { apps, site, warnings };
 }
 
 function main() {

@@ -38,7 +38,9 @@ alone: owner files, configuration choices and the SDK migration.
   manifests, `did.json` per app, the SDK's licence notices, and the routing
   for the configured host: Netlify gets one `_redirects` rule per callback;
   Cloudflare Pages and other static hosts get `<id>/callback.html`. Every
-  site has a top-level `404.html`.
+  site has a top-level `404.html`. Every app page gets the referrer policy
+  `strict-origin`, so the callback's `code` and `state` stay out of `Referer`
+  headers; the skeleton's `index.html` sets it for new apps.
 - The new [publish guide](instructions/publish.md) states what any host must
   provide, with sections for Netlify and Cloudflare Pages. The app workflow, `docs/start.md`, `README.md` and
   `INIT.md` point to it.
