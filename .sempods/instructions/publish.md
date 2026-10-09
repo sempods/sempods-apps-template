@@ -63,11 +63,9 @@ Every host, whatever it is:
 - answers `/<id>/did.json` with the JSON document, not with an app page;
 - does not rewrite every path to an `index.html`, which would also replace
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
-- does not cache or log full callback URLs, and sends no `Referrer-Policy`
-  weaker than `strict-origin`. `build-site` sets `strict-origin` in every app
-  page, so same-origin requests from the callback page carry no `code` or
-  `state`, and for Netlify and Cloudflare Pages it also writes `_headers`
-  with that policy. Other hosts set the header themselves.
+- keeps the browser's default referrer policy or a stricter one, loads no
+  third-party resources on the callback route, and keeps full callback URLs
+  out of host and CDN logs.
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
@@ -129,7 +127,9 @@ the first sign-in.
    reloads. Never ask for credentials or tokens.
 3. On the preview address, sign in with its own identity against a test
    context.
-4. If the Pod rejects the app before or at its consent screen, read
+4. In the host's and any CDN's settings, turn off or redact query strings and
+   `Referer` headers in request logs, so callback queries are not kept.
+5. If the Pod rejects the app before or at its consent screen, read
    `deployment.md` on Pods that require a DID document or an allow-list.
    Falling back to another identity is not a fix.
 

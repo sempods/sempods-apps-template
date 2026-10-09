@@ -126,78 +126,10 @@ describe('build-site', () => {
       configureSite(root, { production: 'https://apps.example.org', host });
       buildSite(root, { build });
       assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
-      // The callback's query must not leak through Referer headers.
-      assert.match(
-        read('konsum/callback.html'),
-        /<meta name="referrer" content="strict-origin" \/>/,
-      );
       assert.equal(exists('_redirects'), false);
       assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
-      assert.equal(
-        exists('_headers'),
-        host === 'cloudflare-pages',
-        `${host} _headers`,
-      );
+      assert.equal(exists('_headers'), false);
     }
-  });
-
-  it('replaces a referrer policy that would send the callback query', () => {
-    configureSite(root, { production: 'https://apps.example.org' });
-    const page = (head) => (appDir, mode, outDir) => {
-      build(appDir, mode, outDir);
-      writeFileSync(
-        join(outDir, 'index.html'),
-        `<!doctype html><html><head>${head}</head></html>`,
-      );
-      return true;
-    };
-    const metas = () =>
-      read('konsum/callback.html').match(/<meta[^>]*referrer[^>]*>/gi);
-    buildSite(root, {
-      build: page(
-        '<meta name="referrer" content="no-referrer"><META NAME = "Referrer" content="unsafe-url">' +
-          '<meta data-note="a > b" name="referrer" content="unsafe-url">',
-      ),
-    });
-    assert.deepEqual(metas(), [
-      '<meta name="referrer" content="strict-origin" />',
-    ]);
-    assert.doesNotMatch(read('konsum/callback.html'), /unsafe-url|a > b/);
-    // Only real head children count: text in scripts and comments stays, and
-    // a `>` in the head's own attributes does not end it.
-    buildSite(root, {
-      build: page(
-        '<script>const s = \'<meta name="referrer" content="unsafe-url">\';</script>' +
-          '<!-- <meta name="referrer" content="unsafe-url"> -->',
-      ),
-    });
-    assert.match(
-      read('konsum/callback.html'),
-      /<script>const s = '<meta name="referrer" content="unsafe-url">';<\/script>/,
-    );
-    assert.match(read('konsum/callback.html'), /<!-- <meta name="referrer"/);
-    assert.match(
-      read('konsum/callback.html'),
-      /<head>\n    <meta name="referrer" content="strict-origin" \/>/,
-    );
-    const quotedHead = (appDir, mode, outDir) => {
-      build(appDir, mode, outDir);
-      writeFileSync(
-        join(outDir, 'index.html'),
-        '<!doctype html><html><head data-note="a > b"><title>x</title></head></html>',
-      );
-      return true;
-    };
-    buildSite(root, { build: quotedHead });
-    assert.match(
-      read('konsum/callback.html'),
-      /<head data-note="a > b">\n    <meta name="referrer" content="strict-origin" \/><title>/,
-    );
-    // Unknown tokens do not count; the last valid one is kept if it is strict.
-    buildSite(root, {
-      build: page('<meta content="no-referrer, bogus" name=\'referrer\'>'),
-    });
-    assert.deepEqual(metas(), ['<meta name="referrer" content="no-referrer" />']);
   });
 
   it('rewrites only the callbacks on Netlify', () => {
@@ -211,7 +143,7 @@ describe('build-site', () => {
       '/konsum/callback /konsum/index.html 200!\n/notes/callback /notes/index.html 200!\n',
     );
     assert.equal(exists('konsum/callback.html'), false);
-    assert.equal(read('_headers'), '/*\n  Referrer-Policy: strict-origin\n');
+    assert.equal(exists('_headers'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
   });
 
