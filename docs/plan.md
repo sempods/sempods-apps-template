@@ -156,7 +156,8 @@ Scripts (deterministic, tested in CI):
   and links to separate app pages; it does not mount multiple app runtimes in
   a host. Each page keeps one SDK runtime owner. Routing is host-specific
   because hosts disagree on rewrites: Netlify serves files before rules, so
-  one rule per callback (`/<id>/callback /<id>/index.html 200`) suffices;
+  one forced rule per callback (`/<id>/callback /<id>/index.html 200!`)
+  suffices and no app file can shadow it;
   Cloudflare applies rules before files, so the callback ships as
   `callback.html`. Every site gets a top-level `404.html`. Hosts serve `/<id>/callback`
   with `200` and no redirect, because the SDK matches the callback path

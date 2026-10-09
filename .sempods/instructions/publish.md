@@ -71,7 +71,8 @@ Build command `pnpm run build-site`, publish directory `site-dist`.
 ### Netlify
 
 Use `--host netlify`: `build-site` writes `_redirects` with one rule per app,
-`/<id>/callback /<id>/index.html 200`, and a top-level `404.html` that Netlify
+`/<id>/callback /<id>/index.html 200!` (forced, so no file at that path shadows
+it), and a top-level `404.html` that Netlify
 serves for unknown paths. Write this `netlify.toml` in the
 repository root when the owner asks for Netlify (the template ships none):
 
@@ -116,9 +117,9 @@ the first sign-in.
 ## 4. Check the deployment
 
 1. For each app and both addresses:
-   - `curl -sI https://<host>/<id>/callback?code=x&state=y` returns `200` and
+   - `curl -sI 'https://<host>/<id>/callback?code=x&state=y'` returns `200` and
      no `Location`;
-   - `curl -s https://<host>/<id>/did.json` returns the JSON with
+   - `curl -s 'https://<host>/<id>/did.json'` returns the JSON with
      `"id": "did:web:<host>:<id>"`.
 2. In a fresh browser profile, the owner signs in to each app on the
    published site, grants only the intended context, saves something and

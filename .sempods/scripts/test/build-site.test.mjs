@@ -130,7 +130,7 @@ describe('build-site', () => {
     buildSite(root, { build });
     assert.equal(
       read('_redirects'),
-      '/konsum/callback /konsum/index.html 200\n/notes/callback /notes/index.html 200\n',
+      '/konsum/callback /konsum/index.html 200!\n/notes/callback /notes/index.html 200!\n',
     );
     assert.equal(existsSync(join(root, 'site-dist', 'konsum', 'callback.html')), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
@@ -148,6 +148,23 @@ describe('build-site', () => {
     // Without a manifest: apps.json and the app's icon.
     assert.match(html, /<a href="\/notes\/" lang="en">/);
     assert.match(html, /<img src="\/notes\/icon-192\.png" alt=""/);
+  });
+
+  it('resolves relative manifest icons against the app path', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const relative = (appDir, mode, outDir) => {
+      build(appDir, mode, outDir);
+      if (appDir.endsWith('konsum'))
+        writeFileSync(
+          join(outDir, 'manifest.webmanifest'),
+          JSON.stringify({
+            icons: [{ src: 'icons/app.png', sizes: '512x512' }],
+          }),
+        );
+      return true;
+    };
+    buildSite(root, { build: relative });
+    assert.match(read('index.html'), /<img src="\/konsum\/icons\/app\.png"/);
   });
 
   it('rejects a did.json the app ships for another identity', () => {

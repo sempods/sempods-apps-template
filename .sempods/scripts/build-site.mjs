@@ -36,6 +36,26 @@ function appBuild(appDir, mode, outDir) {
 // Host files only count at the site root; an app's own copies are ignored.
 const HOST_FILES = ['_redirects', '_headers', '404.html'];
 
+// Read or copy directly and treat a missing file as absent, rather than
+// checking first: the file could change between the check and the use.
+function readJsonIfPresent(path) {
+  try {
+    return readJson(path);
+  } catch (error) {
+    if (error.code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+function copyIfPresent(from, to) {
+  try {
+    copyFileSync(from, to);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 /** The overview entry of a built app: apps.json, then its PWA manifest. */
 function overviewEntry(app, outDir) {
   const entry = {
@@ -44,14 +64,19 @@ function overviewEntry(app, outDir) {
     language: app.language,
     href: app.path,
   };
-  const manifest = join(outDir, 'manifest.webmanifest');
-  if (existsSync(manifest)) {
-    const { name, description, icons = [] } = readJson(manifest);
+  const manifest = readJsonIfPresent(join(outDir, 'manifest.webmanifest'));
+  if (manifest) {
+    const { name, description, icons = [] } = manifest;
     if (name) entry.title = name;
     if (description) entry.description = description;
     const size = (icon) => Number(String(icon.sizes).split('x')[0]) || 0;
     const largest = [...icons].sort((a, b) => size(b) - size(a))[0];
-    if (largest?.src) entry.icon = largest.src;
+    // Icon URLs are relative to the manifest, not to the overview at /.
+    if (largest?.src) {
+      const base = new URL(`${app.path}manifest.webmanifest`, 'https://site.invalid');
+      const url = new URL(largest.src, base);
+      entry.icon = url.origin === base.origin ? url.pathname : url.href;
+    }
   } else if (existsSync(join(outDir, 'icon-192.png')))
     entry.icon = `${app.path}icon-192.png`;
   return entry;
@@ -99,14 +124,13 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     const { clientId } = siteIdentity(site[profile], app);
     const didFile = join(appOut, 'did.json');
     let shipped;
-    if (existsSync(didFile))
-      try {
-        shipped = readJson(didFile);
-      } catch {
-        throw new Error(
-          `apps/${app.id}/public/did.json is not valid JSON; remove it, build-site writes ${clientId}.`,
-        );
-      }
+    try {
+      shipped = readJsonIfPresent(didFile);
+    } catch {
+      throw new Error(
+        `apps/${app.id}/public/did.json is not valid JSON; remove it, build-site writes ${clientId}.`,
+      );
+    }
     if (shipped && shipped.id !== clientId)
       throw new Error(
         `apps/${app.id} ships a did.json for another identity; remove it, build-site writes ${clientId}.`,
@@ -118,18 +142,19 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
 
     // The SDK's Apache-2.0 notices travel with the published code.
     for (const name of SDK) {
-      const from = [appDir, root]
-        .map((base) => join(base, 'node_modules', '@sempods', name))
-        .find((dir) => existsSync(join(dir, 'LICENSE')));
-      if (!from)
+      const to = join(appOut, 'licenses', name);
+      mkdirSync(to, { recursive: true });
+      const copied = [appDir, root].some((base) => {
+        const from = join(base, 'node_modules', '@sempods', name);
+        if (!copyIfPresent(join(from, 'LICENSE'), join(to, 'LICENSE')))
+          return false;
+        copyIfPresent(join(from, 'NOTICE'), join(to, 'NOTICE'));
+        return true;
+      });
+      if (!copied)
         throw new Error(
           `@sempods/${name} with its LICENSE is not installed for apps/${app.id}; run pnpm install.`,
         );
-      const to = join(appOut, 'licenses', name);
-      mkdirSync(to, { recursive: true });
-      for (const file of ['LICENSE', 'NOTICE'])
-        if (existsSync(join(from, file)))
-          copyFileSync(join(from, file), join(to, file));
     }
 
     for (const file of HOST_FILES)
@@ -139,8 +164,10 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
         );
 
     // The callback must answer 200 at its exact path with its query intact.
+    // Forced (200!), so no file at that path, such as a callback.html the app
+    // ships, can shadow the rewrite.
     if (host === 'netlify')
-      redirects.push(`${app.path}callback ${app.path}index.html 200`);
+      redirects.push(`${app.path}callback ${app.path}index.html 200!`);
     else copyFileSync(index, join(appOut, 'callback.html'));
 
     entries.push(overviewEntry(app, appOut));
