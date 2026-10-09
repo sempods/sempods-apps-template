@@ -36,12 +36,15 @@ update is merged when checks pass. Before 1.0 a minor update may break apps;
 your assistant follows the migration guide, adapts your apps and lists what to
 try on the Pod. You decide when to merge.
 
-## Publish later
+## Publish
 
-For now, apps run on your computer. Shared hosting and deployment setup come
-later; your assistant should not present them as ready yet. Apps include PWA
-configuration by default for later installation from an HTTPS site. Offline
-startup will not make Pod edits work offline. You decide when to publish.
+When an app is ready, ask your assistant: “Publish my apps.” It asks for the
+web address you own, for example a free Netlify or Cloudflare address, and
+optionally a second address for previews. All your apps then share one site,
+each under its own path, with an overview page. Choose the address once:
+changing it later means signing in to every app again. On the published site,
+apps can be installed on a device. Offline startup will not make Pod edits
+work offline. You decide when to publish.
 
 ## Update
 

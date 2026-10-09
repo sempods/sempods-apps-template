@@ -19,6 +19,18 @@ alone: owner files, configuration choices and the SDK migration.
   Vite build modes `sempods-production` and `sempods-preview` select a
   published profile; development, plain builds, `vite preview` and tests stay
   local. Changing the production origin needs `--change-domain`.
+- `pnpm run build-site [--profile production|preview]` (or
+  `SEMPODS_SITE_PROFILE`) builds every app with that profile into one static
+  folder, `site-dist/<id>/`, and leaves each app's local `dist/` alone. It
+  writes an accessible overview page at `/` from `apps.json` and the apps' PWA
+  manifests, `did.json` per app, the SDK's licence notices, and the routing
+  for the configured host: Netlify gets one `_redirects` rule per callback;
+  Cloudflare Pages and other static hosts get `<id>/callback.html` and a
+  top-level `404.html`.
+- The new [publish guide](instructions/publish.md) states what any host must
+  provide, with sections for Netlify (tested) and Cloudflare Pages (not
+  tested by the template). The app workflow, `docs/start.md`, `README.md` and
+  `INIT.md` point to it.
 
 ### Upgrade notes
 
@@ -33,6 +45,11 @@ alone: owner files, configuration choices and the SDK migration.
    the interim file and its tests.
 3. Choose the production origin once. A later change gives every app a new
    identity: every sign-in and Pod grant has to be made again.
+4. `.gitignore` gains `site-dist/`. A copy that published with its own build
+   or host setup before (#24) compares it with the publish guide: callback
+   paths must answer `200` without a redirect, and catch-all rewrites to
+   `index.html` must go on Cloudflare. Replace it with `build-site` with the
+   owner's agreement.
 
 ## 0.5.0
 

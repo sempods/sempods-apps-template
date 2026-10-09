@@ -10,6 +10,7 @@
     "new-app": "node .sempods/scripts/new-app.mjs",
     "dev": "node .sempods/scripts/dev.mjs",
     "configure-site": "node .sempods/scripts/configure-site.mjs",
+    "build-site": "node .sempods/scripts/build-site.mjs",
     "check": "node .sempods/scripts/check.mjs",
     "sdk-update": "node .sempods/scripts/sdk-update.mjs",
     "update-template": "node .sempods/scripts/update-template.mjs"

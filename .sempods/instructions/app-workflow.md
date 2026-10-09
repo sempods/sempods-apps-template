@@ -183,12 +183,15 @@ and use the local command plus an assistant-created PR with the owner's existing
 GitHub access. [INIT](../../INIT.md#enable-automatic-sdk-update-prs) explains the
 repository setting. Never ask for a token.
 
-## Later capabilities
+## Publish
+
+To publish, follow the [publish guide](publish.md): the owner chooses the
+published origin, an optional fixed preview address and the host;
+`pnpm run configure-site` records them, and `pnpm run build-site` builds all
+apps into one static site. Published identities come only from these
+commands, one `did:web` per app and address; do not configure identities by
+hand or add a parallel configuration mechanism. Check the deployment as the
+guide describes and record it in the app's notes.
 
 Template updates follow the
-[update-template skill](../skills/update-template/SKILL.md). Published identities
-come from `pnpm run configure-site` (production and a fixed preview address,
-each a `did:web` per app); do not configure identities by hand or add a
-parallel configuration mechanism. Combined hosting (`build-site`) is not
-available yet: capture the request and consult the installed SDK's
-`deployment.md`.
+[update-template skill](../skills/update-template/SKILL.md).
