@@ -40,8 +40,8 @@ apps/<id>/             one app, quickstart layout (Vite, React, app-sdk); owner 
                        instructions, VERSION; replaced as a whole on update
 package.json           workspace root; npm scripts are thin calls into .sempods/
 docs/start.md          short user steps: start, change, try, publish
-docs/app-workflow.md   thin entry to canonical instructions in .sempods/
-docs/                  vision, plan, maintaining (template-maintainer context)
+docs/                  vision, plan, maintaining (template-maintainer context;
+                       removed from a copy during setup)
 ```
 
 ## User and assistant entry points (M1)
@@ -193,10 +193,10 @@ GitHub App is required for this. See
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION), generated app configuration                                                                                                                  | Replace or regenerate as a whole.                                                                            |
 | Owner                      | App code, `apps.json`, the owner section of AGENTS.md, the setup record in INIT.md, each app's development notes                                                                                                    | Preserve; never overwrite as part of a template update.                                                      |
-| Shared                     | Template section of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, `docs/app-workflow.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, `.node-version`, CI and Dependabot workflows | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
+| Shared                     | Template section of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, tool/skill adapters outside `.sempods/`, `.npmrc`, `.gitignore`, `.node-version`, CI and Dependabot workflows                         | Apply upgrade notes as a reviewed diff, preserving instance-specific settings and owner sections.            |
 | Shared manifests           | Root and app `package.json` files                                                                                                                                                                                   | Update only identified template/tooling or SDK entries, preserving app dependencies, scripts and metadata.   |
 | Generated dependency state | `package-lock.json`                                                                                                                                                                                                 | Regenerate from the updated manifests with the selected npm version; verify a clean `npm ci` and all checks. |
-| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                                                             | Replace as a whole; they describe the template, not the instance, and INIT may remove them.                  |
+| Template reference         | `docs/vision.md`, `docs/plan.md`, `docs/maintaining.md`                                                                                                                                                             | Replace as a whole; they describe the template, not the instance, and INIT removes them.                     |
 | Owner after setup          | `LICENSE`, `CONTRIBUTING.md`, `.github/CODEOWNERS` and other files INIT adapts or removes (such as the DCO workflow)                                                                                                                   | Preserve; report a template change to them in the upgrade notes for review.                                  |
 
 The workflow entry outside `.sempods/` links to its canonical instructions
