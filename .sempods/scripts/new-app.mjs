@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Creates apps/<id> from the skeleton and adds it to apps.json.
-// Usage: npm run new-app -- <id> [--title "<title>"] [--language <de|en>] [--no-pwa]
-import { spawnSync } from 'node:child_process';
+// Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]
 import {
   cpSync,
   existsSync,
@@ -21,6 +20,7 @@ import {
   writeApps,
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 const TEXT = new Set(['.json', '.html', '.md', '.ts', '.tsx', '.css']);
 
@@ -92,6 +92,7 @@ export function createApp(
 
 function main() {
   const { values, positionals } = parseArgs({
+    args: scriptArgs(),
     allowPositionals: true,
     options: {
       title: { type: 'string' },
@@ -102,7 +103,7 @@ function main() {
   });
   if (positionals.length !== 1) {
     console.error(
-      'Usage: npm run new-app -- <id> [--title "<title>"] [--language <de|en>] [--no-pwa]',
+      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]',
     );
     process.exit(2);
   }
@@ -121,17 +122,13 @@ function main() {
   }
   console.log(`Created apps/${app.id} (${app.title}).`);
   if (!values['skip-install']) {
-    const install = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
-      cwd: root,
-      stdio: 'inherit',
-      shell: process.platform === 'win32',
-    });
+    const install = pnpm(INSTALL, { cwd: root });
     if (install.status !== 0) {
-      console.error('npm install failed; run it again, then start the app.');
+      console.error('pnpm install failed; run it again, then start the app.');
       process.exit(1);
     }
   }
-  console.log(`Start it: npm run dev -- ${app.id}`);
+  console.log(`Start it: pnpm run dev ${app.id}`);
   console.log(`Then open http://127.0.0.1:${app.devPort}${app.path}`);
 }
 

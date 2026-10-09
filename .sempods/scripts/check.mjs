@@ -2,7 +2,7 @@
 // Checks the whole repository: manifest, generated configuration, the shared
 // SDK version and its shipped app-author reference, declared dependencies, Markdown
 // links, script tests, and lint, typecheck, build and tests of every app.
-// Usage: npm run check [-- --standalone <id|all>]
+// Usage: pnpm run check [--standalone <id|all>]
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -12,6 +12,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -22,6 +23,7 @@ import { readApps } from './lib/apps.mjs';
 import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { checkLinks } from './lib/links.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
 export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
@@ -155,16 +157,9 @@ export function staticProblems(root) {
   return problems;
 }
 
-function npm(args, cwd) {
-  const result = spawnSync('npm', args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-  return result.status === 0;
-}
+const run = (args, cwd) => pnpm(args, { cwd }).status === 0;
 
-function standalone(root, id) {
+function standalone(root, id, packageManager) {
   const work = mkdtempSync(join(tmpdir(), `sempods-${id}-`));
   try {
     cpSync(join(root, 'apps', id), work, {
@@ -172,14 +167,24 @@ function standalone(root, id) {
       filter: (src) =>
         !/[\\/](node_modules|dist)([\\/]|$)/.test(src.slice(root.length)),
     });
-    cpSync(join(root, '.npmrc'), join(work, '.npmrc'));
+    // The workspace settings (no install scripts, Node version, release age)
+    // apply here too; its package pattern matches nothing in the copy.
+    cpSync(join(root, 'pnpm-workspace.yaml'), join(work, 'pnpm-workspace.yaml'));
+    // The copy installs with the root's pinned pnpm, not whichever pnpm or
+    // Corepack default would serve a manifest without packageManager.
+    const manifest = readJson(join(work, 'package.json'));
+    manifest.packageManager = packageManager;
+    writeFileSync(
+      join(work, 'package.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
     // Installs, lints, builds and tests without the workspace, so a package that
     // only another app or the root tooling provides fails here.
     return (
-      npm(['install', '--no-audit', '--no-fund'], work) &&
-      npm(['run', 'lint'], work) &&
-      npm(['run', 'build'], work) &&
-      npm(['run', 'test'], work)
+      run(INSTALL, work) &&
+      run(['run', 'lint'], work) &&
+      run(['run', 'build'], work) &&
+      run(['run', 'test'], work)
     );
   } finally {
     rmSync(work, { recursive: true, force: true });
@@ -187,7 +192,10 @@ function standalone(root, id) {
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { standalone: { type: 'string' } } });
+  const { values } = parseArgs({
+    args: scriptArgs(),
+    options: { standalone: { type: 'string' } },
+  });
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
   const failures = staticProblems(root);
   for (const problem of failures) console.error(`✗ ${problem}`);
@@ -208,13 +216,10 @@ async function main() {
     }),
   );
   for (const app of readAppsSafe(root)) {
-    const ws = ['--workspace', `apps/${app.id}`];
-    step(`apps/${app.id}: lint`, npm(['run', 'lint', ...ws], root));
-    step(
-      `apps/${app.id}: typecheck and build`,
-      npm(['run', 'build', ...ws], root),
-    );
-    step(`apps/${app.id}: tests`, npm(['run', 'test', ...ws], root));
+    const dir = join(root, 'apps', app.id);
+    step(`apps/${app.id}: lint`, run(['run', 'lint'], dir));
+    step(`apps/${app.id}: typecheck and build`, run(['run', 'build'], dir));
+    step(`apps/${app.id}: tests`, run(['run', 'test'], dir));
   }
   // Outside the workspace, an app finds only what its own package.json
   // declares, including CLIs its scripts call.
@@ -225,10 +230,11 @@ async function main() {
       : values.standalone
         ? [values.standalone]
         : [];
+  const { packageManager } = readJson(join(root, 'package.json'));
   for (const id of isolated)
     step(
       `apps/${id}: standalone install, lint, build and tests`,
-      apps.includes(id) && standalone(root, id),
+      apps.includes(id) && standalone(root, id, packageManager),
     );
 
   if (failures.length > 0) {

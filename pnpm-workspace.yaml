@@ -1,0 +1,26 @@
+packages:
+  - 'apps/*'
+
+# Added dependencies get exact versions; installs require the Node version
+# from engines.
+saveExact: true
+engineStrict: true
+
+# Scripts fail on dependencies out of sync with the manifests instead of
+# installing on their own, so check never rewrites pnpm-lock.yaml.
+verifyDepsBeforeRun: error
+
+# Dependencies run no install scripts: pnpm fails an install that would need
+# one (strictDepBuilds). Approve a package deliberately under allowBuilds.
+
+# Releases of the sempods SDK install on their release day; every other
+# package waits pnpm's default day (minimumReleaseAge).
+minimumReleaseAgeExclude:
+  - '@sempods/*'
+
+overrides:
+  # The Markdown link check (unified-engine 11 and its npm config loader)
+  # still requests the deprecated glob 10; glob 13 replaces it in that tree.
+  unified-engine>glob: 13.0.6
+  '@npmcli/map-workspaces>glob': 13.0.6
+  '@npmcli/package-json>glob': 13.0.6

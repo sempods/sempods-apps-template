@@ -20,6 +20,7 @@ updates:
           - 'minor'
           - 'patch'
 
+  # Dependabot's npm ecosystem updates pnpm-lock.yaml too.
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
@@ -57,7 +58,7 @@ updates:
           - 'minor'
           - 'patch'
 
-  # The generator skeleton is outside the apps/* npm workspaces.
+  # The generator skeleton is outside the apps/* pnpm workspace.
   - package-ecosystem: 'npm'
     directory: '/.sempods/skeleton/app'
     schedule:

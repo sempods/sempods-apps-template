@@ -12,9 +12,10 @@ itself, do not adapt it: tell the user to create their own copy as described in
 the [README](README.md#start-with-your-idea). A local copy without a Git remote
 is the owner's instance when the owner says so; record that in the setup record.
 
-Setup needs the companion skeleton: root `package.json`, `package-lock.json`,
-`.node-version`, `.sempods/VERSION`, `.sempods/scripts/new-app.mjs`,
-`.sempods/scripts/check.mjs` and `apps.json`; after `npm ci`, the SDK's
+Setup needs the companion skeleton: root `package.json`, `pnpm-workspace.yaml`,
+`pnpm-lock.yaml`, `.node-version`, `.sempods/VERSION`,
+`.sempods/scripts/new-app.mjs`, `.sempods/scripts/check.mjs` and `apps.json`;
+after `pnpm install`, the SDK's
 shipped reference `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`. If
 these are missing, report that the skeleton is not integrated. Do not invent
 scripts, configuration or a replacement SDK reference to work around it.
@@ -34,21 +35,28 @@ use the owner's full test Pod URL and a dedicated context, with synthetic data.
 
 ## Create the first app and open it
 
-Use the Node version in `.node-version` and npm. Check
+Use the Node version in `.node-version` and pnpm. Check
 `node --version` first. If it differs, switch with the owner's version manager,
 naming the version from `.node-version` explicitly (for example `nvm install
 24.15.0`, `fnm use --install-if-missing 24.15.0`, or with mise prefix each
-command: `mise exec node@24.15.0 -- npm ci`; not every manager reads
+command: `mise exec node@24.15.0 -- pnpm install`; not every manager reads
 `.node-version` by default). Do not write a version-manager config into the
 repository (for example with `mise use`): `.node-version` stays the only source.
-Otherwise ask the owner to install that version; do not work around it. `.npmrc`
-sets `engine-strict`, so `npm ci` stops with `EBADENGINE` on an older Node. From
-the repository root, install the committed dependencies:
+Otherwise ask the owner to install that version; do not work around it.
+`pnpm-workspace.yaml` sets `engineStrict`, so `pnpm install` stops on an older
+Node.
+
+Then check `pnpm --version`. If pnpm is missing, Node 24 brings Corepack:
+`corepack enable pnpm`. Without Corepack (Node 25 and later), or if it cannot
+write to Node's directory, use `npm install --global pnpm@11`. Ask the owner
+before installing globally. pnpm 10 or newer switches to the version that
+`packageManager` in `package.json` pins. From the repository root, install the
+committed dependencies:
 
 ```sh
-npm ci
-npm run new-app -- konsum --title "Einkaufsliste" --language de
-npm run dev -- konsum
+pnpm install --frozen-lockfile
+pnpm run new-app konsum --title "Einkaufsliste" --language de
+pnpm run dev konsum
 ```
 
 Replace the example ID, title and language with the recorded choices. PWA is on
@@ -66,7 +74,7 @@ leaves setup in progress; diagnose it before proceeding.
 
 Continue with the [app workflow](.sempods/instructions/app-workflow.md) for the
 first useful interaction. If a test Pod is available, let the user sign in in
-the browser and select their test context. Run `npm run check` in another
+the browser and select their test context. Run `pnpm run check` in another
 terminal and report its result.
 
 ## Adapt the user's copy
@@ -133,7 +141,7 @@ opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
 
 ## Finish setup
 
-Run `npm run check` again after the inherited-file adaptations. Mark setup
+Run `pnpm run check` again after the inherited-file adaptations. Mark setup
 **done** only when those adaptations are recorded, the chosen app starts at its
 assigned URL, its first useful interaction is available and local checks pass.
 Deferred review identity or automatic updates do not

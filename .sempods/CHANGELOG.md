@@ -28,6 +28,19 @@ alone: owner files, configuration choices and the SDK migration.
   what to test first and how to set up a component test.
 - `src/sempods.generated.ts` reads `location` only when the runtime is created,
   no longer on import, so tests in Node can import it.
+- pnpm replaces npm workspaces (#32). `package.json` pins pnpm 11.28.2 in
+  `packageManager` and drops `workspaces` and its npm `overrides`;
+  `pnpm-workspace.yaml` lists `apps/*` and carries the former `.npmrc`
+  settings: exact versions, a strict Node engine and no dependency install
+  scripts (pnpm's `strictDepBuilds`). Scripts fail on dependencies out of
+  sync with the manifests instead of installing on their own
+  (`verifyDepsBeforeRun: error`). The glob override moves there too.
+  `pnpm-lock.yaml` replaces `package-lock.json`, and `.npmrc` is gone. SDK
+  releases are exempt from pnpm's one-day minimum release age, so
+  `sdk-update` works on release day. The scripts, CI, the SDK update workflow
+  and all instructions use pnpm; the app workflow names the pnpm equivalents of
+  the npm commands in the SDK's guides. The scripts ignore a leading `--`, so
+  `pnpm run check -- --standalone all` works as well.
 - The agent instructions serve only the owner who builds apps. AGENTS.md,
   CLAUDE.md, INIT.md and the app workflow no longer route to template
   maintenance or mention its milestones, so an assistant no longer switches to
@@ -48,10 +61,40 @@ alone: owner files, configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. `update-template` updates the root and skeleton manifests. Then run
-   `npm run sdk-update -- 0.5.0` so every registered app moves to the same SDK
-   version, and run `npm run check -- --standalone all`.
-2. Review the SDK migration
+1. **pnpm.** Before this update, check `pnpm --version`; install pnpm as
+   `docs/start.md` says if it is missing. A copy before 0.5.0 starts the
+   update with `npm run update-template`. The update adds `pnpm-workspace.yaml`,
+   sets `packageManager`, removes `workspaces` and the template's `overrides`
+   from `package.json`, removes an unchanged `.npmrc`, converts
+   `package-lock.json` with `pnpm import` (the copy keeps its resolved
+   versions), deletes it and installs with pnpm. With `--no-install` the update
+   stays unfinished until it runs again with installation. Then:
+   - an owner-changed `.npmrc` stays: pnpm 11 reads only registry, auth and
+     network settings from it. Move other settings to `pnpm-workspace.yaml`
+     (camelCase, for example `saveExact: true`) with the owner's agreement;
+   - owner globs in `package.json` `workspaces` beyond `apps/*` are kept, but
+     pnpm ignores that field. Add them to `packages` in `pnpm-workspace.yaml`
+     and remove the field, with the owner's agreement;
+   - an owner-set `packageManager` that is not pnpm is kept and stops pnpm;
+     the report names it. Set it to the template's pnpm version with the
+     owner's agreement, then run the update again;
+   - owner entries in `package.json` `overrides` use npm's syntax, which pnpm
+     ignores. Move them to `overrides` in `pnpm-workspace.yaml`, written
+     `parent>child: version`;
+   - if an app dependency needs an install script, `pnpm install` stops. Ask
+     the owner before approving it under `allowBuilds` in
+     `pnpm-workspace.yaml`;
+   - the owner's commands change (`pnpm install`, `pnpm run dev <id>`,
+     `pnpm run check`). Update mentions of npm commands in app notes or the
+     owner section of `AGENTS.md` with the owner's agreement;
+   - CI now uses `pnpm/action-setup`. If the organization limits which actions
+     may run, the owner allows it;
+   - commit `pnpm-lock.yaml` and the removal of `package-lock.json`, then run
+     `pnpm install --frozen-lockfile` and `pnpm run check --standalone all`.
+2. `update-template` updates the root and skeleton manifests. Then run
+   `pnpm run sdk-update 0.5.0` so every registered app moves to the same SDK
+   version, and run `pnpm run check --standalone all`.
+3. Review the SDK migration
    [From 0.4 to 0.5](https://github.com/sempods/sempods-typescript/blob/v0.5.0/docs/migration.md#from-04-to-05)
    for each app:
    - code that chose a new address after a creation reported `exists` must
@@ -65,25 +108,25 @@ alone: owner files, configuration choices and the SDK migration.
      Context catalogue loads;
    - code that read a `created`, `saved` or `removed` outcome after another
      write on the same target now sees `null`.
-3. Apps that copied the 0.4 overview recipe's `EditInContext` keep working. To
+4. Apps that copied the 0.4 overview recipe's `EditInContext` keep working. To
    replace it with `useContextEditor`, ask the owner first: the row no longer
    selects its Context.
-4. For an existing app that only reads, add that decision and the contexts it
+5. For an existing app that only reads, add that decision and the contexts it
    reads to its `NOTES.md` when you next work on it.
-5. `update-template` regenerates `src/sempods.generated.ts` in every app; the
+6. `update-template` regenerates `src/sempods.generated.ts` in every app; the
    exported `runtimeOptions` keep their shape. Existing apps keep their own
    test setup. To give one the skeleton's, ask the owner first, then copy
    `.sempods/skeleton/app/tsconfig.test.json`, add it to the app's
    `tsconfig.json` references and exclude `src/**/*.test.ts` and
    `src/**/*.test.tsx` from its `tsconfig.app.json`. An app whose tests already
    read Node APIs some other way can keep them.
-6. The contributor documents `CONTRIBUTING.md`, `docs/maintaining.md`,
+7. The contributor documents `CONTRIBUTING.md`, `docs/maintaining.md`,
    `docs/plan.md` and `docs/vision.md` describe work on the template, not on
    the owner's apps. Offer to remove them; keep `CONTRIBUTING.md` if the owner
    adapted it for their own repository. First check that no kept file links to
-   them, so `npm run check` stays green. Template updates do not bring them
+   them, so `pnpm run check` stays green. Template updates do not bring them
    back once removed.
-7. The shared AGENTS.md and INIT.md changes preserve existing owner and setup
+8. The shared AGENTS.md and INIT.md changes preserve existing owner and setup
    records. Do not repeat completed setup. For an incomplete setup, build the
    first local interaction before offering optional repository preferences;
    record deferred choices without claiming automatic updates are enabled.

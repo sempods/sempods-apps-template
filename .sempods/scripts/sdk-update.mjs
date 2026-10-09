@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // One release for the root tooling, skeleton and every registered app.
-import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   existsSync,
@@ -12,6 +11,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { readLockfile } from './lib/lockfile.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 export const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
 // SemVer 2.0: numeric identifiers cannot have leading zeroes.
@@ -44,30 +45,29 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-function npm(root, args, capture = false) {
-  const result = spawnSync('npm', args, {
+function pnpmOrThrow(root, args, capture = false) {
+  const result = pnpm(args, {
     cwd: root,
     stdio: capture ? 'pipe' : 'inherit',
     encoding: 'utf8',
-    shell: process.platform === 'win32',
   });
   if (result.status !== 0)
     throw new Error(
-      `npm ${args.join(' ')} failed${capture ? `: ${result.stderr.trim()}` : '; fix the reported problem and rerun'}`,
+      `pnpm ${args.join(' ')} failed${capture ? `: ${result.stderr.trim()}` : '; fix the reported problem and rerun'}`,
     );
   return capture ? JSON.parse(result.stdout) : undefined;
 }
 
 export function registryLookup(root, name, version) {
   try {
-    return npm(
+    return pnpmOrThrow(
       root,
       ['view', `${name}@${version}`, 'version', 'dependencies', '--json'],
       true,
     );
   } catch (error) {
     throw new Error(
-      `Cannot resolve ${name}@${version} from npm (missing version or registry unavailable): ${error.message}`,
+      `Cannot resolve ${name}@${version} from the npm registry (missing version or registry unavailable): ${error.message}`,
     );
   }
 }
@@ -152,22 +152,19 @@ export const PENDING_UPDATE = '.sempods/.sdk-update-pending';
 
 export function lockStateComplete(root, version) {
   try {
-    const lock = JSON.parse(
-      readFileSync(join(root, 'package-lock.json'), 'utf8'),
+    const lock = readLockfile(
+      readFileSync(join(root, 'pnpm-lock.yaml'), 'utf8'),
     );
     const entries = [
-      ['', 'devDependencies'],
+      ['.', 'devDependencies'],
       ...readApps(root).apps.map(({ id }) => [`apps/${id}`, 'dependencies']),
     ];
     return (
       entries.every(([path, section]) =>
         SDK.every(
-          (name) => lock.packages?.[path]?.[section]?.[name] === version,
+          (name) => lock.importers[path]?.[section]?.[name] === version,
         ),
-      ) &&
-      SDK.every(
-        (name) => lock.packages?.[`node_modules/${name}`]?.version === version,
-      )
+      ) && SDK.every((name) => lock.packages.has(`${name}@${version}`))
     );
   } catch {
     return false;
@@ -200,7 +197,7 @@ export function applyUpdate(
   root,
   plan,
   {
-    run = (args) => npm(root, args),
+    run = (args) => pnpmOrThrow(root, args),
     referenceExists = () =>
       existsSync(
         join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),
@@ -217,7 +214,7 @@ export function applyUpdate(
     return false;
   writeFileSync(pending, `${plan.version}\n`);
   for (const { path, updated } of plan.changes) writeFileSync(path, updated);
-  run(['install', '--no-audit', '--no-fund']);
+  run(INSTALL);
   if (!referenceExists())
     throw new Error(
       'node_modules/@sempods/app-sdk/docs/ai-app-builder.md is missing: this SDK release ships no app-author reference',
@@ -229,6 +226,7 @@ export function applyUpdate(
 
 function main() {
   const { values, positionals } = parseArgs({
+    args: scriptArgs(),
     allowPositionals: true,
     options: {
       'allow-downgrade': { type: 'boolean' },
@@ -237,7 +235,7 @@ function main() {
   });
   if (positionals.length !== 1)
     throw new Error(
-      'Usage: npm run sdk-update -- <version|latest> [--allow-downgrade]',
+      'Usage: pnpm run sdk-update <version|latest> [--allow-downgrade]',
     );
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const plan = planUpdate(root, positionals[0], {

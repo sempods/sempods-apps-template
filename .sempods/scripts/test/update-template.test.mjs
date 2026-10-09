@@ -122,7 +122,7 @@ function templateFiles(root, v) {
     lines(
       '# Set up',
       '',
-      next ? 'Setup needs npm ci.' : 'Setup needs the snapshot.',
+      next ? 'Setup needs pnpm install.' : 'Setup needs the snapshot.',
       '',
       RECORD[0],
       '',
@@ -143,7 +143,9 @@ function templateFiles(root, v) {
       name: 'my-sempods-apps',
       private: true,
       type: 'module',
-      workspaces: ['apps/*'],
+      ...(next
+        ? { packageManager: 'pnpm@11.28.2' }
+        : { workspaces: ['apps/*'] }),
       scripts: {
         check: 'node .sempods/scripts/check.mjs',
         ...(next
@@ -163,6 +165,7 @@ function templateFiles(root, v) {
   file(root, '.github/workflows/dco.yml', 'name: DCO\n');
   if (next) {
     file(root, '.node-version', '24.15.0\n');
+    file(root, 'pnpm-workspace.yaml', "packages:\n  - 'apps/*'\n");
     file(root, '.claude/skills/update-template/SKILL.md', '# Update\n');
     file(
       root,
@@ -313,7 +316,7 @@ describe('update-template', () => {
     assert.match(agents, /Read the shipped reference\./);
     assert.match(agents, /- Owner: Alex\./);
     const init = read(instance, 'INIT.md');
-    assert.match(init, /Setup needs npm ci\./);
+    assert.match(init, /Setup needs pnpm install\./);
     assert.match(init, /- Status: done/);
     assert.ok(
       existsSync(join(instance, '.claude/skills/update-template/SKILL.md')),
@@ -564,7 +567,7 @@ describe('update-template', () => {
   it('stays resumable when installing the dependencies fails', async () => {
     const { release, instance } = setup();
     const failed = await applyRelease(release, instance, {
-      npmInstall: () => false,
+      pnpmRun: () => false,
     });
     assert.equal(failed.unfinished, true);
     assert.match(formatReport(failed), /Not finished/);
@@ -572,7 +575,7 @@ describe('update-template', () => {
     assert.ok(existsSync(join(instance, '.template-update-pending')));
     let installs = 0;
     const done = await applyRelease(release, instance, {
-      npmInstall: () => ++installs > 0,
+      pnpmRun: () => ++installs > 0,
     });
     assert.equal(done.resumed, true);
     assert.equal(installs, 1);
@@ -588,6 +591,74 @@ describe('update-template', () => {
     assert.equal(report.exact, false);
     assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
     assert.match(read(instance, 'README.md'), /Third line, released\./);
+  });
+
+  it('moves a copy from npm to pnpm and keeps its resolved versions', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    const calls = [];
+    const report = await applyRelease(release, instance, {
+      pnpmRun: (args) => {
+        calls.push(args.join(' '));
+        if (args[0] === 'import') file(instance, 'pnpm-lock.yaml', 'lock\n');
+        return true;
+      },
+    });
+    assert.deepEqual(calls, ['import', 'install --no-frozen-lockfile']);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+    assert.ok(report.removed.includes('package-lock.json'));
+    assert.ok(report.added.includes('pnpm-workspace.yaml'));
+    const root = JSON.parse(read(instance, 'package.json'));
+    assert.equal(root.packageManager, 'pnpm@11.28.2');
+    assert.equal(root.workspaces, undefined);
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+  });
+
+  it('converts the npm lockfile even when a pnpm lockfile exists', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    file(instance, 'pnpm-lock.yaml', 'stale\n');
+    const calls = [];
+    await applyRelease(release, instance, {
+      pnpmRun: (args) => calls.push(args[0]) > 0,
+    });
+    assert.deepEqual(calls, ['import', 'install']);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+  });
+
+  it('stays unfinished until the npm lockfile is converted', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.unfinished, true);
+    assert.ok(existsSync(join(instance, 'package-lock.json')));
+    assert.ok(
+      report.review.some((item) => item.includes('pnpm import')),
+      formatReport(report),
+    );
+    assert.equal(read(instance, '.sempods/VERSION'), '0.1.0\n');
+    const done = await applyRelease(release, instance, {
+      pnpmRun: (args) => {
+        if (args[0] === 'import') file(instance, 'pnpm-lock.yaml', 'lock\n');
+        return true;
+      },
+    });
+    assert.equal(done.resumed, true);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+    assert.equal(read(instance, '.sempods/VERSION'), '0.2.0\n');
+  });
+
+  it('names a kept packageManager that is not pnpm', async () => {
+    const { release, instance } = setup();
+    const root = JSON.parse(read(instance, 'package.json'));
+    root.packageManager = 'npm@11.6.0';
+    file(instance, 'package.json', json(root));
+    commit(instance, 'npm as package manager');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.match(
+      report.review.join('\n'),
+      /packageManager: npm@11\.6\.0 was kept; pnpm installs only once it names pnpm/,
+    );
   });
 
   it('refuses a release older than the repository', async () => {
