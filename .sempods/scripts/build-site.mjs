@@ -73,22 +73,38 @@ function attributes(tag) {
       found.set(name.toLowerCase(), double ?? single ?? bare ?? '');
   return found;
 }
+// Start tags whose quoted attribute values may contain `>`.
+const HEAD_START = /<head\b(?:[^>"']|"[^"]*"|'[^']*')*>/i;
+const HEAD_END = /<\/head\s*>|<body\b/i;
+// Comments and raw-text elements, whose content is not markup.
+const OPAQUE =
+  /<!--[\s\S]*?-->|<(script|style|template|textarea|title)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1\s*>/gi;
 function withReferrerPolicy(html) {
-  const referrers = (html.match(META_TAG) ?? []).filter(
-    (tag) => attributes(tag).get('name')?.trim().toLowerCase() === 'referrer',
-  );
+  const start = HEAD_START.exec(html);
+  if (!start) return html;
+  const from = start.index + start[0].length;
+  const length = html.slice(from).search(HEAD_END);
+  const to = length === -1 ? html.length : from + length;
+  const head = html.slice(from, to);
+  // Only the head's own meta elements count, not text in scripts or comments.
+  const visible = head.replace(OPAQUE, (text) => ' '.repeat(text.length));
+  const referrers = [...visible.matchAll(META_TAG)]
+    .map((match) => ({ index: match.index, tag: match[0] }))
+    .filter(
+      ({ tag }) =>
+        attributes(tag).get('name')?.trim().toLowerCase() === 'referrer',
+    );
   const declared = referrers
-    .flatMap((tag) => (attributes(tag).get('content') ?? '').split(','))
+    .flatMap(({ tag }) => (attributes(tag).get('content') ?? '').split(','))
     .map((token) => token.trim().toLowerCase())
     .filter((token) => POLICIES.has(token))
     .at(-1);
   const policy = NO_PATH.has(declared) ? declared : 'strict-origin';
-  return referrers
-    .reduce((text, tag) => text.replace(tag, ''), html)
-    .replace(
-      /<head(\s[^>]*)?>/i,
-      (head) => `${head}\n    <meta name="referrer" content="${policy}" />`,
-    );
+  const kept = referrers.reduceRight(
+    (text, { index, tag }) => text.slice(0, index) + text.slice(index + tag.length),
+    head,
+  );
+  return `${html.slice(0, from)}\n    <meta name="referrer" content="${policy}" />${kept}${html.slice(to)}`;
 }
 
 /** Removes a file or directory and reports whether there was one. */

@@ -163,6 +163,36 @@ describe('build-site', () => {
       '<meta name="referrer" content="strict-origin" />',
     ]);
     assert.doesNotMatch(read('konsum/callback.html'), /unsafe-url|a > b/);
+    // Only real head children count: text in scripts and comments stays, and
+    // a `>` in the head's own attributes does not end it.
+    buildSite(root, {
+      build: page(
+        '<script>const s = \'<meta name="referrer" content="unsafe-url">\';</script>' +
+          '<!-- <meta name="referrer" content="unsafe-url"> -->',
+      ),
+    });
+    assert.match(
+      read('konsum/callback.html'),
+      /<script>const s = '<meta name="referrer" content="unsafe-url">';<\/script>/,
+    );
+    assert.match(read('konsum/callback.html'), /<!-- <meta name="referrer"/);
+    assert.match(
+      read('konsum/callback.html'),
+      /<head>\n    <meta name="referrer" content="strict-origin" \/>/,
+    );
+    const quotedHead = (appDir, mode, outDir) => {
+      build(appDir, mode, outDir);
+      writeFileSync(
+        join(outDir, 'index.html'),
+        '<!doctype html><html><head data-note="a > b"><title>x</title></head></html>',
+      );
+      return true;
+    };
+    buildSite(root, { build: quotedHead });
+    assert.match(
+      read('konsum/callback.html'),
+      /<head data-note="a > b">\n    <meta name="referrer" content="strict-origin" \/><title>/,
+    );
     // Unknown tokens do not count; the last valid one is kept if it is strict.
     buildSite(root, {
       build: page('<meta content="no-referrer, bogus" name=\'referrer\'>'),
