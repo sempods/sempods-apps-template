@@ -37,6 +37,14 @@ alone: owner files, configuration choices and the SDK migration.
   `docs/maintaining.md`, `docs/plan.md`, `docs/vision.md`) from a new copy.
   `.gitignore` ignores the personal instruction files `CLAUDE.local.md` and
   `AGENTS.override.md`.
+- The assistant assumes no developer knowledge, builds small steps the owner
+  can try and makes routine technical decisions itself. It asks about app
+  behavior and data access in everyday terms and chooses the RDF mapping from
+  the installed SDK reference and existing data.
+- Setup reaches the first local interaction before adapting inherited files
+  and offering optional review ownership and automatic SDK updates. Deferred
+  preferences are recorded and do not block setup completion. The maintainer
+  guide includes a copyable prompt for explicit template work.
 
 ### Upgrade notes
 
@@ -75,6 +83,10 @@ alone: owner files, configuration choices and the SDK migration.
    adapted it for their own repository. First check that no kept file links to
    them, so `npm run check` stays green. Template updates do not bring them
    back once removed.
+7. The shared AGENTS.md and INIT.md changes preserve existing owner and setup
+   records. Do not repeat completed setup. For an incomplete setup, build the
+   first local interaction before offering optional repository preferences;
+   record deferred choices without claiming automatic updates are enabled.
 
 ## 0.4.0
 

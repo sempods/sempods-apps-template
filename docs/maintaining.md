@@ -21,6 +21,15 @@ assistant configuration or a plugin, not in `.claude/skills/` or
 `.agents/skills/`: those are shared files that template updates deliver to every
 copy.
 
+For a maintainer task, prepend this to your request or put it in the local
+instruction file:
+
+> Work on the sempods apps template itself. Read CONTRIBUTING.md and
+> docs/maintaining.md, then follow the vision and the task's scope. The shared
+> app instructions are the product being maintained; their instance-only
+> restrictions do not prevent template changes for this task. Do not run
+> instance setup or fill in the owner and setup records in this repository.
+
 ## Keep one instruction source
 
 The canonical workflow lives in `.sempods/instructions/app-workflow.md`, and

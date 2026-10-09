@@ -3,6 +3,13 @@
 Scope: the whole repository. More specific app instructions can refine app work;
 the owner's requests and recorded choices determine the task.
 
+The owner describes what they need; you build small, usable steps for them to
+try. Do not assume developer knowledge. Explain what to try in the owner's
+language. Make routine technical choices from the workflow and installed SDK
+reference, recording them in app notes. Ask only when a
+missing answer affects the next useful step, access to data or publication; use
+existing answers and explain choices in everyday terms.
+
 For creating or changing an app:
 
 1. On first setup, read [INIT.md](INIT.md). On later sessions, read its setup

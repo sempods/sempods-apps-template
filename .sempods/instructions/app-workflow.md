@@ -21,21 +21,28 @@ SDK-dependent behavior.
 
 ## Build one useful interaction
 
-Use the user's request and existing notes to choose the next interaction. Ask
-only for missing choices that affect it: what the app should do, whether it
-writes data or only reads it, UI language, data vocabulary and test target.
-Briefly describe the screen and any data change in the user's language, then
-build it. Start from the skeleton's layout:
+Use the user's request and existing notes to choose the next interaction. Infer
+routine choices, including UI language, from that context. Ask only when a
+missing answer changes what the user can do or which data the app may read or
+change. For example, settle whether a data explorer only reads when the request
+leaves that open, and ask for a dedicated test target before accessing a Pod.
+Describe the screen and any data change briefly in the user's language, then
+build it. Do not require the user to choose SDK APIs or RDF terms. Start from
+the skeleton's layout:
 `AppAccess` beside `TargetScreen`, with a header that reopens data access, and
 the SDK's components. Ordinary visual customization is welcome. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
 rebuilding those facilities. Existing apps on `AppShell` keep working; move them
 only when the owner wants the new layout.
 
-Choose the data vocabulary before writing data. Prefer an existing, specific
-type and properties (for example `https://schema.org/BuyAction` for a shopping
-item rather than the generic `Action` of the task example), and keep different
-kinds of data on different types so apps sharing a context do not mix them.
+Choose the data vocabulary from the installed reference, existing data and the
+app's purpose before writing data. Ask about an unclear meaning in everyday
+terms (for example, whether a shopping item records a planned purchase or a
+purchased product), then select the technical mapping yourself. Prefer an
+existing, specific type and properties (for example `https://schema.org/BuyAction`
+for a shopping item rather than the generic `Action` of the task example), and
+keep different kinds of data on different types so apps sharing a context do
+not mix them.
 Write exact IRIs (`https://schema.org/`, not `http://`), choose a fixed text
 language or `language: null`, and the enum/flag values. If the test context
 already holds data the app should show, read how it is stored before deciding.

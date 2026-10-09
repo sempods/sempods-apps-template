@@ -77,17 +77,20 @@ gh repo create my-sempods-apps --template sempods/sempods-apps-template --privat
 ```
 
 Then, in the repository, ask the assistant: "Read INIT.md and set up my
-repository." It asks for the owner's name, the UI language and the first app
-idea and test Pod/context if available; it installs dependencies, runs
-`npm run new-app -- <id>`, starts the development server and builds the first
-slice using the local app-workflow skill and the pinned SDK references,
+repository." It uses the app idea and language already given, chooses a short
+app ID and asks only for missing decisions needed for the first interaction.
+It installs dependencies, runs `npm run new-app -- <id>`, starts the development
+server and builds the first slice using the local app-workflow skill and the
+pinned SDK references,
 including the SDK's
 [AI app-builder guide](https://github.com/sempods/sempods-typescript/blob/main/docs/ai-app-builder.md).
-INIT also adapts inherited repository ownership and maintainer settings (for
-example CODEOWNERS) to the instance. The template's own contribution checks,
-such as the DCO sign-off workflow, stay in the template: an instance keeps them
-only if its owner asks, so assistant commits in a personal repository are not
-rejected for a missing sign-off. INIT records the template revision, and marks
+After the first useful interaction, INIT adapts inherited repository ownership
+and maintainer settings (for example CODEOWNERS) to the instance. Choosing a
+review owner and enabling automatic SDK updates are optional follow-ups; their
+deferred status is recorded without blocking setup. The template's own
+contribution checks, such as the DCO sign-off workflow, stay in the template: an
+instance keeps them only if its owner asks, so assistant commits in a personal
+repository are not rejected for a missing sign-off. INIT records the template revision, and marks
 setup done. Repeating setup must preserve existing apps. A later app is one
 prompt: "New app: a shopping list with …".
 

@@ -10,6 +10,9 @@ installation stops with a clear message on an older Node.
 [Create your own copy and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.
+It chooses the technical details and asks you about what the app should do.
+Review rules and automatic updates can wait until you have tried the first
+version.
 
 ## Change
 
@@ -26,7 +29,8 @@ into chat. Without a Pod, you can still try the screen.
 
 ## Keep apps up to date
 
-Weekly SDK updates can arrive as a PR after setup enables that GitHub setting.
+If you choose automatic updates after trying your first app, weekly SDK updates
+can arrive as a PR once the GitHub setting is enabled.
 Ask your assistant: “Update my SDK and explain what I should try.” A patch
 update is merged when checks pass. Before 1.0 a minor update may break apps;
 your assistant follows the migration guide, adapts your apps and lists what to
