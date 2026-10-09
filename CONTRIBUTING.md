@@ -28,7 +28,7 @@ you have tested and can explain. There is no CLA.
 
 Read [AGENTS.md](AGENTS.md) and [template maintenance](docs/maintaining.md).
 Open an issue before a large change. Keep SDK changes in the SDK repository.
-Run `npm ci`, `npm run check -- --standalone all` and
+Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all` and
 `node .sempods/scripts/self-test.mjs` with the Node version in `.node-version`.
 Changes for existing copies need a version bump, changelog and upgrade notes.
 The owner merges pull requests and publishes releases after review.

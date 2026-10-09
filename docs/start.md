@@ -7,6 +7,10 @@ You need Node.js 24.15 or newer; your copy names the exact version in
 example `nvm install 24.15.0` or `fnm use --install-if-missing 24.15.0`. The
 installation stops with a clear message on an older Node.
 
+You also need pnpm. With Node 24, run `corepack enable pnpm`; if that is not
+available, `npm install --global pnpm@11`. Your copy names the exact pnpm
+version, and pnpm switches to it by itself.
+
 [Create your own copy and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.

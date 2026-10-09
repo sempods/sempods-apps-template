@@ -17,6 +17,7 @@ import { invalidId, nextDevPort, validateApps } from '../lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../lib/generate.mjs';
 import { createApp } from '../new-app.mjs';
 import { importedPackages, staticProblems } from '../check.mjs';
+import { scriptArgs } from '../lib/pnpm.mjs';
 
 const templateRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -363,5 +364,19 @@ describe('check', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('script arguments', () => {
+  it('drops the leading -- that pnpm passes through', () => {
+    assert.deepEqual(scriptArgs(['--', '--standalone', 'all']), [
+      '--standalone',
+      'all',
+    ]);
+    assert.deepEqual(scriptArgs(['--standalone', 'all']), [
+      '--standalone',
+      'all',
+    ]);
+    assert.deepEqual(scriptArgs(['demo', '--', 'x']), ['demo', '--', 'x']);
   });
 });

@@ -2,7 +2,7 @@
 // Checks the whole repository: manifest, generated configuration, the shared
 // SDK version and its shipped app-author reference, declared dependencies, Markdown
 // links, script tests, and lint, typecheck, build and tests of every app.
-// Usage: npm run check [-- --standalone <id|all>]
+// Usage: pnpm run check [--standalone <id|all>]
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -22,6 +22,7 @@ import { readApps } from './lib/apps.mjs';
 import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { checkLinks } from './lib/links.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
 export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
@@ -155,14 +156,7 @@ export function staticProblems(root) {
   return problems;
 }
 
-function npm(args, cwd) {
-  const result = spawnSync('npm', args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-  return result.status === 0;
-}
+const run = (args, cwd) => pnpm(args, { cwd }).status === 0;
 
 function standalone(root, id) {
   const work = mkdtempSync(join(tmpdir(), `sempods-${id}-`));
@@ -172,14 +166,16 @@ function standalone(root, id) {
       filter: (src) =>
         !/[\\/](node_modules|dist)([\\/]|$)/.test(src.slice(root.length)),
     });
-    cpSync(join(root, '.npmrc'), join(work, '.npmrc'));
+    // The workspace settings (no install scripts, Node version, release age)
+    // apply here too; its package pattern matches nothing in the copy.
+    cpSync(join(root, 'pnpm-workspace.yaml'), join(work, 'pnpm-workspace.yaml'));
     // Installs, lints, builds and tests without the workspace, so a package that
     // only another app or the root tooling provides fails here.
     return (
-      npm(['install', '--no-audit', '--no-fund'], work) &&
-      npm(['run', 'lint'], work) &&
-      npm(['run', 'build'], work) &&
-      npm(['run', 'test'], work)
+      run(INSTALL, work) &&
+      run(['run', 'lint'], work) &&
+      run(['run', 'build'], work) &&
+      run(['run', 'test'], work)
     );
   } finally {
     rmSync(work, { recursive: true, force: true });
@@ -187,7 +183,10 @@ function standalone(root, id) {
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { standalone: { type: 'string' } } });
+  const { values } = parseArgs({
+    args: scriptArgs(),
+    options: { standalone: { type: 'string' } },
+  });
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
   const failures = staticProblems(root);
   for (const problem of failures) console.error(`✗ ${problem}`);
@@ -208,13 +207,13 @@ async function main() {
     }),
   );
   for (const app of readAppsSafe(root)) {
-    const ws = ['--workspace', `apps/${app.id}`];
-    step(`apps/${app.id}: lint`, npm(['run', 'lint', ...ws], root));
+    const dir = ['--dir', join(root, 'apps', app.id)];
+    step(`apps/${app.id}: lint`, run([...dir, 'run', 'lint'], root));
     step(
       `apps/${app.id}: typecheck and build`,
-      npm(['run', 'build', ...ws], root),
+      run([...dir, 'run', 'build'], root),
     );
-    step(`apps/${app.id}: tests`, npm(['run', 'test', ...ws], root));
+    step(`apps/${app.id}: tests`, run([...dir, 'run', 'test'], root));
   }
   // Outside the workspace, an app finds only what its own package.json
   // declares, including CLIs its scripts call.

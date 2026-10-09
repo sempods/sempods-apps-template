@@ -5,7 +5,7 @@
 // configuration is rewritten and the lockfile regenerated. Owner files (app code,
 // apps.json, notes, the owner section of AGENTS.md) are never written.
 //
-//   npm run update-template [-- <version>]   fetch the release and apply it here
+//   pnpm run update-template [<version>]     fetch the release and apply it here
 //   node <release>/.sempods/scripts/update-template.mjs --instance <dir>
 //                                            apply the release this script is in
 //
@@ -33,6 +33,7 @@ import {
   EXACT_VERSION,
   PENDING_UPDATE,
 } from './sdk-update.mjs';
+import { INSTALL, scriptArgs } from './lib/pnpm.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
 const here = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -243,7 +244,7 @@ const KEYED = [
   'engines',
   'overrides',
 ];
-const PLAIN = ['type', 'private', 'workspaces'];
+const PLAIN = ['type', 'private', 'packageManager', 'workspaces'];
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies'];
 
 /** Template entries of a manifest, merged; owner entries and names are untouched. */
@@ -312,7 +313,7 @@ export function mergeManifest(
           );
         }
       }
-    // npm keeps dependency lists sorted; scripts and the rest keep their order.
+    // Package managers keep dependency lists sorted; scripts and the rest keep their order.
     const ordered = field.endsWith('ependencies')
       ? Object.fromEntries(
           Object.entries(target).sort(([a], [b]) =>
@@ -355,6 +356,7 @@ export function upgradeNotes(changelog, from) {
 // records where the update started; VERSION changes only once the update is
 // complete, so an interrupted update is resumed instead of reported as done.
 export const CHECKPOINT = '.template-update-pending';
+const NPM_LOCKFILE = 'package-lock.json';
 
 /** Applies the release at `release` to the instance at `instance`. */
 export async function applyRelease(
@@ -363,10 +365,10 @@ export async function applyRelease(
   {
     install = true,
     afterReplace = () => {},
-    npmInstall = () =>
-      spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
+    // pnpm's output goes to stderr, so stdout carries only the report.
+    pnpmRun = (args) =>
+      spawnSync('pnpm', args, {
         cwd: instance,
-        // npm's output goes to stderr, so stdout carries only the report.
         stdio: ['ignore', 2, 2],
         shell: process.platform === 'win32',
       }).status === 0,
@@ -430,7 +432,7 @@ export async function applyRelease(
 
   if (existsSync(join(instance, PENDING_UPDATE)))
     throw new Error(
-      'An SDK update is unfinished; complete it with npm run sdk-update first.',
+      'An SDK update is unfinished; complete it with the sdk-update script first.',
     );
   write(CHECKPOINT, checkpoint);
 
@@ -608,13 +610,30 @@ export async function applyRelease(
     from,
   );
   report.resumed = Boolean(resumed);
-  // Complete only once the dependencies are installed; until then a rerun resumes.
-  if (install && !npmInstall()) {
-    report.unfinished = true;
+  // A copy from before pnpm keeps its resolved versions: pnpm converts the npm
+  // lockfile, which then goes.
+  const npmLock = existsSync(join(instance, NPM_LOCKFILE));
+  if (npmLock && !install)
     report.review.push(
-      'npm install failed; fix the cause, then run the update again to finish it',
+      `${NPM_LOCKFILE}: convert it with pnpm import, delete it, then run pnpm install`,
     );
-    return report;
+  // Complete only once the dependencies are installed; until then a rerun resumes.
+  if (install) {
+    const failed = (step) => {
+      report.unfinished = true;
+      report.review.push(
+        `${step} failed; install pnpm if it is missing (docs/start.md) or fix the cause, then run the update again to finish it`,
+      );
+      return report;
+    };
+    if (npmLock && !existsSync(join(instance, 'pnpm-lock.yaml'))) {
+      if (!pnpmRun(['import'])) return failed('pnpm import');
+    }
+    if (npmLock) {
+      rmSync(join(instance, NPM_LOCKFILE));
+      report.removed.push(NPM_LOCKFILE);
+    }
+    if (!pnpmRun(INSTALL)) return failed('pnpm install');
   }
   write('.sempods/VERSION', readText(join(release, '.sempods', 'VERSION')));
   write(CHECKPOINT, null);
@@ -652,6 +671,7 @@ export function formatReport(report) {
 
 async function main() {
   const { values, positionals } = parseArgs({
+    args: scriptArgs(),
     allowPositionals: true,
     options: {
       instance: { type: 'string' },

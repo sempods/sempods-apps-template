@@ -28,7 +28,8 @@ Review #2 and #3 together before the independent
 Until #2 lands, validate local Markdown links and check SDK-reference targets
 against the pinned SDK revision, reporting the missing integration dependency.
 Do not add placeholder scripts or a fabricated SDK reference to make checks pass.
-Once the skeleton is integrated, use its `npm ci` and `npm run check` commands.
+Once the skeleton is integrated, use its `pnpm install --frozen-lockfile` and
+`pnpm run check` commands.
 Record the exact commit and distinguish document/fixture checks from an actual
 user starting an app against a Pod. Skills and link checks do not prove that
 exercise was completed.

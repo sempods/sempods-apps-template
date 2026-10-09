@@ -6,7 +6,7 @@ assistant. Try the first version, then ask for the next change. Your
 screen.
 
 You need a coding assistant that can work with local files, Node.js 24.15 or
-newer, and a Pod account for trying real saves. Your assistant helps with the local setup. No hosting account
+newer with pnpm, and a Pod account for trying real saves. Your assistant helps with the local setup. No hosting account
 is needed yet.
 
 > **Preview.** This template is new and still changing. Today you can build
