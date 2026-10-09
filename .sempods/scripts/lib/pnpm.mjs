@@ -6,6 +6,8 @@ import { spawnSync } from 'node:child_process';
 // move a dependency must update it, and a standalone copy has none.
 export const INSTALL = ['install', '--no-frozen-lockfile'];
 
+// On Windows the shell finds pnpm.cmd but joins the arguments unquoted: pass
+// directories through `cwd`, never as arguments.
 export function pnpm(args, options = {}) {
   return spawnSync('pnpm', args, {
     stdio: 'inherit',
