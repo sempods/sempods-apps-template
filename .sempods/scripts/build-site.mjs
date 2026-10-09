@@ -66,7 +66,7 @@ function copyLicences(roots, appOut, appId) {
   }
 }
 
-/** The overview entry of a built app; #46 builds a richer one on this. */
+/** The overview entry of a built app. */
 function overviewEntry(app, outDir) {
   const entry = {
     id: app.id,

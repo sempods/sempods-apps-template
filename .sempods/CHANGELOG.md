@@ -6,6 +6,24 @@ applies it with the [update-template skill](skills/update-template/SKILL.md).
 template entries in the manifests. The notes cover what it cannot decide
 alone: owner files, configuration choices and the SDK migration.
 
+## 0.6.1
+
+### Changes
+
+- Setup asks once whether the owner has a test Pod after the first screen
+  works, falls back to English for an unsupported language and records each
+  deferred or chosen preference in its own setup record field.
+- The template's plan is retired: `docs/plan.md` is gone, and setup no longer
+  lists it among the contributor documents it removes.
+- `.gitignore` no longer lists `netlify-dist/`, which no script writes.
+
+### Upgrade notes
+
+1. `update-template` removes `docs/plan.md` if a copy still has it and lists it
+   under "Removed". Nothing else to do.
+2. If the owner relies on `netlify-dist/` being ignored, keep that line in
+   `.gitignore`.
+
 ## 0.6.0
 
 ### Changes

@@ -76,5 +76,5 @@ taken and every point of friction recorded.
 **Not goals:** a framework or runtime of its own, a backend, shared hosting for
 several people, AI features by default, or a second home for SDK documentation.
 
-This is direction, not a feature checklist. The [plan](plan.md) owns the steps
-and open decisions.
+This is direction, not a feature checklist. Issues hold the steps and open
+decisions.

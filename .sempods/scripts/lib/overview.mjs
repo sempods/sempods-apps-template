@@ -1,6 +1,6 @@
 // The site's static overview and not-found pages. They run no script and no
 // SDK runtime; each entry links to its app's own page. The entry shape is the
-// data model a richer app overview builds on (#46).
+// data model a richer app overview can build on.
 import { escapeHtml as escape } from './html.mjs';
 
 const TEXT = {
