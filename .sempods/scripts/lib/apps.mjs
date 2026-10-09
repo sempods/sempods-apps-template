@@ -63,6 +63,13 @@ export function invalidOrigin(value) {
     return reason;
   if (LOOPBACK.has(url.hostname))
     return 'must be a public host; local development keeps its own profile';
+  // did:web names a host by its domain name, never by an IP address.
+  if (
+    url.hostname.startsWith('[') ||
+    /^\d+(\.\d+){3}$/.test(url.hostname) ||
+    !url.hostname.includes('.')
+  )
+    return 'must name a domain, such as https://apps.example.org; did:web allows no IP address or single-label host';
   return undefined;
 }
 
@@ -124,6 +131,11 @@ export function validateApps(manifest) {
   if (manifest?.schemaVersion !== SCHEMA_VERSION)
     problems.push(`schemaVersion must be ${SCHEMA_VERSION}`);
   problems.push(...validateSite(manifest?.site));
+  if (
+    manifest?.sdkAutoUpdates !== undefined &&
+    typeof manifest.sdkAutoUpdates !== 'boolean'
+  )
+    problems.push('sdkAutoUpdates must be true or false when present');
   if (!Array.isArray(manifest?.apps))
     return [...problems, 'apps must be a list'];
   const ids = new Set();

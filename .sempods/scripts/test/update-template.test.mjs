@@ -266,6 +266,7 @@ function setup({ tagOld = false, dev = false, site = false } = {}) {
     json({
       schemaVersion: 1,
       apps: [app],
+      sdkAutoUpdates: true,
       ...(site ? { site: { production: 'https://apps.example.org' } } : {}),
     }),
   );

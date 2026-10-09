@@ -20,62 +20,18 @@ shipped reference `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`. If
 these are missing, report that the skeleton is not integrated. Do not invent
 scripts, configuration or a replacement SDK reference to work around it.
 
-## Ask once, then keep the answers
+## Choose the first interaction
 
-Use answers already given. Gather the owner's name, preferred UI language (`de`
-or `en`), first app idea and, if available, full test Pod URL and dedicated
-context. Ask for the GitHub user/team that should own this repository's review
-rules if it is not already known. Do not infer a GitHub handle from a display
-name. A missing Pod does not prevent local UI work; record Pod testing as
-pending.
+Use the request and recorded answers. Ask only for missing information needed
+for the first useful interaction. Use the requested UI language, or the owner's
+language when supported (`de` or `en`). Choose a short app ID from the idea,
+such as `konsum`, and tell the owner; the generator validates allowed IDs and
+reserved names. Record choices and progress as they become known.
 
-Choose a short app ID with the user, such as `konsum`. Use the generator's
-validation; it owns allowed IDs and reserved names. Record choices and progress
-below as they become known. Ask only for missing decisions on a resumed run.
-
-## Adapt the user's copy
-
-Inspect existing files before changing them. In a fresh instance, replace
-inherited template maintainer handles in `.github/CODEOWNERS` with the owner's
-chosen user/team, preserving relevant patterns. If no review owner is wanted,
-remove only the inherited assignments and record that choice. Preserve any
-owner-created entries; never leave `@haed` assigned merely because it came from
-the template.
-
-Remove the inherited `.github/workflows/dco.yml` unless the owner asks to keep
-it. The comments in `.github/dependabot.yml` and `.github/CODEOWNERS` do not
-depend on it; keep those files apart from the review handles. This applies only to the known template DCO workflow: if it was customized,
-clarify its purpose rather than deleting it. Keep app validation workflows.
-Repository or organization rules may still require DCO; report that separately
-rather than changing remote rules or claiming workflow removal changes them. Do
-not invent an author identity or sign-off on the owner's behalf.
-
-Remove the template's contributor documents, which do not apply to the owner's
-apps: `CONTRIBUTING.md`, `docs/maintaining.md`, `docs/plan.md` and
-`docs/vision.md`. Keep `CONTRIBUTING.md` if the owner wants a contribution
-policy of their own, and adapt it. Template updates do not bring them back.
-
-Record the starting template version from `.sempods/VERSION` below; do not
-modify that file or anything under `node_modules`. Preserve LICENSE and imported
-notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
-On resumed setup, completed adaptations are inspected, not reset to defaults.
-
-## Enable automatic SDK update PRs
-
-Using the owner's existing GitHub access, inspect the repository's Actions
-workflow permissions (for example `gh api repos/<owner>/<repo>/actions/permissions/workflow`;
-`can_approve_pull_request_reviews` reports the PR creation/approval setting).
-If access cannot read the setting, have the owner inspect it in the UI; do not
-assume it is enabled. Guide the owner to **Settings → Actions → General →
-Workflow permissions → Allow GitHub Actions to create and approve pull
-requests**, subject to organization policy. The update job's YAML permissions
-alone do not enable it. Record the observed setting and owner's choice below.
-
-If it stays disabled, report **automatic SDK updates unavailable**. The local
-`pnpm run sdk-update <version|latest>` command and an assistant-created PR
-using the owner's existing GitHub access remain available. Never ask for a
-token. Keep the check workflow's manual-dispatch trigger: the SDK workflow
-opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
+A name, GitHub review identity and automatic-update settings are not needed to
+try an app. Do not ask for them before the first local interaction. A missing
+Pod also allows UI work; record Pod testing as pending. Before accessing a Pod,
+use the owner's full test Pod URL and a dedicated context, with synthetic data.
 
 ## Create the first app and open it
 
@@ -117,11 +73,97 @@ manifest or choose another ID silently to make setup pass. A failed command
 leaves setup in progress; diagnose it before proceeding.
 
 Continue with the [app workflow](.sempods/instructions/app-workflow.md) for the
-first useful interaction. Let the user sign in in the browser and select their
-test context. Run `pnpm run check` in another terminal and report its result.
+first useful interaction. If a test Pod is available, let the user sign in in
+the browser and select their test context. Run `pnpm run check` in another
+terminal and report its result.
 
-Mark setup **done** only when the repository adaptations are recorded, the
-chosen app starts at its assigned URL and local checks pass. Record the command
+## Adapt the user's copy
+
+Do this after the first useful interaction is available locally. Inspect
+existing files before changing them. In a fresh instance, replace inherited
+maintainer handles in `.github/CODEOWNERS` if the owner has already chosen a
+review user/team. Otherwise remove only the inherited assignments and record
+review identity as deferred. Preserve relevant patterns and owner-created
+entries; never leave `@haed` assigned merely because it came from the template.
+Choosing a review owner can wait and does not block local app work.
+
+Remove the inherited `.github/workflows/dco.yml` unless the owner asks to keep
+it. The comments in `.github/dependabot.yml` and `.github/CODEOWNERS` do not
+depend on it; keep those files apart from the review handles. This applies only to the known template DCO workflow: if it was customized,
+clarify its purpose rather than deleting it. Keep app validation workflows.
+Repository or organization rules may still require DCO; report that separately
+rather than changing remote rules or claiming workflow removal changes them. Do
+not invent an author identity or sign-off on the owner's behalf.
+
+Remove the template's contributor documents, which do not apply to the owner's
+apps: `CONTRIBUTING.md`, `docs/maintaining.md`, `docs/plan.md` and
+`docs/vision.md`. Keep `CONTRIBUTING.md` if the owner wants a contribution
+policy of their own, and adapt it. Template updates do not bring them back.
+
+Record the starting template version from `.sempods/VERSION` below; do not
+modify that file or anything under `node_modules`. Preserve LICENSE and imported
+notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
+On resumed setup, completed adaptations are inspected, not reset to defaults.
+
+## Choose repository preferences (optional)
+
+After the owner can try the first interaction, offer to set a GitHub review
+owner and enable automatic SDK update PRs. Use choices already given. If the
+owner has not chosen these preferences, leave them deferred; do not wait for an
+answer to finish local setup. If the owner wants review rules, ask for the
+GitHub user/team unless it is known; do not infer a handle from a display name.
+Update `.github/CODEOWNERS` while
+preserving owner-created entries. Record the owner's name if provided; it is
+not a prerequisite for setup.
+
+Record deferred preferences individually in the existing setup record and
+continue app work. Do not inspect remote settings for deferred automatic
+updates or repeat deferred questions on a resumed run unless the owner asks to
+revisit them.
+
+## Enable automatic SDK update PRs
+
+Scheduled SDK updates require the optional root field `sdkAutoUpdates: true`
+in the owner's `apps.json` on the repository's default branch. An absent field
+or `false` keeps the update job off, even if Actions permits PR creation or an
+organization variable enables updates elsewhere. Leave the field absent for a
+new copy while the choice is deferred. A read-only job checks this committed
+choice; manual workflow dispatch and local updates remain available. Preserve
+an existing explicit opt-in on a resumed setup.
+
+When the owner chooses automatic updates, use their existing GitHub access to
+inspect the repository's Actions workflow permissions (for example
+`gh api repos/<owner>/<repo>/actions/permissions/workflow`;
+`can_approve_pull_request_reviews` reports the PR creation/approval setting).
+If access cannot read the setting, have the owner inspect it in the UI; do not
+assume it is enabled. Guide the owner to **Settings → Actions → General →
+Workflow permissions → Allow GitHub Actions to create and approve pull
+requests**, subject to organization policy. The update job's YAML permissions
+alone do not enable it.
+
+Once PR creation is allowed, add `"sdkAutoUpdates": true` at the root of
+`apps.json`, preserving its app entries and other owner settings. Run
+`pnpm run check` and include this change in the owner's normal commit/PR flow.
+Scheduled updates remain off until the choice reaches the default branch;
+verify the committed field and record it alongside the observed Actions
+setting and owner's choice below. If the change is not yet on the default
+branch, record activation as pending. To turn scheduled updates off, set the
+field to `false` through the same flow; keep manual dispatch. Template updates
+and app generation preserve this owner-owned field.
+
+If it stays disabled, report **automatic SDK updates unavailable**. The local
+`pnpm run sdk-update <version|latest>` command and an assistant-created PR
+using the owner's existing GitHub access remain available. Never ask for a
+token. Keep the check workflow's manual-dispatch trigger: the SDK workflow
+opens its PR with `GITHUB_TOKEN`, then dispatches checks for that branch.
+
+## Finish setup
+
+Run `pnpm run check` again after the inherited-file adaptations. Mark setup
+**done** only when those adaptations are recorded, the chosen app starts at its
+assigned URL, its first useful interaction is available and local checks pass.
+Deferred review identity or automatic updates do not
+block completion; keep their status visible in the setup record. Record command
 results and remaining gaps separately: no Pod, incomplete login or untested
 installed-PWA behavior are not successful interoperability evidence. If setup is
 already done, reopen the recorded app and follow its notes; do not recreate it
