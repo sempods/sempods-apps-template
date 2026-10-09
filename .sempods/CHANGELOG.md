@@ -31,13 +31,16 @@ alone: owner files, configuration choices and the SDK migration.
   Vite build modes `sempods-production` and `sempods-preview` select a
   published profile; development, plain builds, `vite preview` and tests stay
   local. Changing the production origin needs `--change-domain`.
-- pnpm no longer enforces a minimum release age at install time
-  (`minimumReleaseAge: 0` in `pnpm-workspace.yaml`). With pnpm's default, a
-  dependency younger than a day whose exact pin has no older alternative was
-  installed anyway, added to `minimumReleaseAgeExclude` in
-  `pnpm-workspace.yaml`, and the next `pnpm run` stopped because that setting
-  had changed. New releases now wait in a three-day Dependabot `cooldown` for
-  both npm entries instead, before they reach the lockfile.
+- Local installs have no minimum release age (`minimumReleaseAge: 0` in
+  `pnpm-workspace.yaml`). With pnpm's default, a dependency younger than a
+  day whose exact pin has no older alternative was installed anyway, added to
+  `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, and the next
+  `pnpm run` stopped because that setting had changed. Both npm Dependabot
+  entries apply a three-day `cooldown` to regular version updates, and
+  Dependabot attempts an age gate for newly resolved transitive dependencies.
+  This is no universal age guarantee: local dependency changes (`new-app`,
+  `pnpm add`, `sdk-update`), security updates and pnpm fallback paths can
+  admit younger releases.
 - `pnpm run build-site [--profile production|preview]` (or
   `SEMPODS_SITE_PROFILE`) builds every app with that profile into one static
   folder, `site-dist/<id>/`, and leaves each app's local `dist/` alone. It

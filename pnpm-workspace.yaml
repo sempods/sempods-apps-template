@@ -13,11 +13,12 @@ verifyDepsBeforeRun: error
 # Dependencies run no install scripts: pnpm fails an install that would need
 # one (strictDepBuilds). Approve a package deliberately under allowBuilds.
 
-# No minimum release age at install time: pnpm would otherwise install a
+# Local installs have no minimum release age: pnpm would otherwise install a
 # dependency younger than a day anyway when nothing older fits, add it to this
-# file and stop the next `pnpm run` (verifyDepsBeforeRun). New releases wait in
-# Dependabot's cooldown instead (.github/dependabot.yml), before they reach
-# the lockfile.
+# file and stop the next `pnpm run` (verifyDepsBeforeRun). Dependabot applies
+# a cooldown to regular version updates (.github/dependabot.yml). That is no
+# universal age guarantee: local dependency changes, security updates and
+# pnpm fallback paths can admit younger releases.
 minimumReleaseAge: 0
 
 overrides:
