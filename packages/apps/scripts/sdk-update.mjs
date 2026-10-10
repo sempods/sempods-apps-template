@@ -14,7 +14,7 @@ import { readApps } from './lib/apps.mjs';
 import { formatJson, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
-import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import {
   compareVersions,
   EXACT_VERSION,
@@ -24,26 +24,22 @@ import {
 } from './lib/sdk.mjs';
 
 
-function pnpmOrThrow(root, args, capture = false) {
-  const result = pnpm(args, {
-    cwd: root,
-    stdio: capture ? 'pipe' : 'inherit',
-    encoding: 'utf8',
-  });
-  if (result.status !== 0)
+function pnpmOrThrow(root, args) {
+  if (pnpm(args, { cwd: root }).status !== 0)
     throw new Error(
-      `pnpm ${args.join(' ')} failed${capture ? `: ${result.stderr.trim()}` : '; fix the reported problem and rerun'}`,
+      `pnpm ${args.join(' ')} failed; fix the reported problem and rerun`,
     );
-  return capture ? JSON.parse(result.stdout) : undefined;
 }
 
 export function registryLookup(root, name, version) {
   try {
-    return pnpmOrThrow(
-      root,
-      ['view', `${name}@${version}`, 'version', 'dependencies', '--json'],
-      true,
-    );
+    return pnpmJson(root, [
+      'view',
+      `${name}@${version}`,
+      'version',
+      'dependencies',
+      '--json',
+    ]);
   } catch (error) {
     throw new Error(
       `Cannot resolve ${name}@${version} from the npm registry (missing version or registry unavailable): ${error.message}`,

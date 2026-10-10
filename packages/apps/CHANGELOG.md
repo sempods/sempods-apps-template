@@ -15,7 +15,17 @@ configuration choices and the SDK migration.
   INIT.md, README, user guide, skill adapters, workflows, workspace settings,
   `apps.json` and a root `package.json` that depends on `@sempods/apps`.
 - `.sempods-baseline.json` records the package version and the content
-  revision of the starter a repository was created from.
+  revision of the starter a repository was created from or last migrated to.
+- `pnpm run update [<version>]` updates the tooling: it checks that Node and
+  pnpm suit the target version and otherwise names what to upgrade first,
+  installs the version and runs its `migrate`. `pnpm run migrate` applies the
+  installed version's starter from the baseline. It applies only unambiguous
+  changes and leaves everything else untouched, listed as manual cases in
+  `.sempods-migration/` with the starter's versions and a merge suggestion.
+  The assistant decides them with the update skill; `pnpm run migrate --done`
+  confirms the decisions, regenerates the apps' configuration, installs and
+  advances the baseline. `check` names an outstanding or open migration and
+  the command for it.
 - INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
   record; the setup procedure ships in the package
   (`instructions/setup.md`). Setup no longer adapts inherited files:
@@ -40,8 +50,6 @@ configuration choices and the SDK migration.
    the `Created from` field). Finish an unfinished SDK update first
    (`.sempods/.sdk-update-pending`). Then run `pnpm install`,
    `pnpm run regenerate` and `pnpm run check`.
-2. Updating a repository created from the starter to a later starter is not
-   supported yet.
 
 ## 0.6.1
 

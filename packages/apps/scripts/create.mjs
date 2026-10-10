@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { readJson, writeJson } from './lib/json.mjs';
 import { TOOLING } from './lib/paths.mjs';
 import { scriptArgs } from './lib/pnpm.mjs';
-import { readSnapshot, writeBaseline } from './lib/shared.mjs';
+import { starterAt, writeBaseline } from './lib/shared.mjs';
 
 const NAME = /^[a-z0-9][a-z0-9._-]*$/;
 
@@ -43,15 +43,11 @@ export function create(target, { snapshot, version }) {
 
 /** The starter this installed package ships; only a packed package has one. */
 export function packagedStarter() {
-  const shared = join(TOOLING, 'shared');
-  if (!existsSync(join(shared, 'snapshot.json')))
+  if (!existsSync(join(TOOLING, 'shared', 'snapshot.json')))
     throw new Error(
       'this @sempods/apps has no packed starter; create repositories with a published version, for example pnpm create @sempods/apps <directory>',
     );
-  return {
-    snapshot: readSnapshot(shared),
-    version: readJson(join(TOOLING, 'package.json')).version,
-  };
+  return starterAt(TOOLING);
 }
 
 export function main(args = scriptArgs()) {

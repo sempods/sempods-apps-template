@@ -1,5 +1,6 @@
 // Reads and writes JSON files the way the template formats them.
 import { readFileSync, writeFileSync } from 'node:fs';
+import { replaceFile } from './files.mjs';
 
 /** Two-space indentation and a final newline. */
 export const formatJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -8,8 +9,15 @@ export function writeJson(path, value) {
   writeFileSync(path, formatJson(value));
 }
 
-/** Reads a JSON file and names it when its content is not JSON. */
+/**
+ * Replaces a JSON file in one step: a reader sees the old or the new content,
+ * never a partly written file.
+ */
+export function replaceJson(path, value) {
+  replaceFile(path, formatJson(value));
+}
 
+/** Reads a JSON file and names it when its content is not JSON. */
 export function readJson(path) {
   const text = readFileSync(path, 'utf8');
   try {

@@ -14,10 +14,10 @@ import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { staleGenerated } from '../scripts/lib/generate.mjs';
+import { decide } from '../scripts/lib/merge.mjs';
 import {
   applyRelease,
   CHECKPOINT,
-  decide,
   formatReport,
   upgradeNotes,
 } from '../scripts/update-template.mjs';

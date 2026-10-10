@@ -53,8 +53,11 @@ work offline. You decide when to publish.
 
 ## Update
 
-Bringing a newer version of the starter and its tooling into this repository
-is not supported yet. SDK updates work as described above.
+When the tooling gets better, ask your assistant: “Update the tooling.” It
+brings in the new version as a change you can review and tells you if your
+computer needs a newer Node or pnpm first. Your apps, notes and instructions
+stay yours. Where the update and one of your changes overlap, your assistant
+combines them and asks you when it is a matter of choice.
 
 Your assistant follows the repository's instructions and records progress in
 each app's `NOTES.md`, so a later session can pick up where you left off.

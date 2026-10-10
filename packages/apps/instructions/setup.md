@@ -123,8 +123,7 @@ remaining gaps separately: no Pod, incomplete login or untested installed-PWA
 behavior are not successful interoperability evidence. If setup is already
 done, reopen the recorded app and follow its notes; do not recreate it.
 
-SDK updates use the [app workflow](app-workflow.md#update-the-sdk). Publishing
-follows the [publish guide](publish.md) when the owner asks for it. Updating
-the tooling package together with the repository's shared files is not
-supported yet for repositories created from the starter; do not change the
-`@sempods/apps` version by hand.
+SDK updates use the [app workflow](app-workflow.md#update-the-sdk). Tooling
+updates follow the [update skill](../skills/update/SKILL.md) when the owner
+asks for one; do not change the `@sempods/apps` version by hand. Publishing
+follows the [publish guide](publish.md) when the owner asks for it.
