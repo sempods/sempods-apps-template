@@ -33,8 +33,8 @@ instruction file:
 
 ## Keep one instruction source
 
-The canonical workflow lives in `.sempods/instructions/app-workflow.md`, and
-`.sempods/skills/app-workflow/SKILL.md` is its canonical skill entry. Root/tool
+The canonical workflow lives in `packages/apps/instructions/app-workflow.md`,
+and `packages/apps/skills/app-workflow/SKILL.md` is its canonical skill entry. Root/tool
 adapters only route to it. When changing a command or path, check README, INIT,
 AGENTS, user steps and all adapters together. Verify skill frontmatter and links
 as well as whether the instructions lead to a usable outcome. Keep user-facing
@@ -43,8 +43,8 @@ of copying SDK manuals.
 
 Files an owner's copy removes during setup (this guide, the vision and
 `CONTRIBUTING.md`) must not be linked from files a copy keeps; use an absolute
-GitHub URL where a pointer is needed. `node .sempods/scripts/check-tooling.mjs`
-validates local links.
+GitHub URL where a pointer is needed.
+`node packages/apps/maintainer/check-tooling.mjs` validates local links.
 
 In an instance, preserve the delimited owner section in AGENTS.md, the instance
 setup record in INIT, app code, `apps.json` and app notes. Updates must respect
@@ -56,17 +56,17 @@ Apache-2.0 notice; template MIT-0 does not replace it.
 ## File ownership
 
 Every file of a copy has an owner, and `update-template` treats it accordingly.
-`.sempods/update-policy.json` is the machine-readable form of this table; the
+`packages/apps/update-policy.json` is the machine-readable form of this table; the
 release's own policy governs its update. Apart from the generated files, a
 file the policy does not name is owner-owned: `update-template` never changes
 it and does not report a template change to it. The template's policy test
-(`.sempods/scripts/test/policy.test.mjs`) therefore requires every file the
+(`packages/apps/test/policy.test.mjs`) therefore requires every file the
 template ships to be named, apart from a short list of owner and generated
 files.
 
 | Owner                      | Files                                                                                                                              | On update                                                                                                   | Policy key                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Template                   | `.sempods/` (scripts, skills, canonical shared instructions, VERSION)                                                              | Replace as a whole.                                                                                         | `replace`                      |
+| Template                   | `packages/apps/`, the tooling package `@sempods/apps` (scripts, skeleton, skills, canonical shared instructions, version)          | Replace as a whole.                                                                                         | `replace`                      |
 | Owner                      | App code, `apps.json`, the owner section of AGENTS.md, the setup record in INIT.md, each app's development notes                   | Preserve; never overwrite.                                                                                  | `sections`; unnamed files      |
 | Shared                     | Template part of AGENTS.md, README, INIT.md, `CLAUDE.md`, `docs/start.md`, skill adapters, workspace, Git, CI and Dependabot files | Three-way merge with the copy's template version as base; a file the owner changed goes to review.         | `shared`                       |
 | Shared manifests           | Root and app `package.json` files                                                                                                  | Update only template tooling and SDK entries; keep app dependencies, scripts and metadata.                  | `rootManifest`, `appManifests` |
@@ -103,15 +103,16 @@ files alone do not:
 ## Release the template
 
 A change that copies should receive belongs to a release, and one release can
-collect several PRs. Its first PR sets `.sempods/VERSION` to the release's
-prerelease, for example `0.5.0-dev` (semver; before 1.0 a minor release for
-changes that need upgrade work), and adds a section `## 0.5.0` to
-`.sempods/CHANGELOG.md` with its changes and upgrade notes written for the
+collect several PRs. Its first PR sets the `version` in
+`packages/apps/package.json` to the release's prerelease, for example
+`0.5.0-dev` (semver; before 1.0 a minor release for changes that need upgrade
+work), and adds a section `## 0.5.0` to `packages/apps/CHANGELOG.md` with its
+changes and upgrade notes written for the
 assistant that applies them. Later PRs extend that section; the PR that
 completes the release sets the final version. Name what `update-template`
 cannot do alone: owner files to adapt, configuration choices, SDK migrations.
 New shared files, retired paths and owner sections belong in
-`.sempods/update-policy.json`; the new release's policy governs its update.
+`packages/apps/update-policy.json`; the new release's policy governs its update.
 
 A copy created from `main` between those merges carries the prerelease. It
 sorts before the release, so `update-template` still brings the copy to the
@@ -120,12 +121,29 @@ version. A final version on `main` before its last PR would instead make such
 a copy look up to date.
 
 After the last merge, the owner tags `v<version>` on that merge commit;
-`update-template` only offers tagged releases. Tags are never moved. The
+`update-template` only offers tagged releases, and the tag publishes the
+tooling package to npm (below). Tags are never moved. The
 repository ruleset `protect-release-tags` protects `refs/tags/v*` against
 updates and deletion, with no bypass actors; new tags remain allowed. This
 GitHub setting is not installed by template updates. Verify an upgrade from
-the previous release in a copy before tagging, and keep the update tests in
-`.sempods/scripts/test/` passing.
+the previous release in a copy before tagging, and keep the tests in
+`packages/apps/test/` passing.
+
+### Publish the tooling package
+
+`.github/workflows/publish.yml` publishes `@sempods/apps` for a `v*` tag, only
+in this repository, through npm trusted publishing with provenance; there is no
+npm token. The tag must equal the package version. A release tag publishes to
+the `latest` dist-tag. A tag with a prerelease part, for example
+`v0.7.0-dev.1` on a commit whose package version is `0.7.0-dev.1`, publishes to
+`next` for acceptance testing and is no template release: `update-template`
+offers plain versions only. Until the starter and the tested update path pass
+the [readiness gate](https://github.com/sempods/sempods-apps-template/issues/10),
+do not point owners to the npm package. The npm trusted publisher for
+`@sempods/apps` names this repository, `publish.yml` and the `npm`
+environment; both are settings outside the repository.
+`node packages/apps/maintainer/pack-test.mjs` installs the packed package
+into a fresh repository; CI runs it for every change.
 
 ## Handoff
 

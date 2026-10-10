@@ -35,7 +35,7 @@ Apps include PWA configuration by default, for later installation from your
 HTTPS site. That does not make data editing work offline.
 
 For assistants: [AGENTS.md](AGENTS.md) and the
-[app-workflow skill](.sempods/skills/app-workflow/SKILL.md). To improve the
+[app-workflow skill](packages/apps/skills/app-workflow/SKILL.md). To improve the
 template itself, see its
 [contribution guide](https://github.com/sempods/sempods-apps-template/blob/main/CONTRIBUTING.md).
 

@@ -1,0 +1,744 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { afterEach, beforeEach, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { staleGenerated } from '../scripts/lib/generate.mjs';
+import {
+  applyRelease,
+  decide,
+  formatReport,
+  upgradeNotes,
+} from '../scripts/update-template.mjs';
+
+const templateRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+);
+const OWNER = [
+  '<!-- BEGIN OWNER INSTRUCTIONS -->',
+  '<!-- END OWNER INSTRUCTIONS -->',
+];
+const RECORD = [
+  '<!-- BEGIN INSTANCE SETUP RECORD -->',
+  '<!-- END INSTANCE SETUP RECORD -->',
+];
+const lines = (...items) => `${items.join('\n')}\n`;
+const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
+const toolingVersion = (root) =>
+  JSON.parse(readFileSync(join(root, 'packages/apps/package.json'), 'utf8'))
+    .version;
+const app = {
+  id: 'demo',
+  title: 'Demo',
+  language: 'en',
+  path: '/demo/',
+  devPort: 5174,
+  pwa: false,
+};
+
+let work;
+function file(root, path, content) {
+  mkdirSync(dirname(join(root, path)), { recursive: true });
+  writeFileSync(join(root, path), content);
+}
+const read = (root, path) => readFileSync(join(root, path), 'utf8');
+function git(cwd, ...args) {
+  // Independent of the developer's signing configuration.
+  const settings = ['-c', 'commit.gpgSign=false', '-c', 'tag.gpgSign=false'];
+  return execFileSync('git', [...settings, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'Test',
+      GIT_AUTHOR_EMAIL: 'test@example.invalid',
+      GIT_COMMITTER_NAME: 'Test',
+      GIT_COMMITTER_EMAIL: 'test@example.invalid',
+    },
+  });
+}
+function commit(root, message) {
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', message);
+}
+
+/** The template files of one release; `v` selects what changes between them. */
+function templateFiles(root, v) {
+  const next = v === '0.2.0';
+  cpSync(
+    join(templateRoot, 'packages', 'apps', 'scripts'),
+    join(root, 'packages', 'apps', 'scripts'),
+    { recursive: true },
+  );
+  cpSync(
+    join(templateRoot, 'packages', 'apps', 'update-policy.json'),
+    join(root, 'packages', 'apps', 'update-policy.json'),
+  );
+  file(
+    root,
+    'packages/apps/package.json',
+    json({ name: '@sempods/apps', version: v }),
+  );
+  file(
+    root,
+    'packages/apps/skeleton/app/package.json',
+    json({
+      name: '__APP_ID__',
+      private: true,
+      type: 'module',
+      scripts: { build: 'vite build' },
+      // Since 0.6.1 the skeleton names no SDK; new-app adds the root's.
+      dependencies: {
+        ...(next
+          ? {}
+          : { '@sempods/app-sdk': '0.2.0', '@sempods/client-sdk': '0.2.0' }),
+        react: '19.2.0',
+      },
+      devDependencies: { vite: next ? '8.3.2' : '8.0.0' },
+    }),
+  );
+  file(
+    root,
+    'AGENTS.md',
+    lines(
+      '# Working here',
+      '',
+      next ? 'Read the shipped reference.' : 'Read the snapshot.',
+      '',
+      OWNER[0],
+      '',
+      'No instance-specific instructions recorded yet.',
+      '',
+      OWNER[1],
+    ),
+  );
+  file(
+    root,
+    'INIT.md',
+    lines(
+      '# Set up',
+      '',
+      next ? 'Setup needs pnpm install.' : 'Setup needs the snapshot.',
+      '',
+      RECORD[0],
+      '',
+      '- Status: not started',
+      '',
+      RECORD[1],
+    ),
+  );
+  file(
+    root,
+    'README.md',
+    lines('# Apps', '', 'First line.', '', 'Second line.', '', 'Third line.'),
+  );
+  file(
+    root,
+    'package.json',
+    json({
+      name: 'my-sempods-apps',
+      private: true,
+      type: 'module',
+      ...(next
+        ? { packageManager: 'pnpm@11.28.2' }
+        : { workspaces: ['apps/*'] }),
+      scripts: {
+        check: 'node packages/apps/scripts/check.mjs',
+        ...(next
+          ? { 'update-template': 'node packages/apps/scripts/update-template.mjs' }
+          : {}),
+      },
+      devDependencies: {
+        ...(next
+          ? { '@sempods/app-sdk': '0.3.0', '@sempods/client-sdk': '0.3.0' }
+          : {}),
+        ...(next ? { remark: '15.0.1' } : {}),
+        typescript: next ? '6.0.3' : '6.0.0',
+      },
+    }),
+  );
+  file(root, 'LICENSE', next ? 'MIT-0, revised\n' : 'MIT-0\n');
+  file(root, '.github/workflows/dco.yml', 'name: DCO\n');
+  if (next) {
+    file(root, '.node-version', '24.15.0\n');
+    file(root, 'pnpm-workspace.yaml', "packages:\n  - 'apps/*'\n");
+    file(root, '.claude/skills/update-template/SKILL.md', '# Update\n');
+    file(
+      root,
+      'packages/apps/CHANGELOG.md',
+      lines('# Changelog', '', '## 0.2.0', '', 'Upgrade note.'),
+    );
+  } else file(root, 'reference/sempods-sdk/README.md', '# Snapshot\n');
+}
+
+/**
+ * A template repository with two 0.1.0 commits and a tagged 0.2.0, and an
+ * instance created from the first commit, then adapted by its owner.
+ */
+function setup({ tagOld = false, dev = false, site = false } = {}) {
+  const release = join(work, 'template');
+  mkdirSync(release);
+  git(release, 'init', '-q', '-b', 'main');
+  templateFiles(release, '0.1.0');
+  commit(release, 'template 0.1.0');
+  const first = git(release, 'rev-parse', 'HEAD').trim();
+  if (tagOld) git(release, 'tag', 'v0.1.0');
+  file(
+    release,
+    'README.md',
+    lines(
+      '# Apps',
+      '',
+      'First line.',
+      '',
+      'Second line, clarified.',
+      '',
+      'Third line.',
+    ),
+  );
+  // Still 0.1.0: adds a dependency, a shared file and template tooling that
+  // copies from the first commit lack, without having removed them.
+  const followUp = JSON.parse(read(release, 'package.json'));
+  followUp.devDependencies.remark = '15.0.0';
+  file(release, 'package.json', json(followUp));
+  file(release, '.node-version', '24.15.0\n');
+  file(release, 'packages/apps/instructions/later.md', '# Later\n');
+  // Owner-adapted after setup; the release keeps this later text.
+  file(release, 'LICENSE', 'MIT-0, revised\n');
+  // With `dev`, the follow-up is a merged part of 0.2.0 before its tag.
+  if (dev)
+    file(
+      release,
+      'packages/apps/package.json',
+      json({ name: '@sempods/apps', version: '0.2.0-dev' }),
+    );
+  commit(release, 'template 0.1.0, follow-up');
+  const followUpCommit = git(release, 'rev-parse', 'HEAD').trim();
+  templateFiles(release, '0.2.0');
+  file(
+    release,
+    'README.md',
+    lines(
+      '# Apps',
+      '',
+      'First line.',
+      '',
+      'Second line, clarified.',
+      '',
+      'Third line, released.',
+    ),
+  );
+  commit(release, 'template 0.2.0');
+  git(release, 'tag', 'v0.2.0');
+
+  const instance = join(work, 'instance');
+  mkdirSync(instance);
+  git(instance, 'init', '-q', '-b', 'main');
+  execFileSync('sh', [
+    '-c',
+    `git -C "${release}" archive ${dev ? followUpCommit : first} | tar -x -C "${instance}"`,
+  ]);
+  // The owner's own work.
+  const agents = read(instance, 'AGENTS.md').replace(
+    'No instance-specific instructions recorded yet.',
+    '- Owner: Alex.',
+  );
+  file(instance, 'AGENTS.md', agents);
+  file(
+    instance,
+    'INIT.md',
+    read(instance, 'INIT.md').replace(
+      '- Status: not started',
+      '- Status: done',
+    ),
+  );
+  file(
+    instance,
+    'README.md',
+    read(instance, 'README.md').replace('First line.', 'First line, mine.'),
+  );
+  rmSync(join(instance, '.github/workflows/dco.yml'));
+  const root = JSON.parse(read(instance, 'package.json'));
+  root.scripts.mine = 'echo mine';
+  file(instance, 'package.json', json(root));
+  file(
+    instance,
+    'apps.json',
+    json({
+      schemaVersion: 1,
+      apps: [app],
+      sdkAutoUpdates: true,
+      ...(site ? { site: { production: 'https://apps.example.org' } } : {}),
+    }),
+  );
+  file(
+    instance,
+    'apps/demo/package.json',
+    json({
+      name: 'demo',
+      private: true,
+      type: 'module',
+      scripts: { build: 'vite build', extra: 'echo extra' },
+      dependencies: {
+        '@sempods/app-sdk': '0.2.0',
+        '@sempods/client-sdk': '0.2.0',
+        react: '19.2.5',
+        'left-pad': '1.3.0',
+      },
+      devDependencies: { vite: '8.0.0' },
+    }),
+  );
+  file(instance, 'apps/demo/NOTES.md', '# Demo notes\n');
+  file(
+    instance,
+    'apps/demo/src/pwa.ts',
+    '// Adapted from reference/sempods-sdk/examples.\n',
+  );
+  file(instance, 'apps/demo/src/sempods.generated.ts', '// stale\n');
+  commit(instance, 'instance');
+  return { release, instance, first };
+}
+
+beforeEach(() => {
+  work = mkdtempSync(join(tmpdir(), 'sempods-update-'));
+});
+afterEach(() => rmSync(work, { recursive: true, force: true }));
+
+describe('update-template', () => {
+  it('updates template files and template entries, never owner files', async () => {
+    const { release, instance, first } = setup();
+    const before = (path) => git(instance, 'show', `HEAD:${path}`);
+    const report = await applyRelease(release, instance, { install: false });
+
+    assert.equal(report.from, '0.1.0');
+    assert.equal(report.to, '0.2.0');
+    assert.equal(report.exact, false);
+    assert.equal(report.origin, first.slice(0, report.origin.length));
+    assert.equal(toolingVersion(instance), '0.2.0');
+    assert.deepEqual(report.conflicts, []);
+
+    // Shared files: the template change merged, the owner's edits and sections kept.
+    const readme = read(instance, 'README.md');
+    assert.match(readme, /First line, mine\./);
+    assert.match(readme, /Second line, clarified\./);
+    assert.match(readme, /Third line, released\./);
+    const agents = read(instance, 'AGENTS.md');
+    assert.match(agents, /Read the shipped reference\./);
+    assert.match(agents, /- Owner: Alex\./);
+    const init = read(instance, 'INIT.md');
+    assert.match(init, /Setup needs pnpm install\./);
+    assert.match(init, /- Status: done/);
+    assert.ok(
+      existsSync(join(instance, '.claude/skills/update-template/SKILL.md')),
+    );
+    assert.ok(report.added.includes('.claude/skills/update-template/SKILL.md'));
+
+    // Owner files: untouched; retired and owner-adapted files reported.
+    for (const path of [
+      'apps.json',
+      'apps/demo/NOTES.md',
+      'apps/demo/src/pwa.ts',
+    ])
+      assert.equal(read(instance, path), before(path), path);
+    assert.equal(read(instance, 'LICENSE'), 'MIT-0\n');
+    assert.ok(!existsSync(join(instance, '.github/workflows/dco.yml')));
+    assert.ok(!existsSync(join(instance, 'reference/sempods-sdk')));
+    const review = report.review.join('\n');
+    assert.match(review, /LICENSE: changed in template 0\.2\.0/);
+    assert.match(
+      review,
+      /apps\/demo\/src\/pwa\.ts: mentions reference\/sempods-sdk/,
+    );
+
+    // Manifests: template entries follow, owner entries and choices stay.
+    const root = JSON.parse(read(instance, 'package.json'));
+    assert.equal(root.scripts.mine, 'echo mine');
+    assert.equal(
+      root.scripts['update-template'],
+      'node packages/apps/scripts/update-template.mjs',
+    );
+    assert.equal(root.devDependencies.typescript, '6.0.3');
+    // Introduced after this copy's origin, not removed by its owner.
+    assert.equal(root.devDependencies.remark, '15.0.1');
+    assert.ok(report.added.includes('.node-version'));
+    assert.doesNotMatch(report.notes.join('\n'), /remark/);
+    assert.equal(root.devDependencies['@sempods/app-sdk'], '0.3.0');
+    const demo = JSON.parse(read(instance, 'apps/demo/package.json'));
+    assert.equal(demo.name, 'demo');
+    assert.equal(demo.scripts.extra, 'echo extra');
+    assert.equal(demo.dependencies['left-pad'], '1.3.0');
+    assert.equal(demo.dependencies['@sempods/client-sdk'], '0.3.0');
+    assert.equal(demo.devDependencies.vite, '8.3.2');
+    assert.equal(demo.dependencies.react, '19.2.5');
+    assert.match(
+      report.notes.join('\n'),
+      /dependencies\.react: changed in this repository/,
+    );
+
+    // Generated configuration follows apps.json.
+    assert.deepEqual(staleGenerated(join(instance, 'apps/demo'), app), []);
+    assert.match(formatReport(report), /Upgrade note\./);
+
+    // Repeating the update changes nothing.
+    git(instance, 'add', '-A');
+    const again = await applyRelease(release, instance, { install: false });
+    assert.equal(again.unchanged, true);
+    assert.equal(git(instance, 'diff').trim(), '');
+  });
+
+  it('fetches a tagged release and lets its script run, then has nothing to do', async () => {
+    const { release, instance } = setup();
+    await applyRelease(release, instance, { install: false });
+    commit(instance, 'template 0.2.0');
+    const run = (...args) =>
+      spawnSync(
+        process.execPath,
+        [
+          join(instance, 'packages/apps/scripts/update-template.mjs'),
+          '--source',
+          release,
+          '--no-install',
+          ...args,
+        ],
+        { cwd: instance, encoding: 'utf8' },
+      );
+    const latest = run();
+    assert.equal(latest.status, 0, latest.stderr);
+    assert.match(latest.stdout, /Already at template 0\.2\.0/);
+    const missing = run('9.9.9');
+    assert.equal(missing.status, 1);
+    assert.match(
+      missing.stderr,
+      /No template release 9\.9\.9; available: 0\.2\.0/,
+    );
+  });
+
+  it('uses the release tag as exact base when there is one', async () => {
+    const { release, instance } = setup({ tagOld: true });
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.exact, true);
+    assert.match(formatReport(report), /Base: release v0\.1\.0/);
+  });
+
+  it('marks a conflict when the owner and the template changed the same line', async () => {
+    const { release, instance } = setup();
+    file(
+      instance,
+      'README.md',
+      read(instance, 'README.md').replace('Third line.', 'Third line, my way.'),
+    );
+    commit(instance, 'owner edit');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.conflicts.length, 1);
+    assert.match(
+      report.conflicts[0],
+      /README\.md: 1 conflict\(s\) \(base inferred/,
+    );
+    const readme = read(instance, 'README.md');
+    assert.match(readme, /<<<<<<< this repository/);
+    assert.match(readme, /Third line, my way\./);
+    assert.match(readme, /Third line, released\./);
+  });
+
+  it('keeps an SDK the copy already moved past the release', async () => {
+    const { release, instance } = setup();
+    for (const path of [
+      'apps/demo/package.json',
+      'packages/apps/skeleton/app/package.json',
+    ]) {
+      const manifest = JSON.parse(read(instance, path));
+      manifest.dependencies['@sempods/app-sdk'] = '0.4.0';
+      manifest.dependencies['@sempods/client-sdk'] = '0.4.0';
+      file(instance, path, json(manifest));
+    }
+    commit(instance, 'SDK 0.4.0');
+    await applyRelease(release, instance, { install: false });
+    for (const [path, field] of [
+      ['package.json', 'devDependencies'],
+      ['apps/demo/package.json', 'dependencies'],
+    ])
+      for (const name of ['@sempods/app-sdk', '@sempods/client-sdk'])
+        assert.equal(
+          JSON.parse(read(instance, path))[field][name],
+          '0.4.0',
+          `${path} ${name}`,
+        );
+  });
+
+  it('puts the SDK in the section the release declares it in', async () => {
+    const { release, instance } = setup();
+    const root = JSON.parse(read(instance, 'package.json'));
+    root.dependencies = {
+      '@sempods/app-sdk': '0.2.0',
+      '@sempods/client-sdk': '0.2.0',
+    };
+    file(instance, 'package.json', json(root));
+    commit(instance, 'SDK in root dependencies');
+    const report = await applyRelease(release, instance, { install: false });
+    const updated = JSON.parse(read(instance, 'package.json'));
+    assert.equal(updated.dependencies, undefined);
+    assert.equal(updated.devDependencies['@sempods/app-sdk'], '0.3.0');
+    assert.match(
+      report.notes.join('\n'),
+      /dependencies\.@sempods\/app-sdk: moved/,
+    );
+  });
+
+  it('keeps the newer of the two SDK packages', async () => {
+    const { release, instance } = setup();
+    const path = 'apps/demo/package.json';
+    const manifest = JSON.parse(read(instance, path));
+    manifest.dependencies['@sempods/client-sdk'] = '0.4.0';
+    file(instance, path, json(manifest));
+    commit(instance, 'client SDK 0.4.0');
+    await applyRelease(release, instance, { install: false });
+    for (const name of ['@sempods/app-sdk', '@sempods/client-sdk']) {
+      assert.equal(
+        JSON.parse(read(instance, path)).dependencies[name],
+        '0.4.0',
+      );
+      assert.equal(
+        JSON.parse(read(instance, 'package.json')).devDependencies[name],
+        '0.4.0',
+      );
+    }
+  });
+
+  it('waits for an unfinished SDK update', async () => {
+    const { release, instance } = setup();
+    file(instance, '.sdk-update-pending', '0.3.0\n');
+    await assert.rejects(
+      applyRelease(release, instance, { install: false }),
+      /SDK update is unfinished/,
+    );
+    assert.equal(toolingVersion(instance), '0.1.0');
+  });
+
+  it('resumes an interrupted update with the same origin', async () => {
+    const { release, instance, first } = setup();
+    await assert.rejects(
+      applyRelease(release, instance, {
+        install: false,
+        afterReplace: () => {
+          throw new Error('interrupted');
+        },
+      }),
+      /interrupted/,
+    );
+    // Not done yet: the old version stays and the origin is recorded.
+    assert.equal(toolingVersion(instance), '0.1.0');
+    const checkpoint = JSON.parse(read(instance, '.template-update-pending'));
+    assert.equal(checkpoint.origin, first);
+    // Even a replacement interrupted before the version was written resumes.
+    rmSync(join(instance, 'packages/apps/package.json'));
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.resumed, true);
+    assert.equal(report.origin, first.slice(0, report.origin.length));
+    assert.equal(toolingVersion(instance), '0.2.0');
+    assert.ok(!existsSync(join(instance, '.template-update-pending')));
+    assert.match(read(instance, 'README.md'), /First line, mine\./);
+    assert.match(read(instance, 'README.md'), /Third line, released\./);
+    assert.match(read(instance, 'AGENTS.md'), /- Owner: Alex\./);
+    assert.equal(
+      JSON.parse(read(instance, 'package.json')).devDependencies.remark,
+      '15.0.1',
+    );
+  });
+
+  it('resumes from a tagged base and keeps the replaced skeleton SDK ahead of the release', async () => {
+    const { release, instance } = setup({ tagOld: true });
+    const path = 'packages/apps/skeleton/app/package.json';
+    const skeleton = JSON.parse(read(instance, path));
+    skeleton.dependencies['@sempods/app-sdk'] = '0.4.0';
+    skeleton.dependencies['@sempods/client-sdk'] = '0.4.0';
+    file(instance, path, json(skeleton));
+    commit(instance, 'skeleton SDK 0.4.0');
+    await assert.rejects(
+      applyRelease(release, instance, {
+        install: false,
+        afterReplace: () => {
+          throw new Error('interrupted');
+        },
+      }),
+      /interrupted/,
+    );
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.resumed, true);
+    assert.equal(report.exact, true);
+    for (const [manifest, field] of [
+      ['package.json', 'devDependencies'],
+      ['apps/demo/package.json', 'dependencies'],
+    ])
+      assert.equal(
+        JSON.parse(read(instance, manifest))[field]['@sempods/app-sdk'],
+        '0.4.0',
+        manifest,
+      );
+    assert.equal(
+      JSON.parse(read(instance, path)).dependencies['@sempods/app-sdk'],
+      undefined,
+    );
+  });
+
+  it('stays resumable when installing the dependencies fails', async () => {
+    const { release, instance } = setup();
+    const failed = await applyRelease(release, instance, {
+      pnpmRun: () => false,
+    });
+    assert.equal(failed.unfinished, true);
+    assert.match(formatReport(failed), /Not finished/);
+    assert.equal(toolingVersion(instance), '0.1.0');
+    assert.ok(existsSync(join(instance, '.template-update-pending')));
+    let installs = 0;
+    const done = await applyRelease(release, instance, {
+      pnpmRun: () => ++installs > 0,
+    });
+    assert.equal(done.resumed, true);
+    assert.equal(installs, 1);
+    assert.equal(toolingVersion(instance), '0.2.0');
+    assert.ok(!existsSync(join(instance, '.template-update-pending')));
+  });
+
+  it('updates a copy made from main before the release was tagged', async () => {
+    const { release, instance } = setup({ dev: true });
+    assert.equal(toolingVersion(instance), '0.2.0-dev');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.unchanged, undefined);
+    assert.equal(report.exact, false);
+    assert.equal(toolingVersion(instance), '0.2.0');
+    assert.match(read(instance, 'README.md'), /Third line, released\./);
+  });
+
+  it('moves a copy from npm to pnpm and keeps its resolved versions', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    const calls = [];
+    const report = await applyRelease(release, instance, {
+      pnpmRun: (args) => {
+        calls.push(args.join(' '));
+        if (args[0] === 'import') file(instance, 'pnpm-lock.yaml', 'lock\n');
+        return true;
+      },
+    });
+    assert.deepEqual(calls, ['import', 'install --no-frozen-lockfile']);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+    assert.ok(report.removed.includes('package-lock.json'));
+    assert.ok(report.added.includes('pnpm-workspace.yaml'));
+    const root = JSON.parse(read(instance, 'package.json'));
+    assert.equal(root.packageManager, 'pnpm@11.28.2');
+    assert.equal(root.workspaces, undefined);
+    assert.equal(toolingVersion(instance), '0.2.0');
+  });
+
+  it('converts the npm lockfile even when a pnpm lockfile exists', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    file(instance, 'pnpm-lock.yaml', 'stale\n');
+    const calls = [];
+    await applyRelease(release, instance, {
+      pnpmRun: (args) => calls.push(args[0]) > 0,
+    });
+    assert.deepEqual(calls, ['import', 'install']);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+  });
+
+  it('stays unfinished until the npm lockfile is converted', async () => {
+    const { release, instance } = setup();
+    file(instance, 'package-lock.json', '{"lockfileVersion": 3}\n');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.equal(report.unfinished, true);
+    assert.ok(existsSync(join(instance, 'package-lock.json')));
+    assert.ok(
+      report.review.some((item) => item.includes('pnpm import')),
+      formatReport(report),
+    );
+    assert.equal(toolingVersion(instance), '0.1.0');
+    const done = await applyRelease(release, instance, {
+      pnpmRun: (args) => {
+        if (args[0] === 'import') file(instance, 'pnpm-lock.yaml', 'lock\n');
+        return true;
+      },
+    });
+    assert.equal(done.resumed, true);
+    assert.ok(!existsSync(join(instance, 'package-lock.json')));
+    assert.equal(toolingVersion(instance), '0.2.0');
+  });
+
+  it('names a kept packageManager that is not pnpm', async () => {
+    const { release, instance } = setup();
+    const root = JSON.parse(read(instance, 'package.json'));
+    root.packageManager = 'npm@11.6.0';
+    file(instance, 'package.json', json(root));
+    commit(instance, 'npm as package manager');
+    const report = await applyRelease(release, instance, { install: false });
+    assert.match(
+      report.review.join('\n'),
+      /packageManager: npm@11\.6\.0 was kept; pnpm installs only once it names pnpm/,
+    );
+  });
+
+  it('regenerates app configuration with the site profiles', async () => {
+    const { release, instance } = setup({ site: true });
+    await applyRelease(release, instance, { install: false });
+    const generated = read(instance, 'apps/demo/src/sempods.generated.ts');
+    assert.match(generated, /did:web:apps\.example\.org:demo/);
+    assert.deepEqual(
+      staleGenerated(join(instance, 'apps/demo'), app, {
+        production: 'https://apps.example.org',
+      }),
+      [],
+    );
+  });
+
+  it('refuses a release older than the repository', async () => {
+    const { release, instance } = setup();
+    file(
+      instance,
+      'packages/apps/package.json',
+      json({ name: '@sempods/apps', version: '0.3.0' }),
+    );
+    await assert.rejects(
+      applyRelease(release, instance, { install: false }),
+      /newer than 0\.2\.0/,
+    );
+  });
+});
+
+describe('update decisions', () => {
+  it('follows the template for template values and keeps owner values', () => {
+    assert.deepEqual(decide('1.0.0', ['1.0.0'], '2.0.0'), { value: '2.0.0' });
+    assert.equal(decide('1.5.0', ['1.0.0'], '2.0.0').value, '1.5.0');
+    assert.equal(decide(undefined, [undefined], '2.0.0').value, '2.0.0');
+    assert.equal(decide(undefined, ['1.0.0'], '2.0.0').value, undefined);
+    assert.equal(decide('1.0.0', ['1.0.0'], undefined).value, undefined);
+  });
+  it('lists the upgrade notes after the current version', () => {
+    const changelog = lines(
+      '# Changelog',
+      '',
+      '## 0.3.0',
+      '',
+      'Three.',
+      '',
+      '## 0.2.0',
+      '',
+      'Two.',
+    );
+    assert.match(upgradeNotes(changelog, '0.1.0'), /Three\.[\s\S]*Two\./);
+    assert.doesNotMatch(upgradeNotes(changelog, '0.2.0'), /Two\./);
+    assert.match(upgradeNotes(changelog, '0.2.0-dev'), /Two\./);
+  });
+});

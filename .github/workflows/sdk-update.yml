@@ -75,7 +75,7 @@ jobs:
         env:
           REQUESTED_VERSION: ${{ inputs.version || 'latest' }}
         run: |
-          node .sempods/scripts/sdk-update.mjs "$REQUESTED_VERSION" --resolve-only
+          node packages/apps/scripts/sdk-update.mjs "$REQUESTED_VERSION" --resolve-only
       - name: Decide whether to update
         id: needed
         env:

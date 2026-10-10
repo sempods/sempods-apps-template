@@ -17,5 +17,8 @@ AGENTS.override.md
 .vscode/
 
 # Local SDK update checkpoint; removed only after install and checks succeed.
-.sempods/.sdk-update-pending
+/.sdk-update-pending
 /.template-update-pending
+
+# Written when the tooling package is packed.
+/packages/apps/shared/

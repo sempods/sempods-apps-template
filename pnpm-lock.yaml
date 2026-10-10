@@ -16,9 +16,28 @@ importers:
       '@sempods/app-sdk':
         specifier: 0.5.0
         version: 0.5.0
+      '@sempods/apps':
+        specifier: workspace:*
+        version: link:packages/apps
       '@sempods/client-sdk':
         specifier: 0.5.0
         version: 0.5.0
+
+  packages/apps:
+    dependencies:
+      '@sempods/app-sdk':
+        specifier: ^0.5.0
+        version: 0.5.0
+      '@sempods/client-sdk':
+        specifier: ^0.5.0
+        version: 0.5.0
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+    devDependencies:
       markdown-extensions:
         specifier: 2.0.0
         version: 2.0.0
@@ -28,9 +47,6 @@ importers:
       remark-validate-links:
         specifier: 13.1.0
         version: 13.1.0(supports-color@9.4.0)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
       unified-engine:
         specifier: 11.2.2
         version: 11.2.2(supports-color@9.4.0)
