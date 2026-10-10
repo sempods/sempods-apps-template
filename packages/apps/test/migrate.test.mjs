@@ -347,6 +347,24 @@ describe('migrate', () => {
     assert.match(read(kept, 'docs/start.md'), /Mine\./);
   });
 
+  it('reports a kept file where the starter needs a directory', () => {
+    // The baseline had a file `docs`; the newer starter has docs/start.md.
+    publish('1.5.0', (starter) => {
+      rmSync(join(starter, 'docs'), { recursive: true });
+      writeFileSync(join(starter, 'docs'), 'Documents.\n');
+    });
+    const repo = createRepo('1.5.0');
+    edit(repo, 'docs', (text) => `${text}Mine.\n`);
+    publish('2.0.0', v2);
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.equal(report.unfinished, true);
+    assert.ok(report.conflicts.includes('docs/start.md'));
+    assert.match(report.review.join('\n'), /needs a directory where this repository has the file docs/);
+    assert.match(read(repo, 'docs'), /Mine\./);
+    assert.equal(readBaseline(repo).version, '1.5.0');
+  });
+
   it('waits for an unfinished SDK update', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

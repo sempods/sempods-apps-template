@@ -295,6 +295,20 @@ export function migrate(
       );
       continue;
     }
+    const parts = file.split('/');
+    const blocking = parts
+      .slice(0, -1)
+      .map((_, i) => parts.slice(0, i + 1).join('/'))
+      .find((dir) =>
+        statSync(join(root, dir), { throwIfNoEntry: false })?.isFile(),
+      );
+    if (blocking && snapshot.files[file]) {
+      report.conflicts.push(file);
+      report.review.push(
+        `${file}: the starter needs a directory where this repository has the file ${blocking}; move what you keep out of it and remove the file, then run pnpm run migrate again`,
+      );
+      continue;
+    }
     const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
     const ours = readText(join(root, file));
     if (settled(file, ours)) continue;
