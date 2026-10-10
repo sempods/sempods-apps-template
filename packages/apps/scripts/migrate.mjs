@@ -246,8 +246,9 @@ export function migrate(
     const ours = readText(join(root, file));
     if (settled(file, ours)) continue;
     if (policy.seed.includes(file)) {
-      // Written once; the owner's from then on.
-      if (theirs !== null && ours === null)
+      // Written once, when a starter first brings it; the owner's from then
+      // on, also if they delete it.
+      if (theirs !== null && ours === null && !base.files[file])
         apply(file, ours, theirs, 'done', report.added);
       continue;
     }

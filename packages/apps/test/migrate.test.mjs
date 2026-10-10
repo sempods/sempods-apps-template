@@ -26,6 +26,7 @@ import {
   installTarget,
   preflight,
   prerequisiteOrder,
+  refuseDowngrade,
   refuseOlder,
 } from '../scripts/update.mjs';
 
@@ -484,6 +485,16 @@ describe('migrate', () => {
     assert.equal(read(repo, '.sempods-baseline.json'), before);
   });
 
+  it('does not bring back a seed file the owner deleted', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    rmSync(join(repo, 'apps', '.gitkeep'));
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.equal(report.added.includes('apps/.gitkeep'), false);
+    assert.equal(existsSync(join(repo, 'apps', '.gitkeep')), false);
+  });
+
   it('refuses an installed starter older than the baseline', () => {
     publish('2.0.0', v2);
     const repo = createRepo('2.0.0');
@@ -580,6 +591,36 @@ describe('update preflight', () => {
     assert.match(order, /2\. Set packageManager in package\.json to a pnpm version in >=12\.0\.0/);
     assert.match(order, /3\. Run pnpm run update 2\.0\.0 again/);
   });
+  it('refuses a target older than the declared or installed tooling', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sempods-downgrade-'));
+    try {
+      writeJson(join(root, 'package.json'), {
+        devDependencies: { '@sempods/apps': '2.0.0' },
+      });
+      // The baseline can lag behind when releases kept the same starter.
+      writeJson(join(root, '.sempods-baseline.json'), {
+        format: 1,
+        package: '@sempods/apps',
+        version: '1.0.0',
+        revision: 'a'.repeat(64),
+      });
+      assert.throws(
+        () => refuseDowngrade(root, { version: '1.5.0' }),
+        /older than this repository's 2\.0\.0/,
+      );
+      refuseDowngrade(root, { version: '2.0.0' });
+      const installed = join(root, 'node_modules', '@sempods', 'apps');
+      mkdirSync(installed, { recursive: true });
+      writeJson(join(installed, 'package.json'), { version: '2.1.0' });
+      assert.throws(
+        () => refuseDowngrade(root, { version: '2.0.0' }),
+        /older than this repository's 2\.1\.0/,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('refuses a target older than the baseline', () => {
     const baseline = { version: '2.0.0' };
     assert.throws(

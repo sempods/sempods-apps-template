@@ -95,6 +95,21 @@ export function installTarget(
 
 export { refuseOlder };
 
+/**
+ * Updates go forward only: not behind the applied starter, nor behind the
+ * tooling version the repository declares or has installed, which can be
+ * newer than the baseline when releases kept the same starter.
+ */
+export function refuseDowngrade(root, target) {
+  refuseOlder(readBaseline(root), target);
+  const declared = readJson(join(root, 'package.json')).devDependencies?.[
+    PACKAGE
+  ];
+  for (const current of [declared, installedVersion(root)])
+    if (EXACT_VERSION.test(current ?? ''))
+      refuseOlder({ version: current }, target);
+}
+
 export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
   if (args.length > 1)
     throw new Error('Usage: pnpm run update [<version>|latest]');
@@ -107,7 +122,7 @@ export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
       'a migration is unfinished; finish it with pnpm run migrate first',
     );
   const target = lookup(root, spec);
-  refuseOlder(readBaseline(root), target);
+  refuseDowngrade(root, target);
   const version = pnpm(['--version'], {
     cwd: root,
     stdio: 'pipe',
