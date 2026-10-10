@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
-import { ifPresent } from './lib/json.mjs';
+import { ifPresent, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { SDK } from './sdk-update.mjs';
@@ -126,10 +126,10 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
 
     // Some Pods resolve the did:web document before they accept the app.
     const { clientId, redirectUri } = siteIdentity(site[profile], app);
-    writeFileSync(
-      join(appOut, 'did.json'),
-      `${JSON.stringify({ '@context': 'https://www.w3.org/ns/did/v1', id: clientId }, null, 2)}\n`,
-    );
+    writeJson(join(appOut, 'did.json'), {
+      '@context': 'https://www.w3.org/ns/did/v1',
+      id: clientId,
+    });
     copyLicences([appDir, root], appOut, app.id);
 
     // The callback must answer 200 at its exact path with its query intact.

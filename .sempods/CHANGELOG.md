@@ -18,6 +18,10 @@ alone: owner files, configuration choices and the SDK migration.
 - `.gitignore` no longer lists `netlify-dist/`, which no script writes.
 - `.sempods/README.md` lists `configure-site`, `build-site`, `sdk-update` and
   the shared instructions.
+- The publish guide says where hosting credentials belong, that everything in
+  a build is public, and that a sempods Pod fetches no DID document.
+- The tooling scripts share their JSON and version helpers. A version that is
+  not exact semver is now named in the error. Nothing else changes for owners.
 
 ### Upgrade notes
 

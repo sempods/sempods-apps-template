@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -10,9 +9,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import {
   invalidId,
   invalidOrigin,
@@ -24,13 +23,8 @@ import { configureSite } from '../configure-site.mjs';
 import { createApp } from '../new-app.mjs';
 import { importedPackages, staticProblems } from '../check.mjs';
 import { scriptArgs } from '../lib/pnpm.mjs';
+import { tempRepository } from './fixture.mjs';
 
-const templateRoot = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  '..',
-);
 
 describe('app IDs', () => {
   it('accepts one lowercase segment', () => {
@@ -245,14 +239,7 @@ describe('generated configuration', () => {
 describe('new-app', () => {
   let root;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'sempods-template-'));
-    cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
-      recursive: true,
-    });
-    writeFileSync(
-      join(root, 'apps.json'),
-      '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
-    );
+    root = tempRepository('sempods-template-');
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
@@ -340,14 +327,7 @@ describe('configure-site', () => {
       'utf8',
     );
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'sempods-site-'));
-    cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
-      recursive: true,
-    });
-    writeFileSync(
-      join(root, 'apps.json'),
-      '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
-    );
+    root = tempRepository('sempods-site-');
     createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
@@ -476,15 +456,8 @@ describe('check', () => {
   });
 
   it('requires the root SDK version and the reference the installed SDK ships', () => {
-    const root = mkdtempSync(join(tmpdir(), 'sempods-check-'));
+    const root = tempRepository('sempods-check-');
     try {
-      cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
-        recursive: true,
-      });
-      writeFileSync(
-        join(root, 'apps.json'),
-        '{"schemaVersion": 1, "apps": []}',
-      );
       const sdk = JSON.parse(
         readFileSync(
           join(root, '.sempods', 'skeleton', 'app', 'package.json'),
@@ -533,11 +506,8 @@ describe('check', () => {
   });
 
   it('reports undeclared imports, edited generated files and SDK version drift', () => {
-    const root = mkdtempSync(join(tmpdir(), 'sempods-check-'));
+    const root = tempRepository('sempods-check-');
     try {
-      cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
-        recursive: true,
-      });
       const skeleton = JSON.parse(
         readFileSync(
           join(root, '.sempods', 'skeleton', 'app', 'package.json'),
@@ -552,10 +522,6 @@ describe('check', () => {
             '@sempods/client-sdk': skeleton['@sempods/client-sdk'],
           },
         }),
-      );
-      writeFileSync(
-        join(root, 'apps.json'),
-        '{"schemaVersion": 1, "apps": []}',
       );
       createApp(root, { id: 'demo' });
       assert.deepEqual(staticProblems(root), []);

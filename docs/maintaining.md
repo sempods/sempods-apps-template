@@ -58,7 +58,10 @@ Every file of a copy has an owner, and `update-template` treats it accordingly.
 `.sempods/update-policy.json` is the machine-readable form of this table; the
 release's own policy governs its update. Apart from the generated files, a
 file the policy does not name is owner-owned: `update-template` never changes
-it.
+it and does not report a template change to it. The template's policy test
+(`.sempods/scripts/test/policy.test.mjs`) therefore requires every file the
+template ships to be named, apart from a short list of owner and generated
+files.
 
 | Owner                      | Files                                                                                                                              | On update                                                                                                   | Policy key                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |

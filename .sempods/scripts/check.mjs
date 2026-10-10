@@ -12,7 +12,6 @@ import {
   readFileSync,
   rmSync,
   statSync,
-  writeFileSync,
 } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -22,7 +21,7 @@ import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
-import { readJson } from './lib/json.mjs';
+import { readJson, writeJson } from './lib/json.mjs';
 import { checkLinks } from './lib/links.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
@@ -173,10 +172,7 @@ function standalone(root, id, packageManager) {
     // Corepack default would serve a manifest without packageManager.
     const manifest = readJson(join(work, 'package.json'));
     manifest.packageManager = packageManager;
-    writeFileSync(
-      join(work, 'package.json'),
-      `${JSON.stringify(manifest, null, 2)}\n`,
-    );
+    writeJson(join(work, 'package.json'), manifest);
     // Installs, lints, builds and tests without the workspace, so a package that
     // only another app or the root tooling provides fails here.
     return (

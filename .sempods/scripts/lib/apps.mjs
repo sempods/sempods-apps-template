@@ -1,6 +1,7 @@
 // Reads and validates apps.json, the owner's manifest of apps.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { readJson, writeJson } from './json.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const FIRST_DEV_PORT = 5174;
@@ -102,7 +103,7 @@ export function appsFile(root) {
 export function readApps(root) {
   const file = appsFile(root);
   if (!existsSync(file)) return { schemaVersion: SCHEMA_VERSION, apps: [] };
-  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  const manifest = readJson(file);
   const problems = validateApps(manifest);
   if (problems.length > 0) throw new Error(`apps.json: ${problems.join('; ')}`);
   return manifest;
@@ -110,10 +111,7 @@ export function readApps(root) {
 
 export function writeApps(root, manifest) {
   const apps = [...manifest.apps].sort((a, b) => a.id.localeCompare(b.id));
-  writeFileSync(
-    appsFile(root),
-    `${JSON.stringify({ ...manifest, apps }, null, 2)}\n`,
-  );
+  writeJson(appsFile(root), { ...manifest, apps });
 }
 
 /** Lists every problem of a parsed apps.json. */
