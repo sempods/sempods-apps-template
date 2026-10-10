@@ -36,10 +36,11 @@ import {
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_FILE = '.sempods-migration.json';
-// The lines git merge-file opens and closes a conflict with. Its separator,
-// a line of seven `=`, can also underline a Markdown heading, so it counts
-// only beyond the number the merged versions already had.
-const MARKER = /^(<{7} |>{7} )/m;
+// The lines git merge-file opens and closes a conflict with, labelled or
+// not. Its separator, a line of seven `=`, can also underline a Markdown
+// heading, so it counts only beyond the number the merge left outside its
+// conflict blocks.
+const MARKER = /^(<{7}|>{7})( |$)/m;
 const separators = (text) => (text?.match(/^={7}$/gm) ?? []).length;
 
 const readText = (path) =>
@@ -310,7 +311,8 @@ export function migrate(
     if (merged.conflicts > 0)
       state.separators = {
         ...state.separators,
-        [file]: Math.max(separators(ours), separators(theirs)),
+        // Each conflict block adds exactly one separator.
+        [file]: separators(merged.text) - merged.conflicts,
       };
     apply(
       file,

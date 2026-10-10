@@ -332,6 +332,44 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
+  it('accepts heading underlines added on both sides', () => {
+    publish('2.0.0', (starter) => {
+      v2(starter);
+      edit(starter, 'README.md', (text) => `${text}\nStarter\n=======\n`);
+    });
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text
+        .replace('# My sempods apps', '# Annas Apps')
+        .replace('## Licence', 'Owner\n=======\n\n## Licence'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    // Resolve only the title conflict; both underlines stay.
+    edit(repo, 'README.md', (text) =>
+      text.replace(
+        /^<{7} .*\n([\s\S]*?)^={7}\n[\s\S]*?^>{7} .*\n/m,
+        '$1',
+      ),
+    );
+    assert.equal(read(repo, 'README.md').match(/^={7}$/gm).length, 2);
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('keeps a conflict while a bare marker line remains', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n>>>>>>>\n');
+    assert.deepEqual(migrateTo(repo, '2.0.0').conflicts, ['README.md']);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+  });
+
   it('keeps a conflict while any of its markers remains', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
