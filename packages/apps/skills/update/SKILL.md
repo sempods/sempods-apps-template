@@ -19,8 +19,8 @@ instead.
    `tooling-update-<version>`, or on the branch of the version pull request.
 2. **Update.** `pnpm run update` installs the newest version and migrates;
    `pnpm run update <version>` a specific one. It first checks that Node and
-   pnpm suit that version; if not, follow its numbered order, then run it
-   again; nothing was changed. On the branch of a version pull request, run
+   pnpm suit that version; if not, it changes nothing and prints a numbered
+   order to follow before running it again. On the branch of a version pull request, run
    `pnpm run update <version>` with the version the pull request names, so
    the same check runs before anything is installed. If pnpm refuses to run
    it because the dependencies are out of date, start the installed tooling

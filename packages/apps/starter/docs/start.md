@@ -56,8 +56,8 @@ work offline. You decide when to publish.
 When the tooling gets better, ask your assistant: “Update the tooling.” It
 brings in the new version as a change you can review and tells you if your
 computer needs a newer Node or pnpm first. Your apps, notes and instructions
-stay yours; if the update and one of your changes touch the same lines, your
-assistant asks you how to combine them.
+stay yours. Where the update and one of your changes overlap, your assistant
+combines them and asks you when it is a matter of choice.
 
 Your assistant follows the repository's instructions and records progress in
 each app's `NOTES.md`, so a later session can pick up where you left off.

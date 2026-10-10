@@ -20,16 +20,12 @@ configuration choices and the SDK migration.
   pnpm suit the target version and otherwise names what to upgrade first,
   installs the version and runs its `migrate`. `pnpm run migrate` applies the
   installed version's starter from the baseline. It applies only unambiguous
-  changes (a file only the starter changed, with the owner section of
-  AGENTS.md and the setup record of INIT.md kept; new and unchanged dropped
-  files; new seed files; the tooling and script entries of the root
-  manifest) and lists everything else as a manual case in
-  `.sempods-migration/`, leaving those files untouched, with the starter's
-  versions and a merge suggestion next to them. The assistant decides each
-  case with the update skill; `pnpm run migrate --done` confirms the
-  decisions, regenerates the apps' configuration, installs and advances the
-  baseline. A rerun after an interruption continues. `check` names an
-  outstanding or open migration and the command for it.
+  changes and leaves everything else untouched, listed as manual cases in
+  `.sempods-migration/` with the starter's versions and a merge suggestion.
+  The assistant decides them with the update skill; `pnpm run migrate --done`
+  confirms the decisions, regenerates the apps' configuration, installs and
+  advances the baseline. `check` names an outstanding or open migration and
+  the command for it.
 - INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
   record; the setup procedure ships in the package
   (`instructions/setup.md`). Setup no longer adapts inherited files:
@@ -54,6 +50,7 @@ configuration choices and the SDK migration.
    the `Created from` field). Finish an unfinished SDK update first
    (`.sempods/.sdk-update-pending`). Then run `pnpm install`,
    `pnpm run regenerate` and `pnpm run check`.
+
 ## 0.6.1
 
 ### Changes
