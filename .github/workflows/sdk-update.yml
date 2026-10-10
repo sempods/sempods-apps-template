@@ -110,7 +110,9 @@ jobs:
           pnpm run check --standalone all
           # Stage only the coordinated SDK manifests and the lockfile; check
           # has made sure every apps/<id> directory is listed in apps.json.
-          git add -- package.json pnpm-lock.yaml ':(glob)apps/*/package.json'
+          # Without apps the glob expands to nothing instead of failing.
+          shopt -s nullglob
+          git add -- package.json pnpm-lock.yaml apps/*/package.json
           if ! git diff --cached --quiet; then
             git commit -s -m "Update the SDK to $VERSION"
           fi
