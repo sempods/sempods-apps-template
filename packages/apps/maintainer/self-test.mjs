@@ -265,6 +265,8 @@ function migrateExercise(repo, work, tooling) {
       'Scope: the whole repository and every app in it.',
     ),
   );
+  // The owner appended to docs/start.md too: a manual case.
+  edit(later, 'starter/docs/start.md', (value) => `${value}\nStarter addition.\n`);
   const laterTarball = pack(later, work);
 
   const manifest = readJson(join(repo, 'package.json'));
@@ -272,10 +274,18 @@ function migrateExercise(repo, work, tooling) {
   writeJson(join(repo, 'package.json'), manifest);
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
   // The baseline's version is not on the registry: take its tarball.
-  run('pnpm', ['run', 'migrate'], repo, false, {
-    ...process.env,
-    SEMPODS_APPS_PACKAGES: dirname(tooling),
+  const env = { ...process.env, SEMPODS_APPS_PACKAGES: dirname(tooling) };
+  const open = spawnSync('pnpm', ['run', 'migrate'], {
+    cwd: repo,
+    env,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
   });
+  if (open.status !== 3 || !/docs\/start\.md: changed here and by the starter/.test(open.stdout))
+    throw new Error(`migrate did not leave docs/start.md as a manual case:\n${open.stdout}${open.stderr}`);
+  // The assistant's decision: both additions.
+  edit(repo, 'docs/start.md', (value) => `${value}Starter addition.\n`);
+  run('pnpm', ['run', 'migrate', '--done'], repo, false, env);
   const installed = join(repo, 'node_modules', '@sempods', 'apps');
   const { revision } = readSnapshot(join(installed, 'shared'));
   const baseline = readBaseline(repo);
@@ -285,8 +295,10 @@ function migrateExercise(repo, work, tooling) {
     throw new Error('migrate did not apply the starter change');
   if (span('AGENTS.md', OWNER) !== owner || span('INIT.md', RECORD) !== record)
     throw new Error('migrate changed the owner section or the setup record');
-  if (!text(repo, 'docs/start.md').includes('Owner addition.'))
-    throw new Error("migrate lost the owner's change to a shared file");
+  if (!/Owner addition\.\nStarter addition\./.test(text(repo, 'docs/start.md')))
+    throw new Error('migrate --done did not keep the decided docs/start.md');
+  if (existsSync(join(repo, '.sempods-migration')))
+    throw new Error('migrate --done left .sempods-migration/ behind');
   pnpmRun(repo, 'check');
   console.log('✓ migrate applies a later starter and keeps owner content');
 }

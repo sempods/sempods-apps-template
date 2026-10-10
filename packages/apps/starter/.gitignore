@@ -18,5 +18,6 @@ AGENTS.override.md
 
 # Local SDK update checkpoint; removed only after install and checks succeed.
 /.sdk-update-pending
-# Unfinished starter migration; removed once the migration is complete.
-/.sempods-migration.json
+# Open starter migration: manual cases, their sources and suggestions;
+# removed once the migration is complete.
+/.sempods-migration/

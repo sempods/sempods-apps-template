@@ -124,7 +124,7 @@ export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
   refuseDuringSdkUpdate(root);
   if (existsSync(join(root, MIGRATION_FILE)))
     throw new Error(
-      'a migration is unfinished; finish it with pnpm run migrate first',
+      'a migration is open; finish it first: pnpm run migrate, or pnpm run migrate --done once its manual cases are decided',
     );
   const target = lookup(root, spec);
   refuseDowngrade(root, target);

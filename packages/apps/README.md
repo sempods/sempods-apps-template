@@ -22,11 +22,10 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 - `pnpm run sdk-update <version>` moves all apps to one SDK release.
 - `pnpm run update [<version>]` checks that Node and pnpm suit the target
   version, installs it and runs its `migrate`. `pnpm run migrate` applies the
-  installed version's starter to the repository from `.sempods-baseline.json`:
-  shared files are merged with the owner sections kept, the apps' generated
-  configuration is rewritten, and the baseline advances once no conflict
-  remains. A rerun continues an unfinished migration; see the
-  [update skill](skills/update/SKILL.md).
+  installed version's starter to the repository from `.sempods-baseline.json`.
+  It applies unambiguous changes and lists the rest as manual cases in
+  `.sempods-migration/` for the assistant; `pnpm run migrate --done` then
+  completes the migration. See the [update skill](skills/update/SKILL.md).
 - `pnpm run check` checks all apps; `--standalone all` also installs, lints,
   builds and tests each app on its own. It reports an SDK version outside the
   range this package supports (its `peerDependencies`).

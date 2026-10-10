@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Applies the starter of the installed @sempods/apps to this repository, from
-// the starter it last applied (.sempods-baseline.json): shared files get a
-// three-way merge that keeps the owner sections verbatim, new seed files are
-// added, the root manifest follows only its template entries, and the apps'
-// generated configuration is rewritten. The baseline advances only once
-// everything is applied without unresolved conflicts; until then
-// MIGRATION_FILE records the unfinished migration and a rerun continues it.
-// Usage: pnpm run migrate
-import { createHash } from 'node:crypto';
+// the starter it last applied (.sempods-baseline.json). The script applies
+// only what is unambiguous: a file only the starter changed, a new or dropped
+// file nobody changed here, seed files, the template entries of the root
+// manifest. Everything that needs judgment is a manual case: the file stays
+// as it is, and MIGRATION_DIR holds the list, the starter's versions and a
+// merge suggestion for the assistant (update skill). With manual cases open,
+// `pnpm run migrate --done` confirms that each was decided and completes:
+// regenerate the apps' configuration, install, advance the baseline.
+// Usage: pnpm run migrate [--done]
+import { randomBytes } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -21,6 +23,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -37,27 +40,32 @@ import {
 } from './lib/shared.mjs';
 import { regenerate } from './regenerate.mjs';
 
-export const MIGRATION_FILE = '.sempods-migration.json';
-// Conflict marker lines of a given length: labelled or bare `<` and `>`
-// lines, and the `=` separator, which can also underline a Markdown heading.
-const markerLine = (size) =>
-  new RegExp(`^(<{${size}}|>{${size}})( |$)|^={${size}}$`, 'm');
-/**
- * The shortest marker length, from git's 7 up, that none of the merged texts
- * uses, so every marker line of that length in the result comes from the
- * merge and none is legitimate content.
- */
-export function markerSize(...texts) {
-  let size = 7;
-  while (texts.some((text) => text !== null && markerLine(size).test(text)))
-    size += 1;
-  return size;
-}
+export const MIGRATION_DIR = '.sempods-migration';
+export const MIGRATION_FILE = `${MIGRATION_DIR}/migration.json`;
 
 const readText = (path) =>
-  existsSync(path) ? readFileSync(path, 'utf8') : null;
-const hash = (text) =>
-  text === null ? 'absent' : createHash('sha256').update(text).digest('hex');
+  statSync(path, { throwIfNoEntry: false })?.isFile()
+    ? readFileSync(path, 'utf8')
+    : null;
+
+/** Writes a file in one step: the old or the complete new content remains. */
+function replaceFile(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, content);
+  renameSync(temporary, path);
+}
+
+/** Removes a file and the directories it leaves empty, up to `root`. */
+function removeFile(root, path) {
+  rmSync(path, { force: true });
+  for (
+    let dir = dirname(path);
+    dir !== root && existsSync(dir) && readdirSync(dir).length === 0;
+    dir = dirname(dir)
+  )
+    rmdirSync(dir);
+}
 
 /** The starter of an installed package: its version, snapshot and policy. */
 export function installedStarter(installed = TOOLING) {
@@ -67,7 +75,6 @@ export function installedStarter(installed = TOOLING) {
       `${PACKAGE} at ${installed} has no packed starter; install a published version`,
     );
   return {
-    dir: installed,
     version: readJson(join(installed, 'package.json')).version,
     snapshot: readSnapshot(shared),
     policy: readJson(join(installed, 'update-policy.json')),
@@ -90,23 +97,28 @@ export function refuseOlder(baseline, target) {
     );
 }
 
+/** The open migration, or undefined; a completed leftover is dropped. */
+function openMigration(root, baseline) {
+  const migration = ifPresent(() => readJson(join(root, MIGRATION_FILE)));
+  if (!migration) return undefined;
+  if (migration.to?.revision === baseline.revision) {
+    // The baseline was written; only the cleanup was interrupted.
+    rmSync(join(root, MIGRATION_DIR), { recursive: true, force: true });
+    return undefined;
+  }
+  return migration;
+}
+
 /** What `check` reports about the repository's starter state. */
 export function migrationState(root, installed = TOOLING) {
   const baseline = readBaseline(root);
   if (!baseline || !existsSync(join(installed, 'shared', 'snapshot.json')))
     return undefined;
-  const pending = readText(join(root, MIGRATION_FILE));
-  // A migration file whose target is the baseline is a completed leftover.
-  if (pending && JSON.parse(pending).to?.revision !== baseline.revision) {
-    const { to, files = {} } = JSON.parse(pending);
-    const conflicts = Object.entries(files)
-      .filter(
-        ([, recorded]) =>
-          recorded === 'conflict' || recorded?.outcome === 'conflict',
-      )
-      .map(([file]) => file);
-    return `the migration to ${PACKAGE} ${to.version} is unfinished${conflicts.length ? `: resolve the conflicts in ${conflicts.join(', ')}` : ''}, then run pnpm run migrate`;
-  }
+  const migration = ifPresent(() => readJson(join(root, MIGRATION_FILE)));
+  if (migration && migration.to?.revision !== baseline.revision)
+    return migration.manual.length > 0
+      ? `the migration to ${PACKAGE} ${migration.to.version} is open: decide the manual cases in ${MIGRATION_FILE} (${migration.manual.map(({ file }) => file).join(', ')}), then run pnpm run migrate --done`
+      : `the migration to ${PACKAGE} ${migration.to.version} is unfinished: run pnpm run migrate`;
   const { revision } = readJson(join(installed, 'shared', 'snapshot.json'));
   const { version } = readJson(join(installed, 'package.json'));
   if (revision !== baseline.revision)
@@ -115,18 +127,115 @@ export function migrationState(root, installed = TOOLING) {
 }
 
 /**
+ * What the starter change means for each file: automatic writes (content, or
+ * null to remove) and manual cases with their reason. Reads only.
+ */
+function plan(root, { base, snapshot, policy, seeds, skip }) {
+  const auto = [];
+  const manual = [];
+  const sections = (text, ours, file) => {
+    let result = text;
+    for (const markers of policy.sections?.[file] ?? [])
+      result = result === null ? null : withSection(result, markers, ours);
+    return result;
+  };
+  const files = [
+    ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
+  ].sort();
+  for (const file of files) {
+    if (file === policy.rootManifest || skip.has(file)) continue;
+    const path = join(root, file);
+    const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
+    const baseText = base.files[file] ? readText(base.path(file)) : null;
+    const ours = readText(path);
+    const fresh = () => !base.files[file];
+    if (statSync(path, { throwIfNoEntry: false })?.isDirectory()) {
+      if (theirs !== null)
+        manual.push({ file, reason: 'a directory here, a file in the starter' });
+      continue;
+    }
+    const parts = file.split('/');
+    const blocking = parts
+      .slice(0, -1)
+      .map((_, i) => parts.slice(0, i + 1).join('/'))
+      .find((dir) => readText(join(root, dir)) !== null);
+    if (blocking && theirs !== null) {
+      manual.push({
+        file,
+        reason: `the starter needs a directory where ${blocking} is a file here`,
+      });
+      continue;
+    }
+    if (seeds.has(file)) {
+      // Written once, when a starter first brings it; the owner's from then on.
+      if (theirs !== null && ours === null && fresh())
+        auto.push({ file, content: theirs, kind: 'added' });
+      continue;
+    }
+    if (theirs === null) {
+      if (ours === null) continue;
+      if (ours === baseText) auto.push({ file, content: null, kind: 'removed' });
+      else
+        manual.push({ file, reason: 'the starter dropped it; changed here' });
+      continue;
+    }
+    if (ours === null) {
+      if (baseText === null) auto.push({ file, content: theirs, kind: 'added' });
+      else if (baseText !== theirs)
+        manual.push({ file, reason: 'removed here; the starter changed it' });
+      continue;
+    }
+    // Compared with the owner sections of this repository kept, so a changed
+    // owner section alone is no change to merge.
+    const expected = sections(theirs, ours, file);
+    if (expected === null) {
+      manual.push({
+        file,
+        reason: 'an owner section is incomplete here or in the starter',
+      });
+      continue;
+    }
+    // Already applied, or changed only here.
+    if (ours === expected || theirs === baseText) continue;
+    if (baseText !== null && ours === sections(baseText, ours, file)) {
+      auto.push({ file, content: expected, kind: 'updated' });
+      continue;
+    }
+    manual.push({
+      file,
+      reason:
+        baseText === null
+          ? 'added here and by the starter'
+          : 'changed here and by the starter',
+    });
+  }
+  // Nothing below a path that changes between file and directory is written
+  // automatically; the manual case covers it.
+  const collisions = manual
+    .filter(({ reason }) => reason.startsWith('a directory here'))
+    .map(({ file }) => `${file}/`);
+  return {
+    auto: auto.filter(({ file }) =>
+      collisions.every((dir) => !file.startsWith(dir)),
+    ),
+    manual,
+  };
+}
+
+/**
  * Migrates `root` from its baseline to the starter of the installed package.
- * Options are for tests: where the installed package is, how to fetch the
- * baseline's package, how to install, and a hook after each written file.
+ * With `done`, the open manual cases count as decided. Other options are for
+ * tests: the installed package, how to fetch the baseline's package, how to
+ * install, and a hook after each file the script writes.
  */
 export function migrate(
   root,
   {
+    done = false,
     installed = TOOLING,
     download = downloadPackage,
     install = () =>
       pnpm(INSTALL, { cwd: root, stdio: ['ignore', 2, 2] }).status === 0,
-    beforeWrite = () => {},
     afterWrite = () => {},
   } = {},
 ) {
@@ -138,36 +247,33 @@ export function migrate(
   const target = installedStarter(installed);
   refuseDuringSdkUpdate(root);
   refuseOlder(baseline, target);
-  const pendingPath = join(root, MIGRATION_FILE);
-  let pending = JSON.parse(readText(pendingPath) ?? 'null');
-  // A run that advanced the baseline but stopped before removing the
-  // migration file has completed the migration.
-  if (pending && pending.to?.revision === baseline.revision) {
-    rmSync(pendingPath, { force: true });
-    pending = null;
-  }
+  let migration = openMigration(root, baseline);
+  if (
+    migration &&
+    (migration.from?.revision !== baseline.revision ||
+      migration.to?.revision !== target.snapshot.revision)
+  )
+    throw new Error(
+      `an open migration from ${PACKAGE} ${migration.from?.version} to ${migration.to?.version} is recorded in ${MIGRATION_FILE}, but ${target.version} is installed. Install ${migration.to?.version} again, finish that migration with pnpm run migrate, then update. Nothing was changed.`,
+    );
   const report = {
     from: baseline.version,
     to: target.version,
     updated: [],
-    merged: [],
     added: [],
     removed: [],
-    conflicts: [],
-    review: [],
+    manual: [],
     notes: [],
     regenerated: [],
   };
-  if (
-    pending &&
-    (pending.from?.revision !== baseline.revision ||
-      pending.to?.revision !== target.snapshot.revision)
-  )
-    throw new Error(
-      `an unfinished migration from ${PACKAGE} ${pending.from?.version} to ${pending.to?.version} is recorded in ${MIGRATION_FILE}, but ${target.version} is installed. Install ${pending.to?.version} again, finish that migration with pnpm run migrate, then update. Nothing was changed.`,
-    );
-  if (!pending && baseline.revision === target.snapshot.revision)
+  if (!migration && baseline.revision === target.snapshot.revision) {
+    if (done) throw new Error('no migration is open; nothing to finish');
     return { ...report, unchanged: true };
+  }
+  if (!migration && done)
+    throw new Error(
+      'no migration is open; run pnpm run migrate first and decide its manual cases',
+    );
 
   const base = baselineSnapshot(baseline, { installed, download });
   const { policy, snapshot } = target;
@@ -177,230 +283,106 @@ export function migrate(
     readJson(join(base.packageDir, 'update-policy.json')),
   );
   const seeds = new Set([...policy.seed, ...(basePolicy?.seed ?? [])]);
-  // Durable progress of this migration, kept across reruns until it is
-  // complete. Per file: `done`, `conflict` (markers written; the owner
-  // resolves them), or `writing` with the content hashes from before and
-  // after the write and the intended outcome, so a rerun can tell a finished
-  // write from one that never happened or a later edit.
-  const state = pending ?? {
-    from: baseline,
-    to: { version: target.version, revision: snapshot.revision },
-    files: {},
-  };
-  const save = () => replaceJson(pendingPath, state);
-  save();
-  const remove = (path) => {
-    rmSync(path, { force: true });
-    // Directories the removed file leaves empty go with it.
-    for (
-      let dir = dirname(path);
-      dir !== root && existsSync(dir) && readdirSync(dir).length === 0;
-      dir = dirname(dir)
-    )
-      rmdirSync(dir);
-  };
-  /** Writes (or, for null, removes) a file, recording the intent first. */
-  const apply = (file, ours, content, outcome, list) => {
-    state.files[file] = {
-      status: 'writing',
-      before: hash(ours),
-      after: hash(content),
-      outcome,
-    };
-    save();
-    const path = join(root, file);
-    beforeWrite(file);
-    if (content === null) remove(path);
-    else {
-      // Replaced in one step: an interrupted write leaves the old or the
-      // complete new file, never part of it.
-      mkdirSync(dirname(path), { recursive: true });
-      const temporary = `${path}.${process.pid}.tmp`;
-      writeFileSync(temporary, content);
-      renameSync(temporary, path);
-    }
-    afterWrite(file);
-    state.files[file] = outcome;
-    save();
-    list.push(file);
-    if (outcome === 'conflict') report.conflicts.push(file);
-  };
-  /**
-   * The text with the owner's sections from `ours`, or null when a section
-   * cannot be kept; the file then stays unchanged and the migration open.
-   */
-  const ownerSections = (text, ours, file) => {
-    let result = text;
-    for (const markers of policy.sections?.[file] ?? []) {
-      result = withSection(result, markers, ours);
-      if (result === null) {
-        report.conflicts.push(file);
-        report.review.push(
-          `${file}: the owner section ${markers[0]} … ${markers[1]} is incomplete here or in the starter; restore both marker lines with the section between them, then run pnpm run migrate again`,
-        );
-        return null;
-      }
-    }
-    return result;
-  };
-  const labels = [
-    'this repository',
-    `${PACKAGE} ${baseline.version}`,
-    `${PACKAGE} ${target.version}`,
-  ];
-  /** Whether a file still has a marker line of its recorded length. */
-  const conflicted = (file, text) =>
-    text !== null && markerLine(state.markers?.[file] ?? 7).test(text);
-  /** Settles a file an earlier run touched; true when nothing is left to do. */
-  const settled = (file, ours) => {
-    const recorded = state.files[file];
-    if (recorded === 'done') return true;
-    if (recorded === 'conflict') {
-      if (conflicted(file, ours)) report.conflicts.push(file);
-      else {
-        state.files[file] = 'done';
-        save();
-      }
-      return true;
-    }
-    if (recorded?.status === 'writing') {
-      const written = hash(ours) === recorded.after;
-      // A marked file the owner has partly edited stays a conflict; any other
-      // content is merged again like an ordinary owner change.
-      const marked =
-        recorded.outcome === 'conflict' && conflicted(file, ours);
-      if (written || marked) {
-        state.files[file] = recorded.outcome;
-        save();
-        if (recorded.outcome === 'conflict') report.conflicts.push(file);
-        return true;
-      }
-      delete state.files[file];
-    }
-    return false;
-  };
+  const work = join(root, MIGRATION_DIR);
 
-  // Files the starter drops go first, so a file that takes the place of a
-  // dropped directory finds the path free.
-  const dropped = (file) => (snapshot.files[file] ? 1 : 0);
-  const files = [
-    ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
-  ].sort((a, b) => dropped(a) - dropped(b) || (a < b ? -1 : a > b ? 1 : 0));
-  for (const file of files) {
-    if (file === policy.rootManifest) continue;
-    if (statSync(join(root, file), { throwIfNoEntry: false })?.isDirectory()) {
-      report.conflicts.push(file);
-      report.review.push(
-        `${file}: the starter has a file where this repository has a directory; move what you keep out of it and remove the directory, then run pnpm run migrate again`,
-      );
-      continue;
-    }
-    const parts = file.split('/');
-    const blocking = parts
-      .slice(0, -1)
-      .map((_, i) => parts.slice(0, i + 1).join('/'))
-      .find((dir) =>
-        statSync(join(root, dir), { throwIfNoEntry: false })?.isFile(),
-      );
-    if (blocking && snapshot.files[file]) {
-      report.conflicts.push(file);
-      report.review.push(
-        `${file}: the starter needs a directory where this repository has the file ${blocking}; move what you keep out of it and remove the file, then run pnpm run migrate again`,
-      );
-      continue;
-    }
-    const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
-    const ours = readText(join(root, file));
-    if (settled(file, ours)) continue;
-    if (seeds.has(file)) {
-      // Written once, when a starter first brings it; the owner's from then
-      // on, also if they delete it.
-      if (theirs !== null && ours === null && !base.files[file])
-        apply(file, ours, theirs, 'done', report.added);
-      continue;
-    }
-    const baseText = base.files[file] ? readText(base.path(file)) : null;
-    if (theirs === null) {
-      // The new starter no longer has this shared file.
-      if (ours === null) continue;
-      if (ours === baseText) apply(file, ours, null, 'done', report.removed);
-      else
-        report.review.push(
-          `${file}: the starter removed it; you changed it, so it stays`,
-        );
-      continue;
-    }
-    if (ours === null) {
-      if (baseText === null) apply(file, ours, theirs, 'done', report.added);
-      else if (baseText !== theirs)
-        report.review.push(
-          `${file}: you removed it and the starter changed it; compare with ${PACKAGE} ${target.version} by hand`,
-        );
-      continue;
-    }
-    // Unchanged on either side, or only the owner's change: nothing to do.
-    if (ours === theirs || theirs === baseText) continue;
-    if (ours === baseText) {
-      const updated = ownerSections(theirs, ours, file);
-      if (updated !== null) apply(file, ours, updated, 'done', report.updated);
-      continue;
-    }
-    const size = markerSize(ours, baseText, theirs);
-    const merged = mergeText(ours, baseText ?? '', theirs, labels, size);
-    const result = ownerSections(merged.text, ours, file);
-    if (result === null) continue;
-    if (merged.conflicts > 0)
-      state.markers = { ...state.markers, [file]: size };
-    apply(
-      file,
-      ours,
-      result,
-      merged.conflicts > 0 ? 'conflict' : 'done',
-      merged.conflicts > 0 ? [] : report.merged,
-    );
+  // The complete list of manual cases is recorded before anything changes;
+  // while it is open, its files are the assistant's and are not reconsidered.
+  const skip = new Set(migration?.manual.map(({ file }) => file));
+  const { auto, manual } = plan(root, { base, snapshot, policy, seeds, skip });
+  if (!migration) {
+    rmSync(work, { recursive: true, force: true });
+    const id = randomBytes(4).toString('hex');
+    migration = {
+      id,
+      from: baseline,
+      to: { version: target.version, revision: snapshot.revision },
+      manual: manual.map(({ file, reason }, index) => {
+        const entry = { file, reason };
+        const text = (snap) =>
+          snap.files[file] ? readText(snap.path(file)) : null;
+        const [baseText, theirs] = [text(base), text(snapshot)];
+        const ours = readText(join(root, file));
+        if (baseText !== null)
+          replaceFile(join(work, 'base', file), baseText);
+        if (theirs !== null) replaceFile(join(work, 'starter', file), theirs);
+        if (ours !== null && theirs !== null) {
+          // A suggestion with a label of its own, so --done can tell it apart.
+          const label = `sempods-migration:${id}:${index}`;
+          const merged = mergeText(ours, baseText ?? '', theirs, [
+            label,
+            `${PACKAGE} ${baseline.version}`,
+            `${PACKAGE} ${target.version}`,
+          ]);
+          replaceFile(join(work, 'suggestion', file), merged.text);
+          entry.opening = `<<<<<<< ${label}`;
+        }
+        return entry;
+      }),
+    };
+    mkdirSync(work, { recursive: true });
+    replaceJson(join(root, MIGRATION_FILE), migration);
   }
 
+  for (const { file, content, kind } of auto) {
+    const path = join(root, file);
+    if (content === null) removeFile(root, path);
+    else replaceFile(path, content);
+    afterWrite(file);
+    report[kind].push(file);
+  }
   // The root manifest: tooling, SDK and script entries only. The SDK stays at
   // the repository's version; sdk-update moves it.
   const manifestFile = policy.rootManifest;
-  const oursText = readText(join(root, manifestFile));
-  if (!settled(manifestFile, oursText)) {
-    const ours = JSON.parse(oursText);
-    const starterManifest = (snap, version) => {
-      const manifest = JSON.parse(readText(snap.path(manifestFile)));
-      manifest.devDependencies[PACKAGE] = version;
-      return manifest;
-    };
-    const manifest = formatJson(
-      mergeManifest(
-        ours,
-        [starterManifest(base, baseline.version)],
-        starterManifest(snapshot, target.version),
-        policy.sdk,
-        ours.devDependencies?.[policy.sdk[0]],
-        report.notes,
-        manifestFile,
-      ),
-    );
-    if (manifest !== formatJson(ours))
-      apply(manifestFile, oursText, manifest, 'done', report.updated);
+  const ours = readJson(join(root, manifestFile));
+  const starterManifest = (snap, version) => {
+    const manifest = JSON.parse(readText(snap.path(manifestFile)));
+    manifest.devDependencies[PACKAGE] = version;
+    return manifest;
+  };
+  const manifest = formatJson(
+    mergeManifest(
+      ours,
+      [starterManifest(base, baseline.version)],
+      starterManifest(snapshot, target.version),
+      policy.sdk,
+      ours.devDependencies?.[policy.sdk[0]],
+      report.notes,
+      manifestFile,
+    ),
+  );
+  if (manifest !== formatJson(ours)) {
+    replaceFile(join(root, manifestFile), manifest);
+    afterWrite(manifestFile);
+    report.updated.push(manifestFile);
   }
 
+  report.manual = migration.manual;
+  if (migration.manual.length > 0 && !done)
+    return { ...report, unfinished: true };
+  // --done attests that every manual case was decided; an unresolved copy of
+  // a suggestion is the one mistake the script can see.
+  const unresolved = migration.manual.filter(
+    ({ file, opening }) =>
+      opening && readText(join(root, file))?.includes(opening),
+  );
+  if (unresolved.length > 0)
+    throw new Error(
+      `${unresolved.map(({ file }) => file).join(', ')} still contain an unresolved suggestion; resolve them, then run pnpm run migrate --done again`,
+    );
   report.regenerated = regenerate(root);
-  if (report.conflicts.length > 0) return { ...report, unfinished: true };
   // A new starter can change the manifest or the workspace settings, so the
   // lockfile and node_modules follow before the migration counts as done.
-  if (!install(root)) {
-    report.review.push(
-      'pnpm install failed; fix the cause, then run pnpm run migrate again',
-    );
-    return { ...report, unfinished: true };
-  }
+  if (!install(root))
+    return {
+      ...report,
+      unfinished: true,
+      failed: 'pnpm install failed; fix the cause, then run the same command again',
+    };
   writeBaseline(root, {
     version: target.version,
     revision: snapshot.revision,
   });
-  rmSync(pendingPath, { force: true });
+  rmSync(work, { recursive: true, force: true });
   return report;
 }
 
@@ -409,28 +391,33 @@ export function formatMigration(report) {
     return `The shared files already match ${PACKAGE} ${report.to}; nothing to migrate.`;
   const list = (title, items) =>
     items.length ? [`${title}:`, ...items.map((item) => `  ${item}`)] : [];
-  return [
-    `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is unfinished' : ''}.`,
+  const lines = [
+    `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is open' : ' is complete'}.`,
     ...list('Updated', report.updated),
-    ...list('Merged', report.merged),
     ...list('Added', report.added),
     ...list('Removed', report.removed),
     ...list('Regenerated', report.regenerated),
-    ...list(
-      'Conflicts (resolve the marked lines, then run pnpm run migrate)',
-      report.conflicts,
-    ),
-    ...list('Review by hand', report.review),
     ...list('Notes', report.notes),
-    report.unfinished
-      ? 'The baseline stays at the old starter until the migration is finished.'
-      : 'Run pnpm run check and review the changes before you commit them.',
-  ].join('\n');
+  ];
+  if (report.failed) lines.push(report.failed);
+  else if (report.unfinished)
+    lines.push(
+      ...list(
+        `Manual cases (left unchanged; base, starter and suggestion are in ${MIGRATION_DIR}/)`,
+        report.manual.map(({ file, reason }) => `${file}: ${reason}`),
+      ),
+      'Decide each case with the update skill, then run pnpm run migrate --done. The baseline stays at the old starter until then.',
+    );
+  else lines.push('Run pnpm run check and review the changes before you commit them.');
+  return lines.join('\n');
 }
 
 export function main(args = scriptArgs()) {
-  if (args.length > 0) throw new Error('Usage: pnpm run migrate');
-  const report = migrate(repositoryRoot());
+  const { values } = parseArgs({
+    args,
+    options: { done: { type: 'boolean', default: false } },
+  });
+  const report = migrate(repositoryRoot(), { done: values.done });
   console.log(formatMigration(report));
   if (report.unfinished) process.exitCode = 3;
 }

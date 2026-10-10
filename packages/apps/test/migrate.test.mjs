@@ -168,7 +168,14 @@ describe('migrate', () => {
     assert.equal(migrateTo(repo, '3.0.0').unchanged, true);
   });
 
-  it('keeps owner sections verbatim and reports conflicts until resolved', () => {
+  // The owner and v2 both change the README title.
+  const conflicting = (repo) =>
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+  const manualFiles = (report) => report.manual.map(({ file }) => file);
+
+  it('applies what is unambiguous and leaves the rest as manual cases', () => {
     publish('2.0.0', (starter) => {
       v2(starter);
       edit(starter, 'docs/start.md', (text) =>
@@ -176,6 +183,7 @@ describe('migrate', () => {
       );
     });
     const repo = createRepo('1.0.0');
+    // Owner sections changed: no change to merge on their own.
     edit(repo, 'AGENTS.md', (text) =>
       text.replace(
         'No instance-specific instructions recorded yet.',
@@ -185,184 +193,215 @@ describe('migrate', () => {
     edit(repo, 'INIT.md', (text) =>
       text.replace('- Status: not started', '- Status: done'),
     );
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
-    edit(repo, 'docs/start.md', (text) =>
-      text.replace('## Try', '## Try it'),
-    );
+    conflicting(repo);
+    edit(repo, 'docs/start.md', (text) => text.replace('## Try', '## Try it'));
     const owner = between(read(repo, 'AGENTS.md'), OWNER);
     const record = between(read(repo, 'INIT.md'), RECORD);
+    const readme = read(repo, 'README.md');
+    const start = read(repo, 'docs/start.md');
     install(repo, '2.0.0');
 
     const first = migrateTo(repo, '2.0.0');
     assert.equal(first.unfinished, true);
-    // INIT.md changed only here: kept, not reported as merged.
-    assert.equal(first.merged.includes('INIT.md'), false);
-    assert.deepEqual(first.conflicts, ['README.md']);
-    assert.ok(first.merged.includes('docs/start.md'));
-    assert.match(read(repo, 'docs/start.md'), /## Try it/);
-    assert.match(read(repo, 'docs/start.md'), /## Publish your apps/);
-    assert.match(read(repo, 'README.md'), /^<{7} this repository/m);
-    assert.equal(between(read(repo, 'AGENTS.md'), OWNER), owner);
+    assert.deepEqual(first.updated, ['AGENTS.md']);
+    assert.deepEqual(manualFiles(first), ['README.md', 'docs/start.md']);
     assert.match(read(repo, 'AGENTS.md'), /Scope: all of it\./);
+    assert.equal(between(read(repo, 'AGENTS.md'), OWNER), owner);
     assert.equal(between(read(repo, 'INIT.md'), RECORD), record);
+    // Manual files stay as they are; their sources wait in the work folder.
+    assert.equal(read(repo, 'README.md'), readme);
+    assert.equal(read(repo, 'docs/start.md'), start);
+    const migration = readJson(join(repo, MIGRATION_FILE));
+    const suggestion = read(repo, '.sempods-migration/suggestion/README.md');
+    assert.ok(suggestion.includes(migration.manual[0].opening));
+    assert.match(read(repo, '.sempods-migration/starter/README.md'), /# Your/);
+    assert.match(read(repo, '.sempods-migration/base/README.md'), /# My/);
     assert.equal(readBaseline(repo).version, '1.0.0');
     assert.match(
       outstanding(repo, '2.0.0').join('\n'),
-      /unfinished: resolve the conflicts in README\.md/,
+      /decide the manual cases .*\(README\.md, docs\/start\.md\), then run pnpm run migrate --done/,
     );
-    // Still conflicted: a rerun keeps the file and the baseline.
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    assert.equal(readBaseline(repo).version, '1.0.0');
+    // A rerun keeps the list and does not touch the manual files.
+    assert.deepEqual(manualFiles(migrateTo(repo, '2.0.0')), [
+      'README.md',
+      'docs/start.md',
+    ]);
 
-    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
-    const second = migrateTo(repo, '2.0.0');
-    assert.equal(second.unfinished, undefined);
-    assert.equal(read(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
+    // The assistant decides each case; --done keeps the decisions.
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
+    edit(repo, 'docs/start.md', (text) =>
+      text.replace('## Publish', '## Publish your apps'),
+    );
+    const decided = [read(repo, 'README.md'), read(repo, 'docs/start.md')];
+    const done = migrateTo(repo, '2.0.0', { done: true });
+    assert.equal(done.unfinished, undefined);
+    assert.deepEqual(
+      [read(repo, 'README.md'), read(repo, 'docs/start.md')],
+      decided,
+    );
     assert.equal(readBaseline(repo).version, '2.0.0');
-    assert.equal(between(read(repo, 'AGENTS.md'), OWNER), owner);
-    assert.equal(between(read(repo, 'INIT.md'), RECORD), record);
+    assert.equal(existsSync(join(repo, '.sempods-migration')), false);
+    assert.deepEqual(outstanding(repo, '2.0.0'), []);
   });
 
-  it('merges a conflicted file again when the run stopped before writing it', () => {
+  it('refuses to finish while a suggestion is copied unresolved', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
+    conflicting(repo);
     install(repo, '2.0.0');
-    const owner = read(repo, 'README.md');
-    assert.throws(
-      () =>
-        migrateTo(repo, '2.0.0', {
-          beforeWrite: (file) => {
-            if (file === 'README.md') throw new Error('interrupted');
-          },
-        }),
-      /interrupted/,
+    migrateTo(repo, '2.0.0');
+    cpSync(
+      join(repo, '.sempods-migration/suggestion/README.md'),
+      join(repo, 'README.md'),
     );
-    // Recorded as a conflict, but the markers never reached the file.
-    assert.equal(read(repo, 'README.md'), owner);
-    const rerun = migrateTo(repo, '2.0.0');
-    assert.deepEqual(rerun.conflicts, ['README.md']);
-    assert.match(read(repo, 'README.md'), /^<{7} this repository/m);
+    assert.throws(
+      () => migrateTo(repo, '2.0.0', { done: true }),
+      /README\.md still contain an unresolved suggestion/,
+    );
     assert.equal(readBaseline(repo).version, '1.0.0');
-    // Resolved by keeping exactly the owner's earlier text: no new merge.
-    writeFileSync(join(repo, 'README.md'), owner);
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.equal(read(repo, 'README.md'), owner);
-    assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
-  it('keeps a conflict written just before the run stopped', () => {
-    publish('2.0.0', v2);
+  it('applies remaining automatic changes before --done completes', () => {
+    publish('3.0.0', v3);
     const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
-    install(repo, '2.0.0');
+    conflicting(repo);
+    install(repo, '3.0.0');
     assert.throws(
       () =>
-        migrateTo(repo, '2.0.0', {
+        migrateTo(repo, '3.0.0', {
           afterWrite: (file) => {
-            if (file === 'README.md') throw new Error('interrupted');
-          },
-        }),
-      /interrupted/,
-    );
-    const marked = read(repo, 'README.md');
-    const rerun = migrateTo(repo, '2.0.0');
-    assert.deepEqual(rerun.conflicts, ['README.md']);
-    // Not merged again: one conflict block, unchanged.
-    assert.equal(read(repo, 'README.md'), marked);
-    assert.equal(marked.match(/^<{7} /gm).length, 1);
-  });
-
-  it('merges a file the owner edited after an interrupted write', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    install(repo, '2.0.0');
-    assert.throws(
-      () =>
-        migrateTo(repo, '2.0.0', {
-          beforeWrite: (file) => {
             if (file === 'AGENTS.md') throw new Error('interrupted');
           },
         }),
       /interrupted/,
     );
-    // Neither the old nor the intended content: an owner edit in between.
-    edit(repo, 'AGENTS.md', (text) => `${text}\nOwner line.\n`);
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.match(read(repo, 'AGENTS.md'), /Scope: all of it\./);
-    assert.match(read(repo, 'AGENTS.md'), /Owner line\./);
+    assert.doesNotMatch(read(repo, 'docs/start.md'), /## Change an app/);
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
+    const done = migrateTo(repo, '3.0.0', { done: true });
+    assert.equal(done.unfinished, undefined);
+    assert.match(read(repo, 'docs/start.md'), /## Change an app/);
+    assert.equal(read(repo, '.agents/skills/later/SKILL.md'), '# Later\n');
+    assert.equal(read(repo, 'README.md'), '# Annas Apps\n');
+    assert.equal(readBaseline(repo).version, '3.0.0');
+  });
+
+  it('keeps a decision when a later completion step fails', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    conflicting(repo);
+    install(repo, '2.0.0');
+    migrateTo(repo, '2.0.0');
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n\nDecided.\n');
+    // Regeneration fails on a broken apps.json.
+    const apps = read(repo, 'apps.json');
+    writeFileSync(join(repo, 'apps.json'), '{');
+    assert.throws(() => migrateTo(repo, '2.0.0', { done: true }), /apps\.json/);
+    writeFileSync(join(repo, 'apps.json'), apps);
+    assert.equal(migrateTo(repo, '2.0.0', { done: true }).unfinished, undefined);
+    assert.equal(read(repo, 'README.md'), '# Annas Apps\n\nDecided.\n');
     assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
-  it('leaves a file alone when its owner section cannot be kept', () => {
+  it('installs after a workspace-only change, also after a failure', () => {
+    publish('2.0.0', (starter) =>
+      edit(
+        starter,
+        'pnpm-workspace.yaml',
+        (text) => `${text}\noverrides:\n  left-pad: 1.3.0\n`,
+      ),
+    );
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    const failed = migrateTo(repo, '2.0.0', { install: () => false });
+    assert.equal(failed.unfinished, true);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+    let installs = 0;
+    const done = migrateTo(repo, '2.0.0', {
+      install: () => {
+        installs += 1;
+        return true;
+      },
+    });
+    assert.equal(done.unfinished, undefined);
+    assert.equal(installs, 1);
+    assert.match(read(repo, 'pnpm-workspace.yaml'), /left-pad: 1\.3\.0/);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('completes when the run stopped after advancing the baseline', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
-    // The owner removed the closing marker of their section.
-    edit(repo, 'AGENTS.md', (text) =>
-      text
-        .replace('No instance-specific instructions recorded yet.', 'German.')
-        .replace('<!-- END OWNER INSTRUCTIONS -->\n', ''),
-    );
-    const before = read(repo, 'AGENTS.md');
     install(repo, '2.0.0');
-    const report = migrateTo(repo, '2.0.0');
-    assert.equal(report.unfinished, true);
-    assert.deepEqual(report.conflicts, ['AGENTS.md']);
-    assert.match(report.review.join('\n'), /owner section .* is incomplete/);
-    assert.equal(read(repo, 'AGENTS.md'), before);
-    assert.equal(readBaseline(repo).version, '1.0.0');
-    // Restored: the next run applies the starter and keeps the section.
-    edit(repo, 'AGENTS.md', (text) =>
-      text.replace('German.\n', 'German.\n\n<!-- END OWNER INSTRUCTIONS -->\n'),
-    );
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.match(read(repo, 'AGENTS.md'), /Scope: all of it\./);
-    assert.match(read(repo, 'AGENTS.md'), /German\./);
+    let leftover;
+    migrateTo(repo, '2.0.0', {
+      afterWrite: () => {
+        leftover = read(repo, MIGRATION_FILE);
+      },
+    });
+    assert.equal(readBaseline(repo).version, '2.0.0');
+    // The migration folder outlived the baseline write.
+    mkdirSync(join(repo, '.sempods-migration'));
+    writeFileSync(join(repo, MIGRATION_FILE), leftover);
+    assert.deepEqual(outstanding(repo, '2.0.0'), []);
+    assert.equal(migrateTo(repo, '2.0.0').unchanged, true);
+    assert.equal(existsSync(join(repo, '.sempods-migration')), false);
   });
 
-  it('replaces a dropped directory with a file of the same name', () => {
-    const swap = (starter) => {
+  it('makes file and directory collisions manual without touching them', () => {
+    // v2 turns docs/ into a file; v1.5 has a file where v2 needs docs/.
+    publish('2.0.0', (starter) => {
       rmSync(join(starter, 'docs'), { recursive: true });
       writeFileSync(join(starter, 'docs'), 'Documents moved.\n');
-    };
-    publish('2.0.0', swap);
+    });
     const repo = createRepo('1.0.0');
     install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.equal(read(repo, 'docs'), 'Documents moved.\n');
+    const report = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(report), ['docs']);
+    assert.ok(existsSync(join(repo, 'docs', 'start.md')));
 
-    // With the owner's file still in the directory, the step is theirs.
-    const kept = createRepo('1.0.0', 'kept');
-    edit(kept, 'docs/start.md', (text) => `${text}\nMine.\n`);
-    install(kept, '2.0.0');
-    const report = migrateTo(kept, '2.0.0');
-    assert.equal(report.unfinished, true);
-    assert.deepEqual(report.conflicts, ['docs']);
-    assert.match(read(kept, 'docs/start.md'), /Mine\./);
-  });
-
-  it('reports a kept file where the starter needs a directory', () => {
-    // The baseline had a file `docs`; the newer starter has docs/start.md.
     publish('1.5.0', (starter) => {
       rmSync(join(starter, 'docs'), { recursive: true });
       writeFileSync(join(starter, 'docs'), 'Documents.\n');
     });
-    const repo = createRepo('1.5.0');
-    edit(repo, 'docs', (text) => `${text}Mine.\n`);
-    publish('2.0.0', v2);
+    publish('3.0.0', v3);
+    const other = createRepo('1.5.0', 'other');
+    edit(other, 'docs', (text) => `${text}Mine.\n`);
+    install(other, '3.0.0');
+    const blocked = migrateTo(other, '3.0.0');
+    assert.deepEqual(manualFiles(blocked), ['docs', 'docs/start.md']);
+    assert.match(read(other, 'docs'), /Mine\./);
+  });
+
+  it('removes unchanged shared files the starter drops and asks about changed ones', () => {
+    publish('2.0.0', (starter) => {
+      rmSync(join(starter, '.agents'), { recursive: true });
+      rmSync(join(starter, 'docs/start.md'));
+    });
+    const repo = createRepo('1.0.0');
+    edit(repo, 'docs/start.md', (text) => `${text}\nMine.\n`);
     install(repo, '2.0.0');
     const report = migrateTo(repo, '2.0.0');
-    assert.equal(report.unfinished, true);
-    assert.ok(report.conflicts.includes('docs/start.md'));
-    assert.match(report.review.join('\n'), /needs a directory where this repository has the file docs/);
-    assert.match(read(repo, 'docs'), /Mine\./);
-    assert.equal(readBaseline(repo).version, '1.5.0');
+    assert.deepEqual(report.removed, [
+      '.agents/skills/app-workflow/SKILL.md',
+      '.agents/skills/update/SKILL.md',
+    ]);
+    assert.equal(existsSync(join(repo, '.agents')), false);
+    assert.deepEqual(manualFiles(report), ['docs/start.md']);
+    assert.match(read(repo, 'docs/start.md'), /Mine\./);
+  });
+
+  it('makes a file manual when its owner section cannot be kept', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'AGENTS.md', (text) =>
+      text.replace('<!-- END OWNER INSTRUCTIONS -->\n', ''),
+    );
+    const before = read(repo, 'AGENTS.md');
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(report), ['AGENTS.md']);
+    assert.match(report.manual[0].reason, /owner section is incomplete/);
+    assert.equal(read(repo, 'AGENTS.md'), before);
   });
 
   it('waits for an unfinished SDK update', () => {
@@ -379,257 +418,30 @@ describe('migrate', () => {
     assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
   });
 
-  it('accepts a resolution with a Markdown heading underline', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    edit(
-      repo,
-      'README.md',
-      (text) =>
-        `${text.replace('# My sempods apps', '# Annas Apps')}\nNotes\n=======\n`,
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    const resolved = '# Annas Apps\n\nNotes\n=======\n';
-    writeFileSync(join(repo, 'README.md'), resolved);
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.equal(read(repo, 'README.md'), resolved);
-    assert.equal(readBaseline(repo).version, '2.0.0');
-  });
-
-  it('accepts heading underlines added on both sides', () => {
-    publish('2.0.0', (starter) => {
-      v2(starter);
-      edit(starter, 'README.md', (text) => `${text}\nStarter\n=======\n`);
-    });
-    const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text
-        .replace('# My sempods apps', '# Annas Apps')
-        .replace('## Licence', 'Owner\n=======\n\n## Licence'),
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    // The underlines make the merge use eight-character markers.
-    assert.match(read(repo, 'README.md'), /^<{8} this repository/m);
-    // Resolve only the title conflict; both underlines stay.
-    edit(repo, 'README.md', (text) =>
-      text.replace(/^<{8} .*\n([\s\S]*?)^={8}\n[\s\S]*?^>{8} .*\n/m, '$1'),
-    );
-    assert.equal(read(repo, 'README.md').match(/^={7}$/gm).length, 2);
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.equal(readBaseline(repo).version, '2.0.0');
-  });
-
-  it('keeps a conflict while its own separator remains', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text
-        .replace('# My sempods apps', '# Annas Apps')
-        .replace('## Licence', 'Owner\n=======\n\n## Licence'),
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    // The owner drops the legitimate underline but leaves the separator.
-    edit(repo, 'README.md', (text) =>
-      text
-        .replace('Owner\n=======\n', 'Owner\n')
-        .replace(/^[<>]{8}.*\n/gm, ''),
-    );
-    assert.match(read(repo, 'README.md'), /^={8}$/m);
-    assert.deepEqual(migrateTo(repo, '2.0.0').conflicts, ['README.md']);
-    assert.equal(readBaseline(repo).version, '1.0.0');
-  });
-
-  it('keeps a conflict while a bare marker line remains', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n>>>>>>>\n');
-    assert.deepEqual(migrateTo(repo, '2.0.0').conflicts, ['README.md']);
-    assert.equal(readBaseline(repo).version, '1.0.0');
-  });
-
-  it('keeps a conflict while any of its markers remains', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    // The opening marker is gone, the others are left over.
-    edit(repo, 'README.md', (text) => text.replace(/^<{7} .*\n/m, ''));
-    const rerun = migrateTo(repo, '2.0.0');
-    assert.deepEqual(rerun.conflicts, ['README.md']);
-    assert.equal(readBaseline(repo).version, '1.0.0');
-  });
-
-  it('keeps a resolution when a later step of the rerun fails', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
-    install(repo, '2.0.0');
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
-    // Regeneration fails on a broken apps.json.
-    const apps = read(repo, 'apps.json');
-    writeFileSync(join(repo, 'apps.json'), '{');
-    assert.throws(() => migrateTo(repo, '2.0.0'), /apps\.json/);
-    writeFileSync(join(repo, 'apps.json'), apps);
-    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
-    assert.equal(read(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
-    assert.equal(readBaseline(repo).version, '2.0.0');
-  });
-
-  it('installs after a workspace-only change, also after a failure', () => {
-    publish('2.0.0', (starter) =>
-      edit(
-        starter,
-        'pnpm-workspace.yaml',
-        (text) => `${text}\noverrides:\n  left-pad: 1.3.0\n`,
-      ),
-    );
-    const repo = createRepo('1.0.0');
-    install(repo, '2.0.0');
-    assert.throws(
-      () =>
-        migrateTo(repo, '2.0.0', {
-          afterWrite: () => {
-            throw new Error('interrupted');
-          },
-        }),
-      /interrupted/,
-    );
-    assert.equal(
-      migrateTo(repo, '2.0.0', { install: () => false }).unfinished,
-      true,
-    );
-    assert.equal(readBaseline(repo).version, '1.0.0');
-    let installs = 0;
-    const done = migrateTo(repo, '2.0.0', {
-      install: () => {
-        installs += 1;
-        return true;
-      },
-    });
-    assert.equal(done.unfinished, undefined);
-    assert.equal(installs, 1);
-    assert.match(read(repo, 'pnpm-workspace.yaml'), /left-pad: 1\.3\.0/);
-    assert.equal(readBaseline(repo).version, '2.0.0');
-  });
-
-  it('does not resume an unfinished migration toward another starter', () => {
+  it('does not continue an open migration toward another starter', () => {
     publish('2.0.0', v2);
     publish('3.0.0', v3);
     const repo = createRepo('1.0.0');
-    edit(repo, 'README.md', (text) =>
-      text.replace('# My sempods apps', '# Annas Apps'),
-    );
+    conflicting(repo);
     install(repo, '2.0.0');
     assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
-    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
-    const before = read(repo, 'docs/start.md');
     install(repo, '3.0.0');
+    const before = read(repo, 'docs/start.md');
     assert.throws(
       () => migrateTo(repo, '3.0.0'),
-      /unfinished migration from @sempods\/apps 1\.0\.0 to 2\.0\.0[\s\S]*Nothing was changed/,
+      /open migration from @sempods\/apps 1\.0\.0 to 2\.0\.0[\s\S]*Nothing was changed/,
     );
     assert.equal(read(repo, 'docs/start.md'), before);
-    assert.equal(readBaseline(repo).version, '1.0.0');
   });
 
-  it('removes unchanged shared files the starter drops and keeps changed ones', () => {
-    publish('2.0.0', (starter) => {
-      rmSync(join(starter, '.agents'), { recursive: true });
-      rmSync(join(starter, 'docs/start.md'));
-    });
-    const repo = createRepo('1.0.0');
-    edit(repo, 'docs/start.md', (text) => `${text}\nMine.\n`);
-    install(repo, '2.0.0');
-    const report = migrateTo(repo, '2.0.0');
-    assert.deepEqual(report.removed, [
-      '.agents/skills/app-workflow/SKILL.md',
-      '.agents/skills/update/SKILL.md',
-    ]);
-    assert.equal(existsSync(join(repo, '.agents')), false);
-    assert.match(read(repo, 'docs/start.md'), /Mine\./);
-    assert.match(report.review.join('\n'), /docs\/start\.md: the starter removed it/);
-    assert.equal(readBaseline(repo).version, '2.0.0');
-  });
-
-  it('resumes an interrupted migration without advancing the baseline early', () => {
-    publish('3.0.0', v3);
-    const clean = createRepo('1.0.0', 'clean');
-    install(clean, '3.0.0');
-    migrateTo(clean, '3.0.0');
-
-    const repo = createRepo('1.0.0');
-    install(repo, '3.0.0');
-    let writes = 0;
-    assert.throws(
-      () =>
-        migrateTo(repo, '3.0.0', {
-          afterWrite: () => {
-            writes += 1;
-            if (writes === 2) throw new Error('interrupted');
-          },
-        }),
-      /interrupted/,
-    );
-    assert.equal(readBaseline(repo).version, '1.0.0');
-    assert.ok(existsSync(join(repo, MIGRATION_FILE)));
-    // A failed install leaves the migration unfinished, too.
-    const failed = migrateTo(repo, '3.0.0', { install: () => false });
-    assert.equal(failed.unfinished, true);
-    assert.equal(readBaseline(repo).version, '1.0.0');
-
-    // The manifest is already written; the rerun still owes the install.
-    let installs = 0;
-    migrateTo(repo, '3.0.0', {
-      install: () => {
-        installs += 1;
-        return true;
-      },
-    });
-    assert.equal(installs, 1);
-    for (const file of Object.keys(
-      readSnapshot(join(pkg('3.0.0'), 'shared')).files,
-    ))
-      if (file !== 'package.json')
-        assert.equal(read(repo, file), read(clean, file), file);
-    const unnamed = (root) => ({
-      ...readJson(join(root, 'package.json')),
-      name: undefined,
-    });
-    assert.deepEqual(unnamed(repo), unnamed(clean));
-    assert.deepEqual(readBaseline(repo), readBaseline(clean));
-    assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
-  });
-
-  it('completes when the run stopped after advancing the baseline', () => {
+  it('refuses --done without an open migration', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
     install(repo, '2.0.0');
-    let leftover;
-    migrateTo(repo, '2.0.0', {
-      afterWrite: () => {
-        leftover = read(repo, MIGRATION_FILE);
-      },
-    });
-    assert.equal(readBaseline(repo).version, '2.0.0');
-    // The migration file outlived the baseline write.
-    writeFileSync(join(repo, MIGRATION_FILE), leftover);
-    assert.deepEqual(outstanding(repo, '2.0.0'), []);
-    assert.equal(migrateTo(repo, '2.0.0').unchanged, true);
-    assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
+    assert.throws(
+      () => migrateTo(repo, '2.0.0', { done: true }),
+      /no migration is open/,
+    );
   });
 
   it('needs no migration for a release with the same starter', () => {

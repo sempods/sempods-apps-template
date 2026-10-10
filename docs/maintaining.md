@@ -66,10 +66,13 @@ records that version and revision in `.sempods-baseline.json`. `migrate`
 applies the installed version's starter from that baseline: the baseline's
 snapshot comes from the installed package or, for an older version, from the
 published one, so skipped releases need nothing in between. A release that
-leaves the starter unchanged needs no migration. A shared file the starter
-drops is removed where the owner left it unchanged and reported otherwise;
-keep that in mind before removing one. The baseline advances only after a
-migration without unresolved conflicts. `update-template` only refuses: it
+leaves the starter unchanged needs no migration. The script applies only
+unambiguous changes; whatever needs judgment (both sides changed a file, a
+dropped file the owner changed, an owner section that cannot be kept, a
+file/directory collision) becomes a manual case that the owner's assistant
+decides with the update skill, confirmed by `migrate --done`. A shared file
+the starter drops is removed only where the owner left it unchanged; keep
+that in mind before removing one. `update-template` only refuses: it
 served copies of the template, which the starter replaces.
 
 ## Decisions

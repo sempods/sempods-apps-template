@@ -19,15 +19,17 @@ configuration choices and the SDK migration.
 - `pnpm run update [<version>]` updates the tooling: it checks that Node and
   pnpm suit the target version and otherwise names what to upgrade first,
   installs the version and runs its `migrate`. `pnpm run migrate` applies the
-  installed version's starter from the baseline, also after a version pull
-  request: shared files get a three-way merge that keeps the owner section of
-  AGENTS.md and the setup record of INIT.md verbatim, unchanged shared files
-  the starter drops are removed and changed ones reported, new seed files are
-  added, the root manifest follows only its tooling and script entries, and
-  the apps' generated configuration is rewritten. Conflicts are marked and
-  reported; the baseline advances only once none remains, and a rerun
-  continues an unfinished migration. `check` names an outstanding migration
-  and the command that applies it. The update skill guides the assistant.
+  installed version's starter from the baseline. It applies only unambiguous
+  changes (a file only the starter changed, with the owner section of
+  AGENTS.md and the setup record of INIT.md kept; new and unchanged dropped
+  files; new seed files; the tooling and script entries of the root
+  manifest) and lists everything else as a manual case in
+  `.sempods-migration/`, leaving those files untouched, with the starter's
+  versions and a merge suggestion next to them. The assistant decides each
+  case with the update skill; `pnpm run migrate --done` confirms the
+  decisions, regenerates the apps' configuration, installs and advances the
+  baseline. A rerun after an interruption continues. `check` names an
+  outstanding or open migration and the command for it.
 - INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
   record; the setup procedure ships in the package
   (`instructions/setup.md`). Setup no longer adapts inherited files:
