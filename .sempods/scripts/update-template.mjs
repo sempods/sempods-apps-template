@@ -149,7 +149,8 @@ export class Bases {
   }
 }
 
-function matches(pattern, path) {
+/** Whether a policy pattern, with `*` for one path segment, names a file. */
+export function matches(pattern, path) {
   const p = pattern.split('/');
   const f = path.split('/');
   return (
