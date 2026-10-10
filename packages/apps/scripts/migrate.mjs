@@ -64,7 +64,8 @@ export function migrationState(root, installed = TOOLING) {
   if (!baseline || !existsSync(join(installed, 'shared', 'snapshot.json')))
     return undefined;
   const pending = readText(join(root, MIGRATION_FILE));
-  if (pending) {
+  // A migration file whose target is the baseline is a completed leftover.
+  if (pending && JSON.parse(pending).to?.revision !== baseline.revision) {
     const { to, files = {} } = JSON.parse(pending);
     const conflicts = Object.entries(files)
       .filter(
@@ -104,7 +105,13 @@ export function migrate(
     );
   const target = installedStarter(installed);
   const pendingPath = join(root, MIGRATION_FILE);
-  const pending = JSON.parse(readText(pendingPath) ?? 'null');
+  let pending = JSON.parse(readText(pendingPath) ?? 'null');
+  // A run that advanced the baseline but stopped before removing the
+  // migration file has completed the migration.
+  if (pending && pending.to?.revision === baseline.revision) {
+    rmSync(pendingPath, { force: true });
+    pending = null;
+  }
   const report = {
     from: baseline.version,
     to: target.version,

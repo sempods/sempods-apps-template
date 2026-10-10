@@ -419,6 +419,24 @@ describe('migrate', () => {
     assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
   });
 
+  it('completes when the run stopped after advancing the baseline', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    let leftover;
+    migrateTo(repo, '2.0.0', {
+      afterWrite: () => {
+        leftover = read(repo, MIGRATION_FILE);
+      },
+    });
+    assert.equal(readBaseline(repo).version, '2.0.0');
+    // The migration file outlived the baseline write.
+    writeFileSync(join(repo, MIGRATION_FILE), leftover);
+    assert.deepEqual(outstanding(repo, '2.0.0'), []);
+    assert.equal(migrateTo(repo, '2.0.0').unchanged, true);
+    assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
+  });
+
   it('needs no migration for a release with the same starter', () => {
     publish('1.0.1');
     const repo = createRepo('1.0.0');
