@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
-  existsSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -13,18 +11,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { isTemplate } from './fixture.mjs';
 
 const upstream = 'sempods/sempods-apps-template';
 const instance = 'owner/apps';
 
 // These tests guard the template's own workflow. A copy may merge or adapt
 // sdk-update.yml, so they skip there instead of failing the copy's checks.
-// CI names the repository; locally, the maintainer guide marks the template
-// (setup removes it from a copy and updates do not restore it).
-const template =
-  process.env.GITHUB_REPOSITORY === upstream ||
-  existsSync(new URL('../../../docs/maintaining.md', import.meta.url));
-const workflow = template
+const workflow = isTemplate
   ? readFileSync(
       new URL('../../../.github/workflows/sdk-update.yml', import.meta.url),
       'utf8',
@@ -34,7 +28,7 @@ const gate = workflow.match(/^    if: >-\n((?:      .*\n)+)/m);
 const script = workflow.match(
   /          node --input-type=module <<'JS'\n([\s\S]*?)          JS/,
 );
-if (template) {
+if (isTemplate) {
   assert.ok(gate, 'SDK preference job must have an explicit event gate');
   assert.ok(script, 'SDK preference job must read the repository choice');
 }
@@ -71,13 +65,15 @@ const choice = (event, sdkAutoUpdates, inherited = 'true') => {
 };
 
 describe('SDK update workflow', {
-  skip: !template && 'the workflow is shared with the owner in a copy',
+  skip: !isTemplate && 'the workflow is shared with the owner in a copy',
 }, () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'sempods-sdk-preference-'));
-    const lib = join(root, '.sempods/scripts/lib');
-    mkdirSync(lib, { recursive: true });
-    cpSync(new URL('../lib/apps.mjs', import.meta.url), join(lib, 'apps.mjs'));
+    cpSync(
+      new URL('../lib', import.meta.url),
+      join(root, '.sempods/scripts/lib'),
+      { recursive: true },
+    );
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 

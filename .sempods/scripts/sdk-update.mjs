@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { formatJson, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
@@ -22,7 +23,11 @@ export const EXACT_VERSION =
 export function compareVersions(a, b) {
   const left = EXACT_VERSION.exec(a);
   const right = EXACT_VERSION.exec(b);
-  if (!left || !right) throw new Error('SDK versions must be exact semver');
+  for (const [match, v] of [
+    [left, a],
+    [right, b],
+  ])
+    if (!match) throw new Error(`not an exact version: ${JSON.stringify(v)}`);
   for (let i = 1; i <= 3; i++) {
     if (BigInt(left[i]) !== BigInt(right[i]))
       return BigInt(left[i]) > BigInt(right[i]) ? 1 : -1;
@@ -140,7 +145,7 @@ export function planUpdate(
     changes.push({
       path,
       original,
-      updated: `${JSON.stringify(manifest, null, 2)}\n`,
+      updated: formatJson(manifest),
     });
   }
   return { version, changes, ...releaseLinks(version) };
@@ -176,12 +181,8 @@ export function installedStateComplete(root, version) {
     return (
       SDK.every(
         (name) =>
-          JSON.parse(
-            readFileSync(
-              join(root, 'node_modules', name, 'package.json'),
-              'utf8',
-            ),
-          ).version === version,
+          readJson(join(root, 'node_modules', name, 'package.json'))
+            .version === version,
       ) &&
       existsSync(
         join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),

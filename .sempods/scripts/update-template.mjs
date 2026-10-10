@@ -29,10 +29,11 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
-  compareVersions as compareSdk,
+  compareVersions,
   EXACT_VERSION,
   PENDING_UPDATE,
 } from './sdk-update.mjs';
+import { formatJson, readJson } from './lib/json.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
@@ -54,13 +55,6 @@ function gitOk(cwd, args) {
 // merged, main carries its prerelease (for example 0.5.0-dev), which sorts
 // before the release, so a copy made then still updates to it.
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
-export function compareVersions(a, b) {
-  for (const v of [a, b])
-    if (!EXACT_VERSION.test(v ?? ''))
-      throw new Error(`not a version: ${JSON.stringify(v)}`);
-  return compareSdk(a, b);
-}
-
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
 const version = (root) => readText(join(root, '.sempods', 'VERSION'))?.trim();
@@ -335,7 +329,7 @@ function sdkVersionsOf(manifest, sdk) {
       .filter((value) => value && EXACT_VERSION.test(value)),
   );
 }
-const highest = (versions) => [...versions].sort(compareSdk).at(-1);
+const highest = (versions) => [...versions].sort(compareVersions).at(-1);
 
 /** Upgrade notes of every release after `from`, newest first. */
 export function upgradeNotes(changelog, from) {
@@ -385,9 +379,7 @@ export async function applyRelease(
   if (order < 0)
     throw new Error(`This repository has template ${from}, newer than ${to}.`);
 
-  const policy = JSON.parse(
-    readFileSync(join(release, '.sempods', 'update-policy.json'), 'utf8'),
-  );
+  const policy = readJson(join(release, '.sempods', 'update-policy.json'));
   const bases = new Bases(release, from, instance, resumed?.origin);
   const parse = (text) => (text === null ? undefined : JSON.parse(text));
   // The copy's skeleton is replaced early; its SDK version, which may be ahead
@@ -561,7 +553,7 @@ export async function applyRelease(
     report.notes,
     rootPath,
   );
-  write(rootPath, `${JSON.stringify(newRoot, null, 2)}\n`);
+  write(rootPath, formatJson(newRoot));
   // pnpm refuses to work in a project that declares another package manager.
   if (newRoot.packageManager && !newRoot.packageManager.startsWith('pnpm@'))
     report.review.push(
@@ -572,18 +564,28 @@ export async function applyRelease(
     const manifest = parse(readText(join(instance, file)));
     write(
       file,
-      `${JSON.stringify(mergeManifest(manifest, skeletonBases, releaseSkeleton, policy.sdk, sdkVersion, report.notes, file), null, 2)}\n`,
+      formatJson(
+        mergeManifest(
+          manifest,
+          skeletonBases,
+          releaseSkeleton,
+          policy.sdk,
+          sdkVersion,
+          report.notes,
+          file,
+        ),
+      ),
     );
   }
   if (
-    compareSdk(
+    compareVersions(
       sdkVersion,
       highest(sdkVersionsOf(releaseSkeleton, policy.sdk)),
     ) > 0
   ) {
     const skeleton = parse(readText(join(instance, policy.skeletonManifest)));
     for (const key of policy.sdk) skeleton.dependencies[key] = sdkVersion;
-    write(policy.skeletonManifest, `${JSON.stringify(skeleton, null, 2)}\n`);
+    write(policy.skeletonManifest, formatJson(skeleton));
   }
 
   // Generated configuration, with the release's generator.

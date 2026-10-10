@@ -3,26 +3,17 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { buildSite } from '../build-site.mjs';
 import { configureSite } from '../configure-site.mjs';
 import { renderNotFound, renderOverview } from '../lib/overview.mjs';
 import { createApp } from '../new-app.mjs';
-
-const templateRoot = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  '..',
-);
+import { tempRepository } from './fixture.mjs';
 
 describe('build-site', () => {
   let root;
@@ -43,14 +34,7 @@ describe('build-site', () => {
   };
   beforeEach(() => {
     builds = [];
-    root = mkdtempSync(join(tmpdir(), 'sempods-build-site-'));
-    cpSync(join(templateRoot, '.sempods'), join(root, '.sempods'), {
-      recursive: true,
-    });
-    writeFileSync(
-      join(root, 'apps.json'),
-      '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
-    );
+    root = tempRepository('sempods-build-site-');
     createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
     createApp(root, { id: 'notes', title: 'Notes', language: 'en', pwa: false });
     // The SDK's notices, as the installed package ships them.

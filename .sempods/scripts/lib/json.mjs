@@ -1,5 +1,14 @@
-// Reads a JSON file and names it when its content is not JSON.
-import { readFileSync } from 'node:fs';
+// Reads and writes JSON files the way the template formats them.
+import { readFileSync, writeFileSync } from 'node:fs';
+
+/** Two-space indentation and a final newline. */
+export const formatJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
+
+export function writeJson(path, value) {
+  writeFileSync(path, formatJson(value));
+}
+
+/** Reads a JSON file and names it when its content is not JSON. */
 
 export function readJson(path) {
   const text = readFileSync(path, 'utf8');
