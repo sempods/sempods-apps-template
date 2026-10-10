@@ -1,7 +1,7 @@
 {
   "replace": [".sempods"],
-  "replaceIfPresent": ["docs/vision.md", "docs/plan.md", "docs/maintaining.md"],
-  "retired": ["reference/sempods-sdk"],
+  "replaceIfPresent": ["docs/vision.md", "docs/maintaining.md"],
+  "retired": ["reference/sempods-sdk", "docs/plan.md"],
   "shared": [
     "AGENTS.md",
     "CLAUDE.md",

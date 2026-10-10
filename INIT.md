@@ -99,9 +99,9 @@ rather than changing remote rules or claiming workflow removal changes them. Do
 not invent an author identity or sign-off on the owner's behalf.
 
 Remove the template's contributor documents, which do not apply to the owner's
-apps: `CONTRIBUTING.md`, `docs/maintaining.md`, `docs/plan.md` and
-`docs/vision.md`. Keep `CONTRIBUTING.md` if the owner wants a contribution
-policy of their own, and adapt it. Template updates do not bring them back.
+apps: `CONTRIBUTING.md`, `docs/maintaining.md` and `docs/vision.md`. Keep
+`CONTRIBUTING.md` if the owner wants a contribution policy of their own, and
+adapt it. Template updates do not bring them back.
 
 Record the starting template version from `.sempods/VERSION` below; do not
 modify that file or anything under `node_modules`. Preserve LICENSE and imported

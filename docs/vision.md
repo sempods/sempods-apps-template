@@ -69,12 +69,11 @@ requirements.
 **Success** means that someone with a Pod and a coding assistant goes from "Use
 this template" to a first working app on their Pod in one session, and adds the
 next app with one prompt. The user can follow the short introduction, see what
-was tested and retain control over real data and publication. The reference
-exercise is a shopping list (Konsum) built from a short prompt, with the time
-taken and every point of friction recorded.
+was tested and retain control over real data and publication. The reference is
+a small app built from one short prompt, with time and friction recorded.
 
 **Not goals:** a framework or runtime of its own, a backend, shared hosting for
 several people, AI features by default, or a second home for SDK documentation.
 
-This is direction, not a feature checklist. The [plan](plan.md) owns the steps
-and open decisions.
+This is direction, not a feature checklist. Issues hold the steps and open
+decisions.

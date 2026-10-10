@@ -1,6 +1,5 @@
 node_modules/
 dist/
-netlify-dist/
 site-dist/
 .netlify/
 *.tsbuildinfo
