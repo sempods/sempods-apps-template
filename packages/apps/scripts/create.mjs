@@ -60,7 +60,7 @@ export function main(args = scriptArgs()) {
 
 Next:
   cd ${args[0]}
-  git init
+  git init -b main
   pnpm install
 
 Then open the folder in your coding assistant and paste:
