@@ -12,8 +12,8 @@ import { MIGRATION_FILE } from './migrate.mjs';
 import { ifPresent, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
-import { EXACT_VERSION } from './lib/sdk.mjs';
-import { PACKAGE } from './lib/shared.mjs';
+import { compareVersions, EXACT_VERSION } from './lib/sdk.mjs';
+import { PACKAGE, readBaseline } from './lib/shared.mjs';
 
 /** The registry's version and engines of a package version or dist-tag. */
 export function lookupTarget(root, spec) {
@@ -38,6 +38,14 @@ export function preflight(target, { node, pnpmVersion }) {
   if (needsPnpm && pnpmVersion && !semver.satisfies(pnpmVersion, needsPnpm))
     problems.push({ tool: 'pnpm', current: pnpmVersion, range: needsPnpm });
   return problems;
+}
+
+/** Updates never go back behind the starter a repository has applied. */
+export function refuseOlder(baseline, target) {
+  if (baseline && compareVersions(target.version, baseline.version) < 0)
+    throw new Error(
+      `${PACKAGE} ${target.version} is older than this repository's ${baseline.version}; updates do not go back. Nothing was changed.`,
+    );
 }
 
 /** The order to follow when the target needs newer tools. */
@@ -105,6 +113,7 @@ export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
       'a migration is unfinished; finish it with pnpm run migrate first',
     );
   const target = lookup(root, spec);
+  refuseOlder(readBaseline(root), target);
   const version = pnpm(['--version'], {
     cwd: root,
     stdio: 'pipe',

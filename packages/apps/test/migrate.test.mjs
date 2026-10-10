@@ -26,6 +26,7 @@ import {
   installTarget,
   preflight,
   prerequisiteOrder,
+  refuseOlder,
 } from '../scripts/update.mjs';
 
 const OWNER = [
@@ -273,6 +274,42 @@ describe('migrate', () => {
     // Not merged again: one conflict block, unchanged.
     assert.equal(read(repo, 'README.md'), marked);
     assert.equal(marked.match(/^<{7} /gm).length, 1);
+  });
+
+  it('merges a file the owner edited after an interrupted write', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    assert.throws(
+      () =>
+        migrateTo(repo, '2.0.0', {
+          beforeWrite: (file) => {
+            if (file === 'AGENTS.md') throw new Error('interrupted');
+          },
+        }),
+      /interrupted/,
+    );
+    // Neither the old nor the intended content: an owner edit in between.
+    edit(repo, 'AGENTS.md', (text) => `${text}\nOwner line.\n`);
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.match(read(repo, 'AGENTS.md'), /Scope: all of it\./);
+    assert.match(read(repo, 'AGENTS.md'), /Owner line\./);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('keeps a conflict while any of its markers remains', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    // The opening marker is gone, the others are left over.
+    edit(repo, 'README.md', (text) => text.replace(/^<{7} .*\n/m, ''));
+    const rerun = migrateTo(repo, '2.0.0');
+    assert.deepEqual(rerun.conflicts, ['README.md']);
+    assert.equal(readBaseline(repo).version, '1.0.0');
   });
 
   it('keeps a resolution when a later step of the rerun fails', () => {
@@ -529,6 +566,16 @@ describe('update preflight', () => {
     assert.match(order, /1\. Install a Node version in >=26\.1\.0 and write it to \.node-version/);
     assert.match(order, /2\. Set packageManager in package\.json to a pnpm version in >=12\.0\.0/);
     assert.match(order, /3\. Run pnpm run update 2\.0\.0 again/);
+  });
+  it('refuses a target older than the baseline', () => {
+    const baseline = { version: '2.0.0' };
+    assert.throws(
+      () => refuseOlder(baseline, { version: '1.9.0' }),
+      /older than this repository's 2\.0\.0[\s\S]*Nothing was changed/,
+    );
+    refuseOlder(baseline, { version: '2.0.0' });
+    refuseOlder(baseline, { version: '2.1.0' });
+    refuseOlder(undefined, { version: '1.0.0' });
   });
   it('lets a suitable machine continue', () => {
     assert.deepEqual(

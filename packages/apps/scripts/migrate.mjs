@@ -35,8 +35,8 @@ import {
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_FILE = '.sempods-migration.json';
-// A line git merge-file starts a conflict with.
-const CONFLICT = /^<{7} /m;
+// Any of the lines git merge-file marks a conflict with.
+const CONFLICT = /^(<{7} |={7}$|>{7} )/m;
 
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
@@ -139,8 +139,9 @@ export function migrate(
   const { policy, snapshot } = target;
   // Durable progress of this migration, kept across reruns until it is
   // complete. Per file: `done`, `conflict` (markers written; the owner
-  // resolves them), or `writing` with the content hash from before the write
-  // and the intended outcome, so an interrupted write is detected either way.
+  // resolves them), or `writing` with the content hashes from before and
+  // after the write and the intended outcome, so a rerun can tell a finished
+  // write from one that never happened or a later edit.
   const state = pending ?? {
     from: baseline,
     to: { version: target.version, revision: snapshot.revision },
@@ -160,7 +161,12 @@ export function migrate(
   };
   /** Writes (or, for null, removes) a file, recording the intent first. */
   const apply = (file, ours, content, outcome, list) => {
-    state.files[file] = { status: 'writing', before: hash(ours), outcome };
+    state.files[file] = {
+      status: 'writing',
+      before: hash(ours),
+      after: hash(content),
+      outcome,
+    };
     save();
     const path = join(root, file);
     beforeWrite(file);
@@ -204,12 +210,19 @@ export function migrate(
       }
       return true;
     }
-    if (recorded?.status === 'writing' && hash(ours) !== recorded.before) {
-      // The write happened before the run stopped.
-      state.files[file] = recorded.outcome;
-      save();
-      if (recorded.outcome === 'conflict') report.conflicts.push(file);
-      return true;
+    if (recorded?.status === 'writing') {
+      const written = hash(ours) === recorded.after;
+      // A marked file the owner has partly edited stays a conflict; any other
+      // content is merged again like an ordinary owner change.
+      const marked =
+        recorded.outcome === 'conflict' && ours !== null && CONFLICT.test(ours);
+      if (written || marked) {
+        state.files[file] = recorded.outcome;
+        save();
+        if (recorded.outcome === 'conflict') report.conflicts.push(file);
+        return true;
+      }
+      delete state.files[file];
     }
     return false;
   };
