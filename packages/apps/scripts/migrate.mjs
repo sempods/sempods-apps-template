@@ -23,7 +23,7 @@ import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
-import { compareVersions } from './lib/sdk.mjs';
+import { compareVersions, PENDING_UPDATE } from './lib/sdk.mjs';
 import {
   baselineSnapshot,
   BASELINE_FILE,
@@ -36,8 +36,11 @@ import {
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_FILE = '.sempods-migration.json';
-// Any of the lines git merge-file marks a conflict with.
-const CONFLICT = /^(<{7} |={7}$|>{7} )/m;
+// The lines git merge-file opens and closes a conflict with. Its separator,
+// a line of seven `=`, can also underline a Markdown heading, so it counts
+// only beyond the number the merged versions already had.
+const MARKER = /^(<{7} |>{7} )/m;
+const separators = (text) => (text?.match(/^={7}$/gm) ?? []).length;
 
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
@@ -57,6 +60,14 @@ export function installedStarter(installed = TOOLING) {
     snapshot: readSnapshot(shared),
     policy: readJson(join(installed, 'update-policy.json')),
   };
+}
+
+/** A tooling update waits for an unfinished SDK update to complete. */
+export function refuseDuringSdkUpdate(root) {
+  if (existsSync(join(root, PENDING_UPDATE)))
+    throw new Error(
+      `an SDK update is unfinished (${PENDING_UPDATE}); complete it with pnpm run sdk-update first. Nothing was changed.`,
+    );
 }
 
 /** Migrations never go back behind the starter a repository has applied. */
@@ -113,6 +124,7 @@ export function migrate(
       `${BASELINE_FILE} is missing: this repository was not created from the ${PACKAGE} starter`,
     );
   const target = installedStarter(installed);
+  refuseDuringSdkUpdate(root);
   refuseOlder(baseline, target);
   const pendingPath = join(root, MIGRATION_FILE);
   let pending = JSON.parse(readText(pendingPath) ?? 'null');
@@ -214,12 +226,17 @@ export function migrate(
     `${PACKAGE} ${baseline.version}`,
     `${PACKAGE} ${target.version}`,
   ];
+  /** Whether a file still has conflict markers or a leftover separator. */
+  const conflicted = (file, text) =>
+    text !== null &&
+    (MARKER.test(text) ||
+      separators(text) > (state.separators?.[file] ?? 0));
   /** Settles a file an earlier run touched; true when nothing is left to do. */
   const settled = (file, ours) => {
     const recorded = state.files[file];
     if (recorded === 'done') return true;
     if (recorded === 'conflict') {
-      if (ours !== null && CONFLICT.test(ours)) report.conflicts.push(file);
+      if (conflicted(file, ours)) report.conflicts.push(file);
       else {
         state.files[file] = 'done';
         save();
@@ -231,7 +248,7 @@ export function migrate(
       // A marked file the owner has partly edited stays a conflict; any other
       // content is merged again like an ordinary owner change.
       const marked =
-        recorded.outcome === 'conflict' && ours !== null && CONFLICT.test(ours);
+        recorded.outcome === 'conflict' && conflicted(file, ours);
       if (written || marked) {
         state.files[file] = recorded.outcome;
         save();
@@ -290,6 +307,11 @@ export function migrate(
       continue;
     }
     const merged = mergeText(ours, baseText ?? '', theirs, labels);
+    if (merged.conflicts > 0)
+      state.separators = {
+        ...state.separators,
+        [file]: Math.max(separators(ours), separators(theirs)),
+      };
     apply(
       file,
       ours,

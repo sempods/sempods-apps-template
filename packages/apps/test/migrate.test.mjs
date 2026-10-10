@@ -300,6 +300,38 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
+  it('waits for an unfinished SDK update', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    writeFileSync(join(repo, '.sdk-update-pending'), '0.6.0\n');
+    const before = read(repo, 'AGENTS.md');
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /SDK update is unfinished[\s\S]*Nothing was changed/,
+    );
+    assert.equal(read(repo, 'AGENTS.md'), before);
+    assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
+  });
+
+  it('accepts a resolution with a Markdown heading underline', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(
+      repo,
+      'README.md',
+      (text) =>
+        `${text.replace('# My sempods apps', '# Annas Apps')}\nNotes\n=======\n`,
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    const resolved = '# Annas Apps\n\nNotes\n=======\n';
+    writeFileSync(join(repo, 'README.md'), resolved);
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.equal(read(repo, 'README.md'), resolved);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
   it('keeps a conflict while any of its markers remains', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

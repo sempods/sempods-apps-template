@@ -8,7 +8,11 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import { MIGRATION_FILE, refuseOlder } from './migrate.mjs';
+import {
+  MIGRATION_FILE,
+  refuseDuringSdkUpdate,
+  refuseOlder,
+} from './migrate.mjs';
 import { ifPresent, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -117,6 +121,7 @@ export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
   if (spec !== 'latest' && !EXACT_VERSION.test(spec))
     throw new Error('Use latest or an exact version, for example 0.7.0');
   const root = repositoryRoot();
+  refuseDuringSdkUpdate(root);
   if (existsSync(join(root, MIGRATION_FILE)))
     throw new Error(
       'a migration is unfinished; finish it with pnpm run migrate first',
