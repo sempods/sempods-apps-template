@@ -46,6 +46,10 @@ Pods), the SDK's licence notices and the routing files the host needs.
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.
 
+A conforming sempods Pod checks the `did:web` identity against the callback
+address and fetches no DID document. `did.json` serves Pods that also require
+one (step 5 of the deployment check).
+
 A build only works on the origin it was made for: opened anywhere else, the SDK
 stops with a configuration error. Previews on other addresses, such as one per
 pull request or per commit, therefore show no working sign-in. Turn them off
@@ -114,6 +118,15 @@ that serve `/<path>` from `<path>.html`. Cloudflare Workers static assets do
 this by default, but the template has no recipe yet for their asset and
 deploy configuration. For any other host, check the requirements above before
 the first sign-in.
+
+### Secrets
+
+The apps need no secret: their identity and callback are public. Keep hosting
+and deployment credentials, such as a Netlify or Cloudflare token, in the
+host's or CI's secret store. Everything a build puts into an app is public,
+including `VITE_*` variables and values from `.env.local`; never put a token or
+key there. See "Keep public configuration and credentials separate" in the
+SDK's `deployment.md`.
 
 ## 4. Check the deployment
 
