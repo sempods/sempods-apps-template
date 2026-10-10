@@ -21,6 +21,7 @@ import { parseArgs } from 'node:util';
 import semver from 'semver';
 import { readApps } from './lib/apps.mjs';
 import { staleGenerated } from './lib/generate.mjs';
+import { migrationState } from './migrate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -67,8 +68,12 @@ export function importedPackages(source) {
   return names;
 }
 
-/** Problems found without running any tool: manifest, generation, versions, imports. */
-export function staticProblems(root) {
+/**
+ * Problems found without running any tool: manifest, generation, versions,
+ * imports and an outstanding starter migration. `tooling` is the installed
+ * @sempods/apps.
+ */
+export function staticProblems(root, { tooling = TOOLING } = {}) {
   const problems = [];
   let manifest;
   try {
@@ -141,9 +146,9 @@ export function staticProblems(root) {
     );
   // The tooling generates code against the SDK, so it names the releases it
   // supports.
-  const tooling = readJson(join(TOOLING, 'package.json'));
+  const toolingManifest = readJson(join(tooling, 'package.json'));
   for (const sdk of SDK) {
-    const range = tooling.peerDependencies?.[sdk];
+    const range = toolingManifest.peerDependencies?.[sdk];
     const version = rootManifest.devDependencies?.[sdk];
     if (
       range &&
@@ -151,7 +156,7 @@ export function staticProblems(root) {
       !semver.satisfies(version, range, { includePrerelease: true })
     )
       problems.push(
-        `${sdk} ${version} is outside the range ${tooling.name} ${tooling.version} supports (${range}); update ${tooling.name} or use a supported SDK version`,
+        `${sdk} ${version} is outside the range ${toolingManifest.name} ${toolingManifest.version} supports (${range}); update ${toolingManifest.name} or use a supported SDK version`,
       );
   }
   // The app-author reference ships inside the installed SDK.
@@ -162,6 +167,8 @@ export function staticProblems(root) {
     problems.push(
       `${REFERENCE} is missing: the installed @sempods/app-sdk ships no app-author reference`,
     );
+  const migration = migrationState(root, tooling);
+  if (migration) problems.push(migration);
   return problems;
 }
 

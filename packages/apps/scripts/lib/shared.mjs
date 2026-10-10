@@ -141,9 +141,15 @@ export function writeBaseline(root, { version, revision }) {
   });
 }
 
-/** Downloads and unpacks a published package version; returns its directory. */
+/**
+ * Downloads and unpacks a published package version; returns its directory.
+ * SEMPODS_APPS_PACKAGES may name a directory of packed tarballs
+ * (sempods-apps-<version>.tgz) to use instead of the registry, for offline
+ * tests of versions not published yet.
+ */
 export function downloadPackage(version) {
   const work = mkdtempSync(join(tmpdir(), 'sempods-apps-'));
+  const local = process.env.SEMPODS_APPS_PACKAGES;
   const run = (command, args) => {
     const result = spawnSync(command, args, {
       cwd: work,
@@ -156,10 +162,14 @@ export function downloadPackage(version) {
       );
     return result.stdout;
   };
-  const tarball = run('npm', ['pack', `${PACKAGE}@${version}`, '--silent'])
-    .trim()
-    .split('\n')
-    .at(-1);
+  const packed = local && join(local, `sempods-apps-${version}.tgz`);
+  const tarball =
+    packed && existsSync(packed)
+      ? packed
+      : run('npm', ['pack', `${PACKAGE}@${version}`, '--silent'])
+          .trim()
+          .split('\n')
+          .at(-1);
   run('tar', ['-xzf', tarball]);
   return join(work, 'package');
 }

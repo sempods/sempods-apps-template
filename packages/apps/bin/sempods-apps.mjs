@@ -13,6 +13,8 @@ const COMMANDS = {
   'build-site': 'build all apps and the overview into site-dist/',
   check: "check the repository's apps",
   'sdk-update': 'move all apps to one SDK release',
+  update: 'install a newer @sempods/apps and migrate to its starter',
+  migrate: "apply the installed @sempods/apps' starter to this repository",
   'update-template': 'apply a newer template release',
 };
 

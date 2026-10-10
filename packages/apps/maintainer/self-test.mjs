@@ -4,7 +4,9 @@
 // create a repository with the creator, install the tooling from its tarball,
 // then create an app, refuse a rerun, check it including a standalone
 // install/build, regenerate, configure a site, build it and assert the
-// profile each build mode selects. Source-workspace tests alone can miss a
+// profile each build mode selects. Finally an update: the owner customizes the
+// repository, a later version changes the starter, and migrate applies it
+// from the recorded baseline. Source-workspace tests alone can miss a
 // file the package forgets to ship or a dependency only this repository
 // provides. Needs the npm registry.
 // Usage: pnpm run self-test
@@ -20,7 +22,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import { pnpm } from '../scripts/lib/pnpm.mjs';
@@ -51,9 +53,10 @@ const REQUIRED = [
 ];
 const EXCLUDED = ['test/', 'maintainer/', 'starter/'];
 
-function run(command, args, cwd, capture = false) {
+function run(command, args, cwd, capture = false, env = process.env) {
   const result = spawnSync(command, args, {
     cwd,
+    env,
     stdio: capture ? 'pipe' : 'inherit',
     encoding: 'utf8',
     shell: process.platform === 'win32',
@@ -211,6 +214,81 @@ function publish(repo) {
   console.log('✓ site build and profile selection');
 }
 
+/** Customizes the repository, then migrates it to a later starter. */
+function migrateExercise(repo, work, tooling) {
+  const OWNER = [
+    '<!-- BEGIN OWNER INSTRUCTIONS -->',
+    '<!-- END OWNER INSTRUCTIONS -->',
+  ];
+  const RECORD = [
+    '<!-- BEGIN INSTANCE SETUP RECORD -->',
+    '<!-- END INSTANCE SETUP RECORD -->',
+  ];
+  const text = (root, file) => readFileSync(join(root, file), 'utf8');
+  const edit = (root, file, change) =>
+    writeFileSync(join(root, file), change(text(root, file)));
+  const span = (file, [begin, end]) => {
+    const value = text(repo, file);
+    return value.slice(value.indexOf(begin), value.indexOf(end) + end.length);
+  };
+  edit(repo, 'AGENTS.md', (value) =>
+    value.replace(
+      'No instance-specific instructions recorded yet.',
+      'Answer in German.',
+    ),
+  );
+  edit(repo, 'INIT.md', (value) =>
+    value.replace('- Status: not started', '- Status: done'),
+  );
+  edit(repo, 'docs/start.md', (value) => `${value}\nOwner addition.\n`);
+  const owner = span('AGENTS.md', OWNER);
+  const record = span('INIT.md', RECORD);
+
+  // A later version whose starter changes the template part of AGENTS.md.
+  const { version } = readJson(join(TOOLING, 'package.json'));
+  const next = version.includes('-') ? `${version}.2` : `${version}-2`;
+  const later = join(work, 'later');
+  cpSync(TOOLING, later, {
+    recursive: true,
+    filter: (src) =>
+      !/[\\/](node_modules|shared)([\\/]|$)/.test(src.slice(TOOLING.length)),
+  });
+  writeJson(join(later, 'package.json'), {
+    ...readJson(join(later, 'package.json')),
+    version: next,
+  });
+  edit(later, 'starter/AGENTS.md', (value) =>
+    value.replace(
+      'Scope: the whole repository.',
+      'Scope: the whole repository and every app in it.',
+    ),
+  );
+  const laterTarball = pack(later, work);
+
+  const manifest = readJson(join(repo, 'package.json'));
+  manifest.devDependencies['@sempods/apps'] = `file:${laterTarball}`;
+  writeJson(join(repo, 'package.json'), manifest);
+  run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  // The baseline's version is not on the registry: take its tarball.
+  run('pnpm', ['run', 'migrate'], repo, false, {
+    ...process.env,
+    SEMPODS_APPS_PACKAGES: dirname(tooling),
+  });
+  const installed = join(repo, 'node_modules', '@sempods', 'apps');
+  const { revision } = readSnapshot(join(installed, 'shared'));
+  const baseline = readBaseline(repo);
+  if (baseline.version !== next || baseline.revision !== revision)
+    throw new Error('migrate did not advance the baseline to the later starter');
+  if (!text(repo, 'AGENTS.md').includes('and every app in it.'))
+    throw new Error('migrate did not apply the starter change');
+  if (span('AGENTS.md', OWNER) !== owner || span('INIT.md', RECORD) !== record)
+    throw new Error('migrate changed the owner section or the setup record');
+  if (!text(repo, 'docs/start.md').includes('Owner addition.'))
+    throw new Error("migrate lost the owner's change to a shared file");
+  pnpmRun(repo, 'check');
+  console.log('✓ migrate applies a later starter and keeps owner content');
+}
+
 const work = mkdtempSync(join(tmpdir(), 'sempods-self-test-'));
 let failed = false;
 try {
@@ -311,6 +389,7 @@ try {
   )
     throw new Error('update-template must refuse the installed package');
   console.log('✓ update-template refuses the installed package');
+  migrateExercise(repo, work, tooling);
 } catch (error) {
   console.error(`self-test: ${error.message}`);
   failed = true;

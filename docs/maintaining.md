@@ -62,11 +62,15 @@ test requires one for each:
 
 App code and app notes belong to the owner. Packing writes the starter as a
 snapshot with a content revision; `create` writes it into a new repository and
-records that version and revision in `.sempods-baseline.json`. Applying a
-newer starter to an existing repository from that baseline is planned
-([roadmap](https://github.com/sempods/sempods-apps-template/issues/10)); until
-then `update-template` only serves repositories that hold the tooling in
-`packages/apps/`, which the starter does not create.
+records that version and revision in `.sempods-baseline.json`. `migrate`
+applies the installed version's starter from that baseline: the baseline's
+snapshot comes from the installed package or, for an older version, from the
+published one, so skipped releases need nothing in between. A release that
+leaves the starter unchanged needs no migration. A shared file the starter
+drops is removed where the owner left it unchanged and reported otherwise;
+keep that in mind before removing one. The baseline advances only after a
+migration without unresolved conflicts. `update-template` only refuses: it
+served copies of the template, which the starter replaces.
 
 ## Decisions
 
