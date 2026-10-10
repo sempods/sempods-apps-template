@@ -11,7 +11,8 @@ permissions:
   contents: read
 jobs:
   check:
-    name: Apps
+    # Required status check name in repository rulesets; keep it stable.
+    name: Apps and tooling
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
