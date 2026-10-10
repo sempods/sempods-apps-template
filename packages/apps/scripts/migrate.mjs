@@ -19,10 +19,11 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readJson, writeJson, formatJson } from './lib/json.mjs';
+import { formatJson, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { compareVersions } from './lib/sdk.mjs';
 import {
   baselineSnapshot,
   BASELINE_FILE,
@@ -56,6 +57,14 @@ export function installedStarter(installed = TOOLING) {
     snapshot: readSnapshot(shared),
     policy: readJson(join(installed, 'update-policy.json')),
   };
+}
+
+/** Migrations never go back behind the starter a repository has applied. */
+export function refuseOlder(baseline, target) {
+  if (baseline && compareVersions(target.version, baseline.version) < 0)
+    throw new Error(
+      `${PACKAGE} ${target.version} is older than this repository's ${baseline.version}; updates do not go back. Nothing was changed.`,
+    );
 }
 
 /** What `check` reports about the repository's starter state. */
@@ -104,6 +113,7 @@ export function migrate(
       `${BASELINE_FILE} is missing: this repository was not created from the ${PACKAGE} starter`,
     );
   const target = installedStarter(installed);
+  refuseOlder(baseline, target);
   const pendingPath = join(root, MIGRATION_FILE);
   let pending = JSON.parse(readText(pendingPath) ?? 'null');
   // A run that advanced the baseline but stopped before removing the
@@ -147,7 +157,7 @@ export function migrate(
     to: { version: target.version, revision: snapshot.revision },
     files: {},
   };
-  const save = () => writeJson(pendingPath, state);
+  const save = () => replaceJson(pendingPath, state);
   save();
   const remove = (path) => {
     rmSync(path, { force: true });

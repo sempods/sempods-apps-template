@@ -8,11 +8,11 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import { MIGRATION_FILE } from './migrate.mjs';
+import { MIGRATION_FILE, refuseOlder } from './migrate.mjs';
 import { ifPresent, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
-import { compareVersions, EXACT_VERSION } from './lib/sdk.mjs';
+import { EXACT_VERSION } from './lib/sdk.mjs';
 import { PACKAGE, readBaseline } from './lib/shared.mjs';
 
 /** The registry's version and engines of a package version or dist-tag. */
@@ -38,14 +38,6 @@ export function preflight(target, { node, pnpmVersion }) {
   if (needsPnpm && pnpmVersion && !semver.satisfies(pnpmVersion, needsPnpm))
     problems.push({ tool: 'pnpm', current: pnpmVersion, range: needsPnpm });
   return problems;
-}
-
-/** Updates never go back behind the starter a repository has applied. */
-export function refuseOlder(baseline, target) {
-  if (baseline && compareVersions(target.version, baseline.version) < 0)
-    throw new Error(
-      `${PACKAGE} ${target.version} is older than this repository's ${baseline.version}; updates do not go back. Nothing was changed.`,
-    );
 }
 
 /** The order to follow when the target needs newer tools. */
@@ -100,6 +92,8 @@ export function installTarget(
       `${PACKAGE} ${now ?? '(none)'} is installed instead of ${version}; run pnpm install and the update again`,
     );
 }
+
+export { refuseOlder };
 
 export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
   if (args.length > 1)

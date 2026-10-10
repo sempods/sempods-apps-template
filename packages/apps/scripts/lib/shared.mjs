@@ -31,7 +31,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
-import { readJson, writeJson } from './json.mjs';
+import { readJson, replaceJson, writeJson } from './json.mjs';
 import { EXACT_VERSION } from './sdk.mjs';
 
 export const FORMAT = 1;
@@ -133,7 +133,7 @@ export function readBaseline(root) {
 
 /** Records that a repository has applied the snapshot of a package version. */
 export function writeBaseline(root, { version, revision }) {
-  writeJson(join(root, BASELINE_FILE), {
+  replaceJson(join(root, BASELINE_FILE), {
     format: FORMAT,
     package: PACKAGE,
     version,

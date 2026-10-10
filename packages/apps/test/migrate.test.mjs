@@ -484,6 +484,19 @@ describe('migrate', () => {
     assert.equal(read(repo, '.sempods-baseline.json'), before);
   });
 
+  it('refuses an installed starter older than the baseline', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('2.0.0');
+    install(repo, '1.0.0');
+    const before = read(repo, 'AGENTS.md');
+    assert.throws(
+      () => migrateTo(repo, '1.0.0'),
+      /1\.0\.0 is older than this repository's 2\.0\.0/,
+    );
+    assert.equal(read(repo, 'AGENTS.md'), before);
+    assert.equal(existsSync(join(repo, MIGRATION_FILE)), false);
+  });
+
   it('refuses a repository without a baseline', () => {
     const repo = createRepo('1.0.0');
     rmSync(join(repo, '.sempods-baseline.json'));

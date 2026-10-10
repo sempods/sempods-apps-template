@@ -18,13 +18,14 @@ instead.
    update is one reviewable diff. Work on a new branch, for example
    `tooling-update-<version>`, or on the branch of the version pull request.
 2. **Update.** `pnpm run update` installs the newest version and migrates;
-   `pnpm run update <version>` a specific one. If it reports that the version
-   needs a newer Node or pnpm, follow its numbered order, then run it again;
-   nothing was changed. On the branch of a version pull request, where the
-   version is already in `package.json`, run `pnpm install` and then
-   `pnpm run migrate`. If that install stops because Node or pnpm is too old,
-   `npm view @sempods/apps@<version> engines` names what the version needs;
-   install that first.
+   `pnpm run update <version>` a specific one. It first checks that Node and
+   pnpm suit that version; if not, follow its numbered order, then run it
+   again; nothing was changed. On the branch of a version pull request, run
+   `pnpm run update <version>` with the version the pull request names, so
+   the same check runs before anything is installed. If pnpm refuses to run
+   it because the dependencies are out of date, start the installed tooling
+   directly:
+   `node node_modules/@sempods/apps/bin/sempods-apps.mjs update <version>`.
 3. **Review the report.**
    - **Conflicts** are marked in the named files, between this repository's
      lines and the new starter's. Resolve them so the owner's changes and the
