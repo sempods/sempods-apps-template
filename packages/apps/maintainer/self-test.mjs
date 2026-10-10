@@ -23,6 +23,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import { pnpm } from '../scripts/lib/pnpm.mjs';
@@ -246,7 +247,8 @@ function migrateExercise(repo, work, tooling) {
 
   // A later version whose starter changes the template part of AGENTS.md.
   const { version } = readJson(join(TOOLING, 'package.json'));
-  const next = version.includes('-') ? `${version}.2` : `${version}-2`;
+  // Newer than the current version, also when that is a final release.
+  const next = semver.inc(version, 'patch');
   const later = join(work, 'later');
   cpSync(TOOLING, later, {
     recursive: true,

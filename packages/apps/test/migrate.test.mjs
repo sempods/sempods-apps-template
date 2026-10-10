@@ -48,8 +48,11 @@ describe('migrate', () => {
     writeFileSync(join(root, file), change(read(root, file)));
   const pkg = (version) => join(work, `package-${version}`);
   const download = (version) => pkg(version);
-  /** A published @sempods/apps whose starter `change` edits from the real one. */
-  const publish = (version, change = () => {}) => {
+  /**
+   * A published @sempods/apps whose starter `change` edits from the real
+   * one, and whose update policy `changePolicy` edits.
+   */
+  const publish = (version, change = () => {}, changePolicy = () => {}) => {
     const starter = join(work, `starter-${version}`);
     cpSync(join(TOOLING, 'starter'), starter, { recursive: true });
     change(starter);
@@ -58,10 +61,9 @@ describe('migrate', () => {
       name: '@sempods/apps',
       version,
     });
-    cpSync(
-      join(TOOLING, 'update-policy.json'),
-      join(pkg(version), 'update-policy.json'),
-    );
+    const policy = readJson(join(TOOLING, 'update-policy.json'));
+    changePolicy(policy);
+    writeJson(join(pkg(version), 'update-policy.json'), policy);
     writeSnapshot(starter, join(pkg(version), 'shared'));
     return pkg(version);
   };
@@ -493,6 +495,24 @@ describe('migrate', () => {
     const report = migrateTo(repo, '2.0.0');
     assert.equal(report.added.includes('apps/.gitkeep'), false);
     assert.equal(existsSync(join(repo, 'apps', '.gitkeep')), false);
+  });
+
+  it('leaves a seed the new starter drops to the owner', () => {
+    publish(
+      '2.0.0',
+      (starter) => {
+        v2(starter);
+        rmSync(join(starter, 'apps', '.gitkeep'));
+      },
+      (policy) => {
+        policy.seed = policy.seed.filter((file) => file !== 'apps/.gitkeep');
+      },
+    );
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.equal(report.removed.includes('apps/.gitkeep'), false);
+    assert.ok(existsSync(join(repo, 'apps', '.gitkeep')));
   });
 
   it('refuses an installed starter older than the baseline', () => {

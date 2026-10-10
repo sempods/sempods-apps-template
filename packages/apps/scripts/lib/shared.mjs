@@ -176,7 +176,7 @@ export function downloadPackage(version) {
 
 /**
  * The snapshot a baseline names: from the installed package when it is that
- * version, otherwise from the published one.
+ * version, otherwise from the published one. `packageDir` is that package.
  */
 export function baselineSnapshot(
   baseline,
@@ -191,5 +191,5 @@ export function baselineSnapshot(
     throw new Error(
       `${PACKAGE}@${baseline.version} ships shared-file revision ${snapshot.revision}, not the recorded ${baseline.revision}`,
     );
-  return snapshot;
+  return { ...snapshot, packageDir: dir };
 }

@@ -19,7 +19,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatJson, readJson, replaceJson } from './lib/json.mjs';
+import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -147,6 +147,12 @@ export function migrate(
 
   const base = baselineSnapshot(baseline, { installed, download });
   const { policy, snapshot } = target;
+  // A file that was a seed in either starter stays the owner's, also when the
+  // new starter drops it together with its policy entry.
+  const basePolicy = ifPresent(() =>
+    readJson(join(base.packageDir, 'update-policy.json')),
+  );
+  const seeds = new Set([...policy.seed, ...(basePolicy?.seed ?? [])]);
   // Durable progress of this migration, kept across reruns until it is
   // complete. Per file: `done`, `conflict` (markers written; the owner
   // resolves them), or `writing` with the content hashes from before and
@@ -245,7 +251,7 @@ export function migrate(
     const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
     const ours = readText(join(root, file));
     if (settled(file, ours)) continue;
-    if (policy.seed.includes(file)) {
+    if (seeds.has(file)) {
       // Written once, when a starter first brings it; the owner's from then
       // on, also if they delete it.
       if (theirs !== null && ours === null && !base.files[file])
