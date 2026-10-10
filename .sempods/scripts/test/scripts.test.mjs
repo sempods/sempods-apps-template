@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -16,15 +17,17 @@ import {
   invalidId,
   invalidOrigin,
   nextDevPort,
+  readApps,
   validateApps,
 } from '../lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../lib/generate.mjs';
 import { configureSite } from '../configure-site.mjs';
 import { createApp } from '../new-app.mjs';
 import { importedPackages, staticProblems } from '../check.mjs';
+import { repositoryRoot } from '../lib/paths.mjs';
 import { scriptArgs } from '../lib/pnpm.mjs';
+import { SDK } from '../lib/sdk.mjs';
 import { tempRepository } from './fixture.mjs';
-
 
 describe('app IDs', () => {
   it('accepts one lowercase segment', () => {
@@ -233,6 +236,75 @@ describe('generated configuration', () => {
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
       /export const pwa: .* = null;/,
     );
+  });
+});
+
+describe('repository and tooling', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-paths-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  const rootManifest = () =>
+    JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+
+  it('finds the repository from any directory inside it', () => {
+    const nested = join(root, 'apps', 'demo', 'src');
+    mkdirSync(nested, { recursive: true });
+    assert.equal(repositoryRoot(nested), root);
+    assert.equal(repositoryRoot(root), root);
+    const outside = mkdtempSync(join(tmpdir(), 'sempods-outside-'));
+    try {
+      assert.throws(() => repositoryRoot(outside), /no apps repository here/);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('requires apps.json', () => {
+    rmSync(join(root, 'apps.json'));
+    assert.throws(() => readApps(root), /apps\.json is missing/);
+  });
+
+  it("gives a new app the root's SDK version", () => {
+    const pkg = rootManifest();
+    for (const name of SDK) pkg.devDependencies[name] = '9.8.7';
+    writeFileSync(join(root, 'package.json'), JSON.stringify(pkg));
+    createApp(root, { id: 'demo' });
+    const { dependencies } = JSON.parse(
+      readFileSync(join(root, 'apps', 'demo', 'package.json'), 'utf8'),
+    );
+    for (const name of SDK) assert.equal(dependencies[name], '9.8.7');
+    assert.deepEqual(
+      Object.keys(dependencies),
+      Object.keys(dependencies).sort(),
+    );
+    delete pkg.devDependencies[SDK[1]];
+    writeFileSync(join(root, 'package.json'), JSON.stringify(pkg));
+    assert.throws(
+      () => createApp(root, { id: 'other' }),
+      /must declare @sempods\/client-sdk/,
+    );
+    assert.equal(existsSync(join(root, 'apps', 'other')), false);
+  });
+
+  it('finds its own files when the tooling lives elsewhere', async () => {
+    const elsewhere = mkdtempSync(join(tmpdir(), 'sempods-tooling-'));
+    try {
+      cpSync(join(root, '.sempods'), join(elsewhere, 'tooling'), {
+        recursive: true,
+      });
+      rmSync(join(root, '.sempods'), { recursive: true });
+      const moved = await import(
+        pathToFileURL(join(elsewhere, 'tooling', 'scripts', 'new-app.mjs'))
+          .href
+      );
+      moved.createApp(root, { id: 'demo' });
+      assert.ok(existsSync(join(root, 'apps', 'demo', 'src', 'App.tsx')));
+      assert.deepEqual(staticProblems(root), []);
+    } finally {
+      rmSync(elsewhere, { recursive: true, force: true });
+    }
   });
 });
 
@@ -459,11 +531,8 @@ describe('check', () => {
     const root = tempRepository('sempods-check-');
     try {
       const sdk = JSON.parse(
-        readFileSync(
-          join(root, '.sempods', 'skeleton', 'app', 'package.json'),
-          'utf8',
-        ),
-      ).dependencies;
+        readFileSync(join(root, 'package.json'), 'utf8'),
+      ).devDependencies;
       // The root names no SDK yet.
       writeFileSync(join(root, 'package.json'), '{"devDependencies": {}}');
       assert.match(
@@ -508,21 +577,6 @@ describe('check', () => {
   it('reports undeclared imports, edited generated files and SDK version drift', () => {
     const root = tempRepository('sempods-check-');
     try {
-      const skeleton = JSON.parse(
-        readFileSync(
-          join(root, '.sempods', 'skeleton', 'app', 'package.json'),
-          'utf8',
-        ),
-      ).dependencies;
-      writeFileSync(
-        join(root, 'package.json'),
-        JSON.stringify({
-          devDependencies: {
-            '@sempods/app-sdk': skeleton['@sempods/app-sdk'],
-            '@sempods/client-sdk': skeleton['@sempods/client-sdk'],
-          },
-        }),
-      );
       createApp(root, { id: 'demo' });
       assert.deepEqual(staticProblems(root), []);
 

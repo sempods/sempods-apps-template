@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One release for the root tooling, skeleton and every registered app.
+// One SDK release for the root and every registered app.
 import {
   appendFileSync,
   existsSync,
@@ -7,48 +7,22 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { formatJson, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import {
+  compareVersions,
+  EXACT_VERSION,
+  PENDING_UPDATE,
+  REFERENCE,
+  SDK,
+} from './lib/sdk.mjs';
 
-export const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
-// SemVer 2.0: numeric identifiers cannot have leading zeroes.
-export const EXACT_VERSION =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
-
-export function compareVersions(a, b) {
-  const left = EXACT_VERSION.exec(a);
-  const right = EXACT_VERSION.exec(b);
-  for (const [match, v] of [
-    [left, a],
-    [right, b],
-  ])
-    if (!match) throw new Error(`not an exact version: ${JSON.stringify(v)}`);
-  for (let i = 1; i <= 3; i++) {
-    if (BigInt(left[i]) !== BigInt(right[i]))
-      return BigInt(left[i]) > BigInt(right[i]) ? 1 : -1;
-  }
-  if (left[4] === right[4]) return 0;
-  if (!left[4]) return 1;
-  if (!right[4]) return -1;
-  const l = left[4].split('.');
-  const r = right[4].split('.');
-  for (let i = 0; i < Math.max(l.length, r.length); i++) {
-    if (l[i] === r[i]) continue;
-    if (l[i] === undefined) return -1;
-    if (r[i] === undefined) return 1;
-    const ln = /^\d+$/.test(l[i]);
-    const rn = /^\d+$/.test(r[i]);
-    if (ln && rn) return BigInt(l[i]) > BigInt(r[i]) ? 1 : -1;
-    if (ln !== rn) return ln ? -1 : 1;
-    return l[i] > r[i] ? 1 : -1;
-  }
-  return 0;
-}
 
 function pnpmOrThrow(root, args, capture = false) {
   const result = pnpm(args, {
@@ -118,7 +92,6 @@ export function planUpdate(
 
   const entries = [
     ['package.json', 'devDependencies'],
-    ['.sempods/skeleton/app/package.json', 'dependencies'],
     ...readApps(root).apps.map(({ id }) => [
       `apps/${id}/package.json`,
       'dependencies',
@@ -151,9 +124,6 @@ export function planUpdate(
   return { version, changes, ...releaseLinks(version) };
 }
 
-// A failed check can leave manifests, lockfile and installed packages at the
-// target already. Keep a local checkpoint until the entire update passes.
-export const PENDING_UPDATE = '.sempods/.sdk-update-pending';
 
 export function lockStateComplete(root, version) {
   try {
@@ -184,9 +154,7 @@ export function installedStateComplete(root, version) {
           readJson(join(root, 'node_modules', name, 'package.json'))
             .version === version,
       ) &&
-      existsSync(
-        join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),
-      )
+      existsSync(join(root, REFERENCE))
     );
   } catch {
     return false;
@@ -199,10 +167,7 @@ export function applyUpdate(
   plan,
   {
     run = (args) => pnpmOrThrow(root, args),
-    referenceExists = () =>
-      existsSync(
-        join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),
-      ),
+    referenceExists = () => existsSync(join(root, REFERENCE)),
   } = {},
 ) {
   const pending = join(root, PENDING_UPDATE);
@@ -218,7 +183,7 @@ export function applyUpdate(
   run(INSTALL);
   if (!referenceExists())
     throw new Error(
-      'node_modules/@sempods/app-sdk/docs/ai-app-builder.md is missing: this SDK release ships no app-author reference',
+      `${REFERENCE} is missing: this SDK release ships no app-author reference`,
     );
   run(['run', 'check']);
   rmSync(pending);
@@ -238,7 +203,7 @@ function main() {
     throw new Error(
       'Usage: pnpm run sdk-update <version|latest> [--allow-downgrade]',
     );
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const root = repositoryRoot();
   const plan = planUpdate(root, positionals[0], {
     allowDowngrade: values['allow-downgrade'],
   });

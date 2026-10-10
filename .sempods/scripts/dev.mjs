@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Starts the development server of one app. Usage: pnpm run dev <id>
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { readApps } from './lib/apps.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const root = repositoryRoot();
 const [id] = scriptArgs();
 const manifest = readApps(root);
 const app = manifest.apps.find((entry) => entry.id === id);

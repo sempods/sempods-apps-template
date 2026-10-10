@@ -171,7 +171,7 @@ the user's authorized scope.
 
 Run `pnpm run sdk-update latest` (the npm dist-tag) or name an exact release,
 for example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in
-the root, skeleton and every app in `apps.json`, regenerates `pnpm-lock.yaml`,
+the root and every app in `apps.json`, regenerates `pnpm-lock.yaml`,
 verifies the shipped reference and runs `pnpm run check`. Other manifest fields
 are preserved. Already at that version with a matching lockfile, installed
 packages and reference is a clean no-op; an intentional downgrade requires `--allow-downgrade`. Failed installs or checks leave a

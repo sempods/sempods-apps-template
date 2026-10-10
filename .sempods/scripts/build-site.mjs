@@ -12,15 +12,16 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { ifPresent, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
-import { SDK } from './sdk-update.mjs';
+import { SDK } from './lib/sdk.mjs';
 
 export const SITE_DIR = 'site-dist';
 
@@ -155,7 +156,7 @@ function main() {
     args: scriptArgs(),
     options: { profile: { type: 'string' } },
   });
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const root = repositoryRoot();
   const profile =
     values.profile ?? process.env.SEMPODS_SITE_PROFILE ?? 'production';
   const { apps, site, warnings } = buildSite(root, { profile });

@@ -99,10 +99,13 @@ export function appsFile(root) {
   return join(root, 'apps.json');
 }
 
-/** Reads apps.json; a missing file is an empty manifest. Throws on invalid content. */
+/** Reads apps.json. Throws when it is missing or invalid. */
 export function readApps(root) {
   const file = appsFile(root);
-  if (!existsSync(file)) return { schemaVersion: SCHEMA_VERSION, apps: [] };
+  if (!existsSync(file))
+    throw new Error(
+      'apps.json is missing; it lists the apps of this repository and must exist, even with no apps',
+    );
   const manifest = readJson(file);
   const problems = validateApps(manifest);
   if (problems.length > 0) throw new Error(`apps.json: ${problems.join('; ')}`);

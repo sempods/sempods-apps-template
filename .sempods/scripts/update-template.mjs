@@ -28,13 +28,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import {
-  compareVersions,
-  EXACT_VERSION,
-  PENDING_UPDATE,
-} from './sdk-update.mjs';
 import { formatJson, readJson } from './lib/json.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { compareVersions, EXACT_VERSION, PENDING_UPDATE } from './lib/sdk.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
 const here = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -527,19 +523,20 @@ export async function applyRelease(
   // Manifests: template entries only, one shared SDK version.
   const rootPath = policy.rootManifest;
   const root = parse(readText(join(instance, rootPath)));
+  const releaseRoot = parse(readText(join(release, rootPath)));
   const releaseSkeleton = parse(
     readText(join(release, policy.skeletonManifest)),
   );
   const appManifests = walk(instance).filter((f) =>
     matches(policy.appManifests, f),
   );
-  // One shared SDK version: never lower than any the copy already uses, for
-  // either package.
+  // One shared SDK version: never lower than the release's or any the copy
+  // already uses, for either package, including its replaced skeleton's.
   const sdkVersion = highest(
     [
       root,
       ...appManifests.map((file) => parse(readText(join(instance, file)))),
-      releaseSkeleton,
+      releaseRoot,
     ]
       .flatMap((manifest) => sdkVersionsOf(manifest, policy.sdk))
       .concat(skeletonSdk ? [skeletonSdk] : []),
@@ -548,7 +545,7 @@ export async function applyRelease(
   const newRoot = mergeManifest(
     root,
     rootBases,
-    parse(readText(join(release, rootPath))),
+    releaseRoot,
     policy.sdk,
     sdkVersion,
     report.notes,
@@ -558,7 +555,7 @@ export async function applyRelease(
   // pnpm refuses to work in a project that declares another package manager.
   if (newRoot.packageManager && !newRoot.packageManager.startsWith('pnpm@'))
     report.review.push(
-      `${rootPath} packageManager: ${newRoot.packageManager} was kept; pnpm installs only once it names pnpm (the template pins ${parse(readText(join(release, rootPath))).packageManager})`,
+      `${rootPath} packageManager: ${newRoot.packageManager} was kept; pnpm installs only once it names pnpm (the template pins ${releaseRoot.packageManager})`,
     );
   const skeletonBases = bases.read(policy.skeletonManifest).map(parse);
   for (const file of appManifests) {
@@ -577,16 +574,6 @@ export async function applyRelease(
         ),
       ),
     );
-  }
-  if (
-    compareVersions(
-      sdkVersion,
-      highest(sdkVersionsOf(releaseSkeleton, policy.sdk)),
-    ) > 0
-  ) {
-    const skeleton = parse(readText(join(instance, policy.skeletonManifest)));
-    for (const key of policy.sdk) skeleton.dependencies[key] = sdkVersion;
-    write(policy.skeletonManifest, formatJson(skeleton));
   }
 
   // Generated configuration, with the release's generator.

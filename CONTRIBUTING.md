@@ -28,7 +28,8 @@ you have tested and can explain. There is no CLA.
 
 Read [template maintenance](docs/maintaining.md).
 Open an issue before a large change. Keep SDK changes in the SDK repository.
-Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all` and
+Run `pnpm install --frozen-lockfile`, `pnpm run check --standalone all`,
+`node .sempods/scripts/check-tooling.mjs` and
 `node .sempods/scripts/self-test.mjs` with the Node version in `.node-version`.
 Changes for existing copies need a version bump, changelog and upgrade notes.
 The owner merges pull requests and publishes releases after review.

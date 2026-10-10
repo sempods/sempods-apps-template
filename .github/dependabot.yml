@@ -63,7 +63,8 @@ updates:
           - 'minor'
           - 'patch'
 
-  # The generator skeleton is outside the apps/* pnpm workspace.
+  # The generator skeleton is outside the apps/* pnpm workspace. It names no
+  # SDK version: new-app gives each new app the root's.
   - package-ecosystem: 'npm'
     directory: '/.sempods/skeleton/app'
     schedule:
