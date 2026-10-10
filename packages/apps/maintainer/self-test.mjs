@@ -26,7 +26,7 @@ import { dirname, join } from 'node:path';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
-import { pnpm } from '../scripts/lib/pnpm.mjs';
+import { INSTALL, pnpm } from '../scripts/lib/pnpm.mjs';
 import {
   baselineSnapshot,
   readBaseline,
@@ -54,10 +54,9 @@ const REQUIRED = [
 ];
 const EXCLUDED = ['test/', 'maintainer/', 'starter/'];
 
-function run(command, args, cwd, capture = false, env = process.env) {
+function run(command, args, cwd, capture = false) {
   const result = spawnSync(command, args, {
     cwd,
-    env,
     stdio: capture ? 'pipe' : 'inherit',
     encoding: 'utf8',
     shell: process.platform === 'win32',
@@ -217,14 +216,9 @@ function publish(repo) {
 
 /** Customizes the repository, then migrates it to a later starter. */
 function migrateExercise(repo, work, tooling) {
-  const OWNER = [
-    '<!-- BEGIN OWNER INSTRUCTIONS -->',
-    '<!-- END OWNER INSTRUCTIONS -->',
-  ];
-  const RECORD = [
-    '<!-- BEGIN INSTANCE SETUP RECORD -->',
-    '<!-- END INSTANCE SETUP RECORD -->',
-  ];
+  const { sections } = readJson(join(TOOLING, 'update-policy.json'));
+  const [OWNER] = sections['AGENTS.md'];
+  const [RECORD] = sections['INIT.md'];
   const text = (root, file) => readFileSync(join(root, file), 'utf8');
   const edit = (root, file, change) =>
     writeFileSync(join(root, file), change(text(root, file)));
@@ -272,20 +266,24 @@ function migrateExercise(repo, work, tooling) {
   const manifest = readJson(join(repo, 'package.json'));
   manifest.devDependencies['@sempods/apps'] = `file:${laterTarball}`;
   writeJson(join(repo, 'package.json'), manifest);
-  run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  run('pnpm', [...INSTALL], repo);
   // The baseline's version is not on the registry: take its tarball.
-  const env = { ...process.env, SEMPODS_APPS_PACKAGES: dirname(tooling) };
-  const open = spawnSync('pnpm', ['run', 'migrate'], {
+  process.env.SEMPODS_APPS_PACKAGES = dirname(tooling);
+  const open = pnpm(['run', 'migrate'], {
     cwd: repo,
-    env,
+    stdio: 'pipe',
     encoding: 'utf8',
-    shell: process.platform === 'win32',
   });
-  if (open.status !== 3 || !/docs\/start\.md: changed here and by the starter/.test(open.stdout))
-    throw new Error(`migrate did not leave docs/start.md as a manual case:\n${open.stdout}${open.stderr}`);
+  if (
+    open.status !== 3 ||
+    !/docs\/start\.md: changed here and by the starter/.test(open.stdout)
+  )
+    throw new Error(
+      `migrate did not leave docs/start.md as a manual case:\n${open.stdout}${open.stderr}`,
+    );
   // The assistant's decision: both additions.
   edit(repo, 'docs/start.md', (value) => `${value}Starter addition.\n`);
-  run('pnpm', ['run', 'migrate', '--done'], repo, false, env);
+  run('pnpm', ['run', 'migrate', '--done'], repo);
   const installed = join(repo, 'node_modules', '@sempods', 'apps');
   const { revision } = readSnapshot(join(installed, 'shared'));
   const baseline = readBaseline(repo);

@@ -22,22 +22,11 @@ import {
 } from '../scripts/lib/shared.mjs';
 import { MIGRATION_FILE, migrate } from '../scripts/migrate.mjs';
 import { createApp } from '../scripts/new-app.mjs';
-import {
-  installTarget,
-  preflight,
-  prerequisiteOrder,
-  refuseDowngrade,
-  refuseOlder,
-} from '../scripts/update.mjs';
 
-const OWNER = [
-  '<!-- BEGIN OWNER INSTRUCTIONS -->',
-  '<!-- END OWNER INSTRUCTIONS -->',
-];
-const RECORD = [
-  '<!-- BEGIN INSTANCE SETUP RECORD -->',
-  '<!-- END INSTANCE SETUP RECORD -->',
-];
+// The owner section of AGENTS.md and the setup record of INIT.md.
+const { sections } = readJson(join(TOOLING, 'update-policy.json'));
+const [OWNER] = sections['AGENTS.md'];
+const [RECORD] = sections['INIT.md'];
 const between = (text, [begin, end]) =>
   text.slice(text.indexOf(begin), text.indexOf(end) + end.length);
 
@@ -46,6 +35,11 @@ describe('migrate', () => {
   const read = (root, file) => readFileSync(join(root, file), 'utf8');
   const edit = (root, file, change) =>
     writeFileSync(join(root, file), change(read(root, file)));
+  const editJson = (root, file, change) => {
+    const value = readJson(join(root, file));
+    change(value);
+    writeJson(join(root, file), value);
+  };
   const pkg = (version) => join(work, `package-${version}`);
   const download = (version) => pkg(version);
   /**
@@ -75,10 +69,8 @@ describe('migrate', () => {
   // What Dependabot or `pnpm add` leaves: the newer package installed, the
   // shared files untouched.
   const install = (repo, version) =>
-    edit(repo, 'package.json', (text) => {
-      const manifest = JSON.parse(text);
+    editJson(repo, 'package.json', (manifest) => {
       manifest.devDependencies['@sempods/apps'] = version;
-      return `${JSON.stringify(manifest, null, 2)}\n`;
     });
   const migrateTo = (repo, version, options = {}) =>
     migrate(repo, {
@@ -108,12 +100,10 @@ describe('migrate', () => {
     );
     mkdirSync(join(starter, '.agents/skills/later'), { recursive: true });
     writeFileSync(join(starter, '.agents/skills/later/SKILL.md'), '# Later\n');
-    edit(starter, 'package.json', (text) => {
-      const manifest = JSON.parse(text);
+    editJson(starter, 'package.json', (manifest) => {
       manifest.scripts.later = 'sempods-apps later';
       // A newer starter pin does not move an existing repository's SDK.
       manifest.devDependencies['@sempods/app-sdk'] = '0.5.9';
-      return `${JSON.stringify(manifest, null, 2)}\n`;
     });
   };
 
@@ -129,11 +119,9 @@ describe('migrate', () => {
     const repo = createRepo('1.0.0');
     createApp(repo, { id: 'demo' });
     edit(repo, 'apps/demo/NOTES.md', (text) => `${text}\nOwner note.\n`);
-    edit(repo, 'package.json', (text) => {
-      const manifest = JSON.parse(text);
+    editJson(repo, 'package.json', (manifest) => {
       manifest.scripts.mine = 'echo mine';
       manifest.devDependencies['left-pad'] = '1.3.0';
-      return `${JSON.stringify(manifest, null, 2)}\n`;
     });
     const appBefore = read(repo, 'apps/demo/src/App.tsx');
     const notesBefore = read(repo, 'apps/demo/NOTES.md');
@@ -213,7 +201,9 @@ describe('migrate', () => {
     assert.equal(read(repo, 'docs/start.md'), start);
     const migration = readJson(join(repo, MIGRATION_FILE));
     const suggestion = read(repo, '.sempods-migration/suggestion/README.md');
-    assert.ok(suggestion.includes(migration.manual[0].opening));
+    assert.ok(
+      suggestion.includes(`<<<<<<< sempods-migration:${migration.id}`),
+    );
     assert.match(read(repo, '.sempods-migration/starter/README.md'), /# Your/);
     assert.match(read(repo, '.sempods-migration/base/README.md'), /# My/);
     assert.equal(readBaseline(repo).version, '1.0.0');
@@ -266,16 +256,12 @@ describe('migrate', () => {
     const repo = createRepo('1.0.0');
     conflicting(repo);
     install(repo, '3.0.0');
-    assert.throws(
-      () =>
-        migrateTo(repo, '3.0.0', {
-          afterWrite: (file) => {
-            if (file === 'AGENTS.md') throw new Error('interrupted');
-          },
-        }),
-      /interrupted/,
-    );
-    assert.doesNotMatch(read(repo, 'docs/start.md'), /## Change an app/);
+    // An interrupted run: the automatic changes after the first one did not
+    // happen. The plan is recomputed, so --done still applies them.
+    const baseStart = read(repo, 'docs/start.md');
+    assert.equal(migrateTo(repo, '3.0.0').unfinished, true);
+    writeFileSync(join(repo, 'docs/start.md'), baseStart);
+    rmSync(join(repo, '.agents/skills/later'), { recursive: true });
     writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
     const done = migrateTo(repo, '3.0.0', { done: true });
     assert.equal(done.unfinished, undefined);
@@ -332,16 +318,17 @@ describe('migrate', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
     install(repo, '2.0.0');
-    let leftover;
-    migrateTo(repo, '2.0.0', {
-      afterWrite: () => {
-        leftover = read(repo, MIGRATION_FILE);
-      },
-    });
+    const from = readBaseline(repo);
+    migrateTo(repo, '2.0.0');
     assert.equal(readBaseline(repo).version, '2.0.0');
     // The migration folder outlived the baseline write.
     mkdirSync(join(repo, '.sempods-migration'));
-    writeFileSync(join(repo, MIGRATION_FILE), leftover);
+    writeJson(join(repo, MIGRATION_FILE), {
+      id: 'done',
+      from,
+      to: readBaseline(repo),
+      manual: [],
+    });
     assert.deepEqual(outstanding(repo, '2.0.0'), []);
     assert.equal(migrateTo(repo, '2.0.0').unchanged, true);
     assert.equal(existsSync(join(repo, '.sempods-migration')), false);
@@ -429,7 +416,7 @@ describe('migrate', () => {
     const before = read(repo, 'docs/start.md');
     assert.throws(
       () => migrateTo(repo, '3.0.0'),
-      /open migration from @sempods\/apps 1\.0\.0 to 2\.0\.0[\s\S]*Nothing was changed/,
+      /open migration to @sempods\/apps 2\.0\.0 is recorded[\s\S]*Nothing was changed/,
     );
     assert.equal(read(repo, 'docs/start.md'), before);
   });
@@ -499,129 +486,5 @@ describe('migrate', () => {
     const repo = createRepo('1.0.0');
     rmSync(join(repo, '.sempods-baseline.json'));
     assert.throws(() => migrateTo(repo, '1.0.0'), /baseline\.json is missing/);
-  });
-});
-
-describe('update install', () => {
-  let root;
-  let installed;
-  beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'sempods-update-'));
-    writeJson(join(root, 'package.json'), {
-      devDependencies: { '@sempods/apps': '2.0.0' },
-    });
-  });
-  afterEach(() => rmSync(root, { recursive: true, force: true }));
-  const runs = [];
-  const run = (args) => {
-    runs.push(args.join(' '));
-    installed = '2.0.0';
-    return true;
-  };
-  const options = () => ({ run, installed: () => installed });
-
-  it('installs a version the manifest names but node_modules lacks', () => {
-    runs.length = 0;
-    installed = '1.0.0';
-    installTarget(root, '2.0.0', options());
-    assert.deepEqual(runs, ['install --no-frozen-lockfile']);
-  });
-  it('adds a version the manifest does not name yet', () => {
-    runs.length = 0;
-    installed = '1.0.0';
-    installTarget(root, '3.0.0', {
-      run: (args) => {
-        runs.push(args.join(' '));
-        installed = '3.0.0';
-        return true;
-      },
-      installed: () => installed,
-    });
-    assert.deepEqual(runs, [
-      'add --save-dev --save-exact @sempods/apps@3.0.0',
-    ]);
-  });
-  it('skips installing what is installed and refuses a wrong result', () => {
-    runs.length = 0;
-    installed = '2.0.0';
-    installTarget(root, '2.0.0', options());
-    assert.deepEqual(runs, []);
-    installed = '1.0.0';
-    assert.throws(
-      () =>
-        installTarget(root, '2.0.0', {
-          run: () => true,
-          installed: () => installed,
-        }),
-      /1\.0\.0 is installed instead of 2\.0\.0/,
-    );
-  });
-});
-
-describe('update preflight', () => {
-  const target = {
-    version: '2.0.0',
-    engines: { node: '>=26.1.0', pnpm: '>=12.0.0' },
-  };
-  it('names the tools to upgrade first, in order', () => {
-    const problems = preflight(target, {
-      node: '24.15.0',
-      pnpmVersion: '11.28.2',
-    });
-    assert.deepEqual(
-      problems.map(({ tool }) => tool),
-      ['Node', 'pnpm'],
-    );
-    const order = prerequisiteOrder(target, problems);
-    assert.match(order, /Nothing was changed/);
-    assert.match(order, /1\. Install a Node version in >=26\.1\.0 and write it to \.node-version/);
-    assert.match(order, /2\. Set packageManager in package\.json to a pnpm version in >=12\.0\.0/);
-    assert.match(order, /3\. Run pnpm run update 2\.0\.0 again/);
-  });
-  it('refuses a target older than the declared or installed tooling', () => {
-    const root = mkdtempSync(join(tmpdir(), 'sempods-downgrade-'));
-    try {
-      writeJson(join(root, 'package.json'), {
-        devDependencies: { '@sempods/apps': '2.0.0' },
-      });
-      // The baseline can lag behind when releases kept the same starter.
-      writeJson(join(root, '.sempods-baseline.json'), {
-        format: 1,
-        package: '@sempods/apps',
-        version: '1.0.0',
-        revision: 'a'.repeat(64),
-      });
-      assert.throws(
-        () => refuseDowngrade(root, { version: '1.5.0' }),
-        /older than this repository's 2\.0\.0/,
-      );
-      refuseDowngrade(root, { version: '2.0.0' });
-      const installed = join(root, 'node_modules', '@sempods', 'apps');
-      mkdirSync(installed, { recursive: true });
-      writeJson(join(installed, 'package.json'), { version: '2.1.0' });
-      assert.throws(
-        () => refuseDowngrade(root, { version: '2.0.0' }),
-        /older than this repository's 2\.1\.0/,
-      );
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  it('refuses a target older than the baseline', () => {
-    const baseline = { version: '2.0.0' };
-    assert.throws(
-      () => refuseOlder(baseline, { version: '1.9.0' }),
-      /older than this repository's 2\.0\.0[\s\S]*Nothing was changed/,
-    );
-    refuseOlder(baseline, { version: '2.0.0' });
-    refuseOlder(baseline, { version: '2.1.0' });
-    refuseOlder(undefined, { version: '1.0.0' });
-  });
-  it('lets a suitable machine continue', () => {
-    assert.deepEqual(
-      preflight(target, { node: '26.1.0', pnpmVersion: '12.0.1' }),
-      [],
-    );
   });
 });

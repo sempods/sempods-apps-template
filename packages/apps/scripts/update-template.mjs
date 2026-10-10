@@ -31,7 +31,6 @@ import { parseArgs } from 'node:util';
 import { formatJson, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import {
-  decide,
   mergeManifest,
   mergeText,
   withSection,
