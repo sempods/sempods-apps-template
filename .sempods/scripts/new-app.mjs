@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Creates apps/<id> from the skeleton and adds it to apps.json.
+// Creates apps/<id> from the skeleton with the root's SDK version and adds it
+// to apps.json.
 // Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]
 import {
   cpSync,
@@ -9,7 +10,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
@@ -21,7 +22,10 @@ import {
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { escapeHtml } from './lib/html.mjs';
+import { readJson, writeJson } from './lib/json.mjs';
+import { repositoryRoot, SKELETON } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { EXACT_VERSION, SDK } from './lib/sdk.mjs';
 
 const TEXT = new Set(['.json', '.html', '.md', '.ts', '.tsx', '.css']);
 
@@ -47,6 +51,24 @@ function fillTokens(dir, app) {
 }
 
 /**
+ * The SDK versions a new app declares: the root's, so all apps share one
+ * version. Each app still declares them itself and stays exportable.
+ */
+function rootSdk(root) {
+  const { devDependencies = {} } = readJson(join(root, 'package.json'));
+  return Object.fromEntries(
+    SDK.map((name) => {
+      const version = devDependencies[name];
+      if (!EXACT_VERSION.test(version ?? ''))
+        throw new Error(
+          `package.json must declare ${name} with an exact version in devDependencies`,
+        );
+      return [name, version];
+    }),
+  );
+}
+
+/**
  * Creates one app. Throws with a one-line reason and changes nothing when the
  * ID is invalid or already used.
  */
@@ -65,6 +87,7 @@ export function createApp(
   if (manifest.apps.some((app) => app.id === id) || existsSync(appDir))
     throw new Error(`apps/${id} already exists; nothing was changed`);
 
+  const sdk = rootSdk(root);
   const app = {
     id,
     title: title.trim(),
@@ -74,11 +97,17 @@ export function createApp(
     pwa,
   };
   try {
-    cpSync(join(root, '.sempods', 'skeleton', 'app'), appDir, {
-      recursive: true,
-      errorOnExist: true,
-    });
+    cpSync(SKELETON, appDir, { recursive: true, errorOnExist: true });
     fillTokens(appDir, app);
+    const pkgFile = join(appDir, 'package.json');
+    const pkg = readJson(pkgFile);
+    // Package managers keep dependency lists sorted.
+    pkg.dependencies = Object.fromEntries(
+      Object.entries({ ...pkg.dependencies, ...sdk }).sort(([a], [b]) =>
+        a < b ? -1 : a > b ? 1 : 0,
+      ),
+    );
+    writeJson(pkgFile, pkg);
     writeGenerated(appDir, app, manifest.site);
     writeApps(root, { ...manifest, apps: [...manifest.apps, app] });
   } catch (error) {
@@ -105,7 +134,7 @@ function main() {
     );
     process.exit(2);
   }
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const root = repositoryRoot();
   let app;
   try {
     app = createApp(root, {

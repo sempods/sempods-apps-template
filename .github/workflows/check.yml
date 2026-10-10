@@ -1,7 +1,7 @@
 name: Check
-# Checks the owner's apps as they are, then tests the template tooling in an
-# isolated copy: a freshly generated app, a refused rerun, and check with a
-# standalone install/build. The copy never touches apps or apps.json here.
+# Checks the owner's apps as they are. In the template repository it also
+# checks the tooling itself: script tests, Markdown links, and a self-test in an
+# isolated copy that never touches apps or apps.json.
 on:
   pull_request:
   push:
@@ -11,6 +11,7 @@ permissions:
   contents: read
 jobs:
   check:
+    # Required status check name in repository rulesets; keep it stable.
     name: Apps and tooling
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -26,4 +27,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check --standalone all
-      - run: node .sempods/scripts/self-test.mjs
+      - if: github.repository == 'sempods/sempods-apps-template'
+        run: node .sempods/scripts/check-tooling.mjs
+      - if: github.repository == 'sempods/sempods-apps-template'
+        run: node .sempods/scripts/self-test.mjs

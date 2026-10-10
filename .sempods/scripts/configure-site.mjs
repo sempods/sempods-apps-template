@@ -6,7 +6,7 @@
 //        --no-preview] [--host netlify|cloudflare-pages|static] [--change-domain]
 import { callbackUrl, checkDidWeb } from '@sempods/client-sdk/oauth/host';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
@@ -17,6 +17,7 @@ import {
   writeApps,
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { scriptArgs } from './lib/pnpm.mjs';
 
 /** Applies the options to apps.json and regenerates the apps; returns the site. */
@@ -85,7 +86,7 @@ function main() {
       'change-domain': { type: 'boolean' },
     },
   });
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const root = repositoryRoot();
   const { site, apps } = configureSite(root, {
     production: values.production,
     preview: values.preview,

@@ -93,9 +93,11 @@ function templateFiles(root, v) {
       private: true,
       type: 'module',
       scripts: { build: 'vite build' },
+      // Since 0.6.1 the skeleton names no SDK; new-app adds the root's.
       dependencies: {
-        '@sempods/app-sdk': next ? '0.3.0' : '0.2.0',
-        '@sempods/client-sdk': next ? '0.3.0' : '0.2.0',
+        ...(next
+          ? {}
+          : { '@sempods/app-sdk': '0.2.0', '@sempods/client-sdk': '0.2.0' }),
         react: '19.2.0',
       },
       devDependencies: { vite: next ? '8.3.2' : '8.0.0' },
@@ -455,7 +457,6 @@ describe('update-template', () => {
     for (const [path, field] of [
       ['package.json', 'devDependencies'],
       ['apps/demo/package.json', 'dependencies'],
-      ['.sempods/skeleton/app/package.json', 'dependencies'],
     ])
       for (const name of ['@sempods/app-sdk', '@sempods/client-sdk'])
         assert.equal(
@@ -545,7 +546,7 @@ describe('update-template', () => {
     );
   });
 
-  it('resumes from a tagged base and keeps a skeleton SDK ahead of the release', async () => {
+  it('resumes from a tagged base and keeps the replaced skeleton SDK ahead of the release', async () => {
     const { release, instance } = setup({ tagOld: true });
     const path = '.sempods/skeleton/app/package.json';
     const skeleton = JSON.parse(read(instance, path));
@@ -565,12 +566,19 @@ describe('update-template', () => {
     const report = await applyRelease(release, instance, { install: false });
     assert.equal(report.resumed, true);
     assert.equal(report.exact, true);
-    for (const manifest of [path, 'apps/demo/package.json'])
+    for (const [manifest, field] of [
+      ['package.json', 'devDependencies'],
+      ['apps/demo/package.json', 'dependencies'],
+    ])
       assert.equal(
-        JSON.parse(read(instance, manifest)).dependencies['@sempods/app-sdk'],
+        JSON.parse(read(instance, manifest))[field]['@sempods/app-sdk'],
         '0.4.0',
         manifest,
       );
+    assert.equal(
+      JSON.parse(read(instance, path)).dependencies['@sempods/app-sdk'],
+      undefined,
+    );
   });
 
   it('stays resumable when installing the dependencies fails', async () => {

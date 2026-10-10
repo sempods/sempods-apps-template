@@ -22,6 +22,17 @@ alone: owner files, configuration choices and the SDK migration.
   a build is public, and that a sempods Pod fetches no DID document.
 - The tooling scripts share their JSON and version helpers. A version that is
   not exact semver is now named in the error. Nothing else changes for owners.
+- `pnpm run check` checks only the owner's apps. The template's script tests,
+  its Markdown link check and its self-test run in the template repository
+  only, so a copy's local check and CI no longer run them.
+- The app skeleton names no SDK version: `new-app` gives a new app the root's
+  SDK version, and `check` and `sdk-update` no longer read or write the
+  skeleton's manifest.
+- `apps.json` is required; a repository without it is reported instead of
+  being treated as one without apps.
+- The tooling commands find the repository from the directory they run in.
+- The SDK update workflow no longer imports the tooling's internal modules: it
+  reads `apps.json` directly and stages `apps/*/package.json` by path.
 
 ### Upgrade notes
 
@@ -29,6 +40,11 @@ alone: owner files, configuration choices and the SDK migration.
    under "Removed". Nothing else to do.
 2. If the owner relies on `netlify-dist/` being ignored, keep that line in
    `.gitignore`.
+3. `.github/workflows/check.yml` and `sdk-update.yml` merge as shared files. If
+   the owner changed them, keep the new conditions that run the tooling checks
+   only in the template repository, and the staging by path.
+4. A copy's check no longer validates Markdown links. If the owner relies on
+   that for their own documents, say so; it is not part of the owner checks.
 
 ## 0.6.0
 

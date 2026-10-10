@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { readJson } from '../lib/json.mjs';
 import { matches } from '../update-template.mjs';
-import { isTemplate, templateRoot } from './fixture.mjs';
+import { templateRoot } from './fixture.mjs';
 
 // Shipped files the policy does not name. update-template never changes them
 // (the generated lockfile apart), so a change to one never reaches a copy.
@@ -17,17 +17,14 @@ const UNNAMED = {
 // update-template treats a file the policy does not name as the owner's and
 // reports no template change to it. Every file the template ships must
 // therefore be named, so that a new or changed file reaches the copies.
-describe('update policy', {
-  skip: !isTemplate && "it checks the template's own files",
-}, () => {
+describe('update policy', () => {
   const policy = readJson(join(templateRoot, '.sempods', 'update-policy.json'));
   const tracked = spawnSync('git', ['ls-files', '-z'], {
     cwd: templateRoot,
     encoding: 'utf8',
   });
-  // The self-test runs the checks in a plain copy without Git.
-  const files =
-    tracked.status === 0 ? tracked.stdout.split('\0').filter(Boolean) : null;
+  assert.equal(tracked.status, 0, 'the policy check needs a Git checkout');
+  const files = tracked.stdout.split('\0').filter(Boolean);
   const under = (dir, file) => file === dir || file.startsWith(`${dir}/`);
   const named = (file) =>
     policy.replace.some((dir) => under(dir, file)) ||
@@ -39,8 +36,7 @@ describe('update policy', {
       policy.appManifests,
     ].some((pattern) => matches(pattern, file));
 
-  it('names every file the template ships', (t) => {
-    if (!files) return t.skip('not a Git checkout');
+  it('names every file the template ships', () => {
     const unnamed = files.filter((file) => !named(file) && !(file in UNNAMED));
     assert.deepEqual(
       unnamed,
@@ -50,16 +46,14 @@ describe('update policy', {
     );
   });
 
-  it('lists only unnamed files that the template ships', (t) => {
-    if (!files) return t.skip('not a Git checkout');
+  it('lists only unnamed files that the template ships', () => {
     for (const file of Object.keys(UNNAMED)) {
       assert.ok(files.includes(file), `${file} is not shipped`);
       assert.ok(!named(file), `${file} is already named in the policy`);
     }
   });
 
-  it('ships no retired path', (t) => {
-    if (!files) return t.skip('not a Git checkout');
+  it('ships no retired path', () => {
     for (const path of policy.retired)
       assert.ok(!files.some((file) => under(path, file)), `${path} is retired`);
   });

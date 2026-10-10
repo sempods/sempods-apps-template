@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Checks the whole repository: manifest, generated configuration, the shared
-// SDK version and its shipped app-author reference, declared dependencies, Markdown
-// links, script tests, and lint, typecheck, build and tests of every app.
+// Checks the owner's apps: manifest, generated configuration, the shared SDK
+// version and its shipped app-author reference, declared dependencies, and
+// lint, typecheck, build and tests of every app. The template's own tooling
+// checks run upstream (check-tooling.mjs).
 // Usage: pnpm run check [--standalone <id|all>]
-import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -15,18 +15,16 @@ import {
 } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
-import { EXACT_VERSION } from './sdk-update.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
-import { checkLinks } from './lib/links.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { EXACT_VERSION, REFERENCE, SDK } from './lib/sdk.mjs';
 
-const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
-export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
 
@@ -92,9 +90,6 @@ export function staticProblems(root) {
       );
 
   const rootManifest = readJson(join(root, 'package.json'));
-  const skeleton = readJson(
-    join(root, '.sempods', 'skeleton', 'app', 'package.json'),
-  );
 
   const versions = new Map();
   const expect = (where, pkg, version) => {
@@ -104,11 +99,10 @@ export function staticProblems(root) {
       );
     versions.set(`${where} ${pkg}`, version);
   };
-  for (const pkg of SDK) {
-    expect('skeleton', pkg, skeleton.dependencies?.[pkg]);
-    // The root installs the SDK too, so its shipped reference is there before any app.
+  // The root installs the SDK too, so its shipped reference is there before any
+  // app; new-app gives a new app the root's version.
+  for (const pkg of SDK)
     expect('root', pkg, rootManifest.devDependencies?.[pkg]);
-  }
 
   for (const app of manifest.apps) {
     const dir = join(appsDir, app.id);
@@ -142,9 +136,9 @@ export function staticProblems(root) {
   }
   if (found.size > 1)
     problems.push(
-      `SDK versions differ (${[...found].join(', ')}): the root, the skeleton, all apps and the installed packages must use one version`,
+      `SDK versions differ (${[...found].join(', ')}): the root, all apps and the installed packages must use one version`,
     );
-  // The app-author reference ships inside the installed SDK (0.3.0 and later).
+  // The app-author reference ships inside the installed SDK.
   if (
     existsSync(join(root, 'node_modules', '@sempods', 'app-sdk')) &&
     !existsSync(join(root, ...REFERENCE.split('/')))
@@ -186,12 +180,12 @@ function standalone(root, id, packageManager) {
   }
 }
 
-async function main() {
+function main() {
   const { values } = parseArgs({
     args: scriptArgs(),
     options: { standalone: { type: 'string' } },
   });
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const root = repositoryRoot();
   const failures = staticProblems(root);
   for (const problem of failures) console.error(`✗ ${problem}`);
 
@@ -199,17 +193,6 @@ async function main() {
     console.log(`${ok ? '✓' : '✗'} ${label}`);
     if (!ok) failures.push(label);
   };
-  const node = (args) =>
-    spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' })
-      .status === 0;
-  step('script tests', node(['--test', '.sempods/scripts/test/*.test.mjs']));
-  step(
-    'Markdown links',
-    await checkLinks(root).catch((error) => {
-      console.error(error.message);
-      return false;
-    }),
-  );
   for (const app of readAppsSafe(root)) {
     const dir = join(root, 'apps', app.id);
     step(`apps/${app.id}: lint`, run(['run', 'lint'], dir));
@@ -251,4 +234,4 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 )
-  await main();
+  main();

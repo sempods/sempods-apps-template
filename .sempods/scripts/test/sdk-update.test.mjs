@@ -12,21 +12,22 @@ import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import {
   applyUpdate,
-  compareVersions,
-  EXACT_VERSION,
   planUpdate,
-  PENDING_UPDATE,
   lockStateComplete,
   installedStateComplete,
-  SDK,
 } from '../sdk-update.mjs';
 import { readLockfile } from '../lib/lockfile.mjs';
+import {
+  compareVersions,
+  EXACT_VERSION,
+  PENDING_UPDATE,
+  SDK,
+} from '../lib/sdk.mjs';
 
 describe('sdk-update (offline registry and pnpm fixtures)', () => {
   let root;
   const files = [
     'package.json',
-    '.sempods/skeleton/app/package.json',
     'apps/one/package.json',
     'apps/two/package.json',
   ];
@@ -96,6 +97,8 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
   };
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'sdk-update-'));
+    // The tooling directory holds the update checkpoint.
+    mkdirSync(join(root, '.sempods'));
     writeFileSync(
       join(root, 'apps.json'),
       JSON.stringify({
@@ -333,7 +336,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     assert.deepEqual(snapshot(), before);
   });
   it('preflights every manifest before writing', () => {
-    writeFileSync(join(root, files[3]), '{}');
+    writeFileSync(join(root, files[2]), '{}');
     const before = snapshot();
     assert.throws(
       () => planUpdate(root, 'latest', { lookup: registry }),
@@ -353,7 +356,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     assert.equal(
       planUpdate(root, '0.1.0', { lookup, allowDowngrade: true }).changes
         .length,
-      4,
+      files.length,
     );
     for (const [a, b] of [
       ['0.2.0', '0.10.0'],
