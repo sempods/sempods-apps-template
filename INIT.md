@@ -13,9 +13,9 @@ the [README](README.md#start-with-your-idea). A local copy without a Git remote
 is the owner's instance when the owner says so; record that in the setup record.
 
 Setup needs the companion skeleton: root `package.json`, `pnpm-workspace.yaml`,
-`pnpm-lock.yaml`, `.node-version`, `.sempods/VERSION`,
-`.sempods/scripts/new-app.mjs`, `.sempods/scripts/check.mjs` and `apps.json`;
-after `pnpm install`, the SDK's
+`pnpm-lock.yaml`, `.node-version`, the tooling package
+`packages/apps/package.json` with `packages/apps/scripts/new-app.mjs` and
+`packages/apps/scripts/check.mjs`, and `apps.json`; after `pnpm install`, the SDK's
 shipped reference `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`. If
 these are missing, report that the skeleton is not integrated. Do not invent
 scripts, configuration or a replacement SDK reference to work around it.
@@ -73,7 +73,7 @@ that step and explain the mismatch. Never delete the folder, rewrite the
 manifest or choose another ID silently to make setup pass. A failed command
 leaves setup in progress; diagnose it before proceeding.
 
-Continue with the [app workflow](.sempods/instructions/app-workflow.md) for the
+Continue with the [app workflow](packages/apps/instructions/app-workflow.md) for the
 first useful interaction. Once the owner can try the screen, ask once whether
 they have a test Pod for trying it with data, unless the setup record answers
 that. If so, let the user sign in in the browser and select their test context;
@@ -103,8 +103,9 @@ apps: `CONTRIBUTING.md`, `docs/maintaining.md` and `docs/vision.md`. Keep
 `CONTRIBUTING.md` if the owner wants a contribution policy of their own, and
 adapt it. Template updates do not bring them back.
 
-Record the starting template version from `.sempods/VERSION` below; do not
-modify that file or anything under `node_modules`. Preserve LICENSE and imported
+Record the starting template version, the `version` in
+`packages/apps/package.json`, below; do not modify `packages/apps/` or anything
+under `node_modules`. Preserve LICENSE and imported
 notices. Put ongoing owner choices in [AGENTS.md](AGENTS.md#owner-instructions).
 On resumed setup, completed adaptations are inspected, not reset to defaults.
 
@@ -173,11 +174,11 @@ installed-PWA behavior are not successful interoperability evidence. If setup is
 already done, reopen the recorded app and follow its notes; do not recreate it
 or repeat ownership changes.
 
-SDK updates use the [app workflow](.sempods/instructions/app-workflow.md#update-the-sdk).
+SDK updates use the [app workflow](packages/apps/instructions/app-workflow.md#update-the-sdk).
 Template updates follow the
-[update-template skill](.sempods/skills/update-template/SKILL.md) when the owner
+[update-template skill](packages/apps/skills/update-template/SKILL.md) when the owner
 asks for one; do not run an update during this setup. Publishing follows the
-[publish guide](.sempods/instructions/publish.md) when the owner asks for it.
+[publish guide](packages/apps/instructions/publish.md) when the owner asks for it.
 
 ## Instance setup record
 
@@ -188,7 +189,7 @@ starting template version remains the version this instance began with.
 <!-- BEGIN INSTANCE SETUP RECORD -->
 
 - Status: not started
-- Starting template version (`.sempods/VERSION`): not recorded
+- Starting template version (`packages/apps/package.json`): not recorded
 - SDK version at setup (`@sempods/app-sdk` in the root `package.json`): not recorded
 - Owner and review identity: not recorded
 - UI language: not selected

@@ -1,8 +1,8 @@
 name: sempods apps and template tooling
-# Explicit roots include the hidden template directory that CodeQL skips by
-# default. Keep owner apps and workflows in the scan as the repository grows.
+# Explicit roots: the tooling package (its scripts, skeleton and maintainer
+# checks), the owner's apps and the workflows. Keep them in the scan as the
+# repository grows.
 paths:
-  - .sempods/scripts
-  - .sempods/skeleton/app
+  - packages/apps
   - apps
   - .github

@@ -1,0 +1,47 @@
+name: Publish
+# Publishes the tooling package @sempods/apps for a version tag, only in the
+# template repository. The maintainer creates the tag; the `npm` environment
+# can require approval. npm trusts this workflow file in that environment
+# (trusted publishing); there is no npm token.
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing and provenance
+jobs:
+  publish:
+    name: Publish to npm
+    if: github.repository == 'sempods/sempods-apps-template'
+    runs-on: ubuntu-latest
+    environment: npm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the pnpm version that packageManager in package.json pins.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          # No dependency cache in the release job: a cache restored from
+          # another workflow run could feed what is packed and published.
+          package-manager-cache: false
+          # No registry-url: npm authenticates `npm publish` through the
+          # trusted publisher (OIDC), not a token in an .npmrc.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: node packages/apps/maintainer/check-tooling.mjs
+      # Trusted publishing needs npm 11.5.1 or later; .node-version selects it.
+      - run: |
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1))))
+              throw new Error(`npm ${process.argv[1]} cannot use trusted publishing`);
+          ' "$(npm --version)"
+      # Packing writes the shared-file snapshot into the package (prepack).
+      - run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          pnpm --filter @sempods/apps pack --pack-destination "$RUNNER_TEMP/release"
+          node packages/apps/maintainer/publish.mjs "$RUNNER_TEMP"/release/*.tgz

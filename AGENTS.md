@@ -14,7 +14,7 @@ For creating or changing an app:
 
 1. On first setup, read [INIT.md](INIT.md). On later sessions, read its setup
    record and the target app's `apps/<id>/NOTES.md` first.
-2. Follow the [app workflow](.sempods/instructions/app-workflow.md), then the
+2. Follow the [app workflow](packages/apps/instructions/app-workflow.md), then the
    SDK's AI entry, shipped with the installed package at
    `node_modules/@sempods/app-sdk/docs/ai-app-builder.md` (run `pnpm install`
    first if `node_modules` is missing), and the guides relevant to the change. They
@@ -22,9 +22,9 @@ For creating or changing an app:
 3. Keep app-specific decisions in its notes and repository-wide choices in the
    owner section below. Do not place credentials or private Pod data there.
 
-The [skill](.sempods/skills/app-workflow/SKILL.md) routes to the same workflow;
+The [skill](packages/apps/skills/app-workflow/SKILL.md) routes to the same workflow;
 skill discovery is optional. To pick up a newer template release, follow the
-[update-template skill](.sempods/skills/update-template/SKILL.md).
+[update-template skill](packages/apps/skills/update-template/SKILL.md).
 [User steps](docs/start.md) describe the same journey for the owner.
 
 ## Owner instructions

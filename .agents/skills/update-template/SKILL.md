@@ -6,4 +6,4 @@ description:
 ---
 
 Read the
-[canonical update-template skill](../../../.sempods/skills/update-template/SKILL.md).
+[canonical update-template skill](../../../packages/apps/skills/update-template/SKILL.md).

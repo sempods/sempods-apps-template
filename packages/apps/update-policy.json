@@ -1,0 +1,49 @@
+{
+  "replace": ["packages/apps"],
+  "replaceIfPresent": ["docs/vision.md", "docs/maintaining.md"],
+  "retired": ["reference/sempods-sdk", "docs/plan.md"],
+  "shared": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "INIT.md",
+    "docs/start.md",
+    "docs/app-workflow.md",
+    ".agents/skills/*/SKILL.md",
+    ".claude/skills/*/SKILL.md",
+    ".npmrc",
+    "pnpm-workspace.yaml",
+    ".gitignore",
+    ".node-version",
+    ".github/dependabot.yml",
+    ".github/workflows/check.yml",
+    ".github/workflows/sdk-update.yml",
+    ".github/workflows/publish.yml",
+    ".github/workflows/codeql.yml",
+    ".github/codeql/codeql-config.yml"
+  ],
+  "sections": {
+    "AGENTS.md": [
+      ["<!-- BEGIN OWNER INSTRUCTIONS -->", "<!-- END OWNER INSTRUCTIONS -->"]
+    ],
+    "INIT.md": [
+      [
+        "<!-- BEGIN INSTANCE SETUP RECORD -->",
+        "<!-- END INSTANCE SETUP RECORD -->"
+      ]
+    ]
+  },
+  "ownerAfterSetup": [
+    "LICENSE",
+    "CONTRIBUTING.md",
+    ".github/CODEOWNERS",
+    ".github/workflows/dco.yml"
+  ],
+  "rootManifest": "package.json",
+  "appManifests": "apps/*/package.json",
+  "skeletonManifest": "packages/apps/skeleton/app/package.json",
+  "sdk": ["@sempods/app-sdk", "@sempods/client-sdk"],
+  "ownerReferences": {
+    "reference/sempods-sdk": "The SDK reference snapshot is gone; the installed @sempods/app-sdk ships its reference, LICENSE and NOTICE. Point the mention there."
+  }
+}

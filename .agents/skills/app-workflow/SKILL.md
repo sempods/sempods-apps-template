@@ -6,5 +6,5 @@ description:
 ---
 
 Read the
-[canonical app-workflow skill](../../../.sempods/skills/app-workflow/SKILL.md).
+[canonical app-workflow skill](../../../packages/apps/skills/app-workflow/SKILL.md).
 It routes to AGENTS.md, setup and the shared instructions.
