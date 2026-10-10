@@ -1,8 +1,6 @@
-name: sempods apps and template tooling
-# Explicit roots: the tooling package (its scripts, skeleton and maintainer
-# checks), the owner's apps and the workflows. Keep them in the scan as the
-# repository grows.
+name: sempods apps template
+# Explicit roots: the tooling and creator packages (scripts, skeleton, starter
+# workflows and maintainer checks) and this repository's workflows.
 paths:
-  - packages/apps
-  - apps
+  - packages
   - .github

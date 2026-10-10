@@ -2,16 +2,16 @@
 
 ## Start
 
-You need Node.js 24.15 or newer; your copy names the exact version in
-`.node-version`. With a version manager, name the version explicitly, for
-example `nvm install 24.15.0` or `fnm use --install-if-missing 24.15.0`. The
-installation stops with a clear message on an older Node.
+You need Node.js in the version `.node-version` names. With a version manager,
+name that version explicitly, for example with `nvm install` or
+`fnm use --install-if-missing` followed by the version. The installation stops
+with a clear message on an older Node.
 
-You also need pnpm. With Node 24, run `corepack enable pnpm`; if that is not
-available, `npm install --global pnpm@11`. Your copy names the exact pnpm
-version, and pnpm switches to it by itself.
+You also need pnpm. With Node 24, run `corepack enable pnpm`; otherwise install
+pnpm with npm. `package.json` names the exact pnpm version, and pnpm switches
+to it by itself.
 
-[Create your own copy and paste the starter prompt](../README.md#start-with-your-idea).
+[Open this repository in your assistant and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.
 It chooses the technical details and asks you about what the app should do.
@@ -53,9 +53,8 @@ work offline. You decide when to publish.
 
 ## Update
 
-When the template gets better, ask your assistant: “Update the template.” It
-brings in the new version as a change you can review; your apps and notes stay
-yours.
+Bringing a newer version of the starter and its tooling into this repository
+is not supported yet. SDK updates work as described above.
 
 Your assistant follows the repository's instructions and records progress in
 each app's `NOTES.md`, so a later session can pick up where you left off.

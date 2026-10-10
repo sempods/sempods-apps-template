@@ -28,31 +28,16 @@ updates:
     versioning-strategy: 'increase'
     # Regular version updates wait three days; Dependabot also attempts an age
     # gate for newly resolved transitive dependencies. Security updates skip
-    # it. The SDK is updated through sdk-update and ignored here.
+    # it.
     cooldown:
       default-days: 3
     ignore:
+      # The SDK range of the tooling and the starter's SDK move together, by
+      # hand.
       - dependency-name: '@sempods/*'
-      # The root import checker requires the TypeScript 6 compiler API.
+      # The import checker in @sempods/apps requires the TypeScript 6
+      # compiler API.
       - dependency-name: 'typescript'
-        update-types:
-          - 'version-update:semver-major'
-      # The Markdown link check is template tooling too. Template releases move
-      # its majors, so a copy does not diverge from the template's entries.
-      - dependency-name: 'remark'
-        update-types:
-          - 'version-update:semver-major'
-      - dependency-name: 'remark-validate-links'
-        update-types:
-          - 'version-update:semver-major'
-      - dependency-name: 'unified-engine'
-        update-types:
-          - 'version-update:semver-major'
-      - dependency-name: 'markdown-extensions'
-        update-types:
-          - 'version-update:semver-major'
-      # Match the Node 24 runtime baseline; review runtime and typings together.
-      - dependency-name: '@types/node'
         update-types:
           - 'version-update:semver-major'
     groups:
@@ -63,8 +48,8 @@ updates:
           - 'minor'
           - 'patch'
 
-  # The generator skeleton is outside the apps/* pnpm workspace. It names no
-  # SDK version: new-app gives each new app the root's.
+  # The app skeleton is outside the pnpm workspace. It names no SDK version:
+  # new-app gives each new app the repository's.
   - package-ecosystem: 'npm'
     directory: '/packages/apps/skeleton/app'
     schedule:

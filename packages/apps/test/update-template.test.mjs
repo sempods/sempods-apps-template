@@ -84,7 +84,9 @@ function templateFiles(root, v) {
     { recursive: true },
   );
   cpSync(
-    join(templateRoot, 'packages', 'apps', 'update-policy.json'),
+    // The policy of a template copy; the starter's own policy describes
+    // generated repositories, which this command does not update.
+    new URL('fixtures/copy-policy.json', import.meta.url),
     join(root, 'packages', 'apps', 'update-policy.json'),
   );
   file(

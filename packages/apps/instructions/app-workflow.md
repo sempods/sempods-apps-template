@@ -1,9 +1,9 @@
 # Create or change an app
 
-Use this workflow inside an owner's apps repository. Read
-[AGENTS.md](../../../AGENTS.md) and its owner section first. For initial setup, use
-[INIT.md](../../../INIT.md); for an existing app, read `apps/<id>/NOTES.md` and its
-local instructions.
+Use this workflow inside an owner's apps repository. Read the repository's
+`AGENTS.md` and its owner section first. For initial setup, use the
+repository's `INIT.md` and the [setup procedure](setup.md); for an existing
+app, read `apps/<id>/NOTES.md` and its local instructions.
 
 ## Get the matching reference
 
@@ -101,8 +101,8 @@ needs it, ask the owner before approving it under `allowBuilds` in
 path/port. An optional `site` records where the apps are published; only
 `pnpm run configure-site` writes it, and it regenerates every app's
 configuration from it. The optional root field `sdkAutoUpdates` records the
-owner's boolean choice for scheduled SDK updates; app generation and template
-updates preserve it. Do not infer that choice from organization settings. Do
+owner's boolean choice for scheduled SDK updates; app generation preserves
+it. Do not infer that choice from organization settings. Do
 not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
@@ -117,10 +117,11 @@ callback, base path and PWA configuration. `new-app` creates new apps only;
 rerunning it does not reconfigure an existing app. `configure-site` changes the
 published identities of all apps. If a requested configuration
 change needs a command not shipped yet, explain that limitation to the owner;
-they can request it from the template project. Do not delete/recreate the app or
-patch generated files as a workaround. The tooling package `@sempods/apps`
-(`packages/apps/` in a template copy) is template-owned, not app customization
-space.
+they can request it from the sempods apps project. Do not delete/recreate the
+app or patch generated files as a workaround. The tooling package
+`@sempods/apps` under `node_modules` is not app customization space; after a
+tooling change to the generator, `pnpm run regenerate` rewrites the generated
+files.
 
 ## Try it and recover deliberately
 
@@ -160,8 +161,7 @@ useful evidence. Record the app purpose and vocabulary, whether it only reads
 and which contexts it needs, UI/content language,
 installed SDK version, test target (no private data), exact local
 URL/run command, changed behavior, checks/results, unresolved outcomes and the
-next useful step. Distinguish the initial template version in INIT from later
-versions. Do not mark an unrun check as complete.
+next useful step. Do not mark an unrun check as complete.
 
 Tell the user briefly what they can try, how to open it and what remains
 untested. Keep implementation details in notes unless they help the user's next
@@ -195,8 +195,8 @@ the opt-in, scheduled runs skip the update job; manual dispatch still works.
 When enabled, it opens one PR per version and dispatches Check on its branch.
 If Actions may not create PRs, report automatic SDK updates unavailable
 and use the local command plus an assistant-created PR with the owner's existing
-GitHub access. [INIT](../../../INIT.md#enable-automatic-sdk-update-prs) explains the
-repository setting. Never ask for a token.
+GitHub access. The [setup procedure](setup.md#enable-automatic-sdk-update-prs)
+explains the repository setting. Never ask for a token.
 
 ## Publish
 

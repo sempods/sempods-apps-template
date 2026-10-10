@@ -11,17 +11,7 @@ overrides:
 
 importers:
 
-  .:
-    devDependencies:
-      '@sempods/app-sdk':
-        specifier: 0.5.0
-        version: 0.5.0
-      '@sempods/apps':
-        specifier: workspace:*
-        version: link:packages/apps
-      '@sempods/client-sdk':
-        specifier: 0.5.0
-        version: 0.5.0
+  .: {}
 
   packages/apps:
     dependencies:
@@ -50,6 +40,12 @@ importers:
       unified-engine:
         specifier: 11.2.2
         version: 11.2.2(supports-color@9.4.0)
+
+  packages/create-apps:
+    dependencies:
+      '@sempods/apps':
+        specifier: workspace:*
+        version: link:../apps
 
 packages:
 

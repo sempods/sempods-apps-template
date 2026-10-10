@@ -1,6 +1,6 @@
 name: Publish
-# Publishes the tooling package @sempods/apps for a version tag, only in the
-# template repository. The maintainer creates the tag; the `npm` environment
+# Publishes @sempods/apps and its creator @sempods/create-apps for a version
+# tag, only in this repository. The maintainer creates the tag; the `npm` environment
 # can require approval. npm trusts this workflow file in that environment
 # (trusted publishing); there is no npm token.
 on:
@@ -32,7 +32,6 @@ jobs:
           # trusted publisher (OIDC), not a token in an .npmrc.
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
-      - run: node packages/apps/maintainer/check-tooling.mjs
       # Trusted publishing needs npm 11.5.1 or later; .node-version selects it.
       - run: |
           node -e '
@@ -40,8 +39,12 @@ jobs:
             if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1))))
               throw new Error(`npm ${process.argv[1]} cannot use trusted publishing`);
           ' "$(npm --version)"
-      # Packing writes the shared-file snapshot into the package (prepack).
+      # Packing writes the starter snapshot into @sempods/apps (prepack) and
+      # pins the creator's dependency to the same version.
       - run: |
-          mkdir -p "$RUNNER_TEMP/release"
-          pnpm --filter @sempods/apps pack --pack-destination "$RUNNER_TEMP/release"
-          node packages/apps/maintainer/publish.mjs "$RUNNER_TEMP"/release/*.tgz
+          release="$RUNNER_TEMP/release"
+          mkdir -p "$release"
+          pnpm --filter @sempods/apps pack --pack-destination "$release"
+          pnpm --filter @sempods/create-apps pack --pack-destination "$release"
+          node packages/apps/maintainer/publish.mjs \
+            "$release"/sempods-apps-*.tgz "$release"/sempods-create-apps-*.tgz

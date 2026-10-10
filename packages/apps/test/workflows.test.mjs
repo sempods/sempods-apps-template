@@ -11,12 +11,11 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
-const upstream = 'sempods/sempods-apps-template';
 const instance = 'owner/apps';
 
-// These tests guard the template's own workflow; they run upstream only.
+// The starter's SDK update workflow, as generated repositories run it.
 const workflow = readFileSync(
-  new URL('../../../.github/workflows/sdk-update.yml', import.meta.url),
+  new URL('../starter/.github/workflows/sdk-update.yml', import.meta.url),
   'utf8',
 );
 const gate = workflow.match(/^    if: >-\n((?:      .*\n)+)/m);
@@ -74,13 +73,8 @@ describe('SDK update workflow', () => {
     assert.equal(choice('schedule', true), 'enabled=true');
   });
 
-  it('never runs scheduled updates in the upstream template', () => {
-    assert.equal(allowed('schedule', upstream), false);
-  });
-
   it('keeps manual dispatch available with and without opt-in', () => {
-    for (const repository of [upstream, instance])
-      assert.equal(allowed('workflow_dispatch', repository), true);
+    assert.equal(allowed('workflow_dispatch', instance), true);
     for (const sdkAutoUpdates of [undefined, false, true])
       assert.equal(choice('workflow_dispatch', sdkAutoUpdates), 'enabled=true');
   });

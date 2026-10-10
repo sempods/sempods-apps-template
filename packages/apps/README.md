@@ -2,12 +2,14 @@
 
 Tooling for a sempods apps repository: several small apps that share one SDK
 version, each in `apps/<id>`, listed in `apps.json`. It ships the scripts, the
-app skeleton, the instructions and skills an assistant follows, and the shared
-files of its template release. Do not edit it in a repository that uses it;
+app skeleton, the instructions and skills an assistant follows, and the
+starter of a new repository. Do not edit it in a repository that uses it;
 your apps and `apps.json` stay yours.
 
-The repository's root `package.json` runs its commands through
-`sempods-apps <command>`:
+Create a repository with `pnpm create @sempods/apps <directory>`
+(package `@sempods/create-apps`), which runs
+`sempods-apps create <directory>` of the same version. The repository's root
+`package.json` runs the other commands through `sempods-apps <command>`:
 
 - `pnpm run new-app <id>` creates `apps/<id>` with the root's SDK version.
 - `pnpm run dev <id>` starts that app.
@@ -21,27 +23,26 @@ The repository's root `package.json` runs its commands through
 - `pnpm run check` checks all apps; `--standalone all` also installs, lints,
   builds and tests each app on its own. It reports an SDK version outside the
   range this package supports (its `peerDependencies`).
-- `pnpm run update-template` brings in a newer template release; see the
-  [update skill](skills/update-template/SKILL.md).
+- `pnpm run update-template` updates a repository that holds this tooling in
+  `packages/apps/`; a repository created from the starter cannot update this
+  way yet.
 
 Contents:
 
-- `instructions/`: the app workflow and the publish guide; `skills/` holds the
-  skill entries that route to them.
+- `instructions/`: the setup procedure, the app workflow and the publish
+  guide; `skills/` holds the skill entries that route to them.
 - `skeleton/app/`: what a new app starts from. Files named `*.generated.ts` in
   an app are written from `apps.json`; do not edit them. `check` reports any
   difference, and `regenerate` rewrites them.
-- `update-policy.json`: which files a template update replaces, merges or
-  leaves to you.
-- `shared/`: the shared files of this release (`shared/files/`) and their index
-  `shared/snapshot.json`, whose revision a repository records in
-  `.sempods-baseline.json` once it has applied them.
+- `shared/`: the starter of this release, its files stored by content hash in
+  `shared/files/` and indexed in `shared/snapshot.json`. A repository records
+  the revision it was created from, or last applied, in
+  `.sempods-baseline.json`.
+- `update-policy.json`: the role of each starter file on update.
 - `CHANGELOG.md`: what each release changed, with upgrade notes.
 
 `engines` names the Node and pnpm versions this package needs; read them with
 `npm view @sempods/apps@<version> engines` before installing a version.
 
-In the template repository, `maintainer/` holds checks of this package that
-are not published: `check-tooling.mjs` (script tests, Markdown links),
-`self-test.mjs` and `pack-test.mjs` (the packed package in a fresh
-repository).
+In its source repository, `starter/` holds the starter files and
+`maintainer/` the checks and release scripts; neither is published.

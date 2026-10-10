@@ -1,48 +1,47 @@
-# Template changelog
+# Changelog
 
 Each release lists what changed and **upgrade notes** for the assistant that
-applies it with the [update-template skill](skills/update-template/SKILL.md).
-`update-template` replaces the tooling package, merges shared files and
-updates template entries in the manifests. The notes cover what it cannot decide
-alone: owner files, configuration choices and the SDK migration.
+applies it. The notes cover what an update cannot decide alone: owner files,
+configuration choices and the SDK migration.
 
 ## 0.7.0
 
 ### Changes
 
-- The template tooling is the package `@sempods/apps` in `packages/apps/`
-  instead of `.sempods/`. The root `package.json` depends on it and runs its
-  commands through `sempods-apps <command>`; `pnpm run new-app`, `check` and
-  the other scripts keep their names. The template version is the package's
-  `version`; `.sempods/VERSION` is gone.
-- `pnpm run regenerate` rewrites every app's generated configuration from
-  `apps.json`. The generated files name `@sempods/apps` in their header.
+- New repositories are created from a starter instead of copying the template
+  repository: `pnpm create @sempods/apps <directory>` (package
+  `@sempods/create-apps`) writes the starter of the published `@sempods/apps`
+  version it depends on. The repository holds only owner files: AGENTS.md,
+  INIT.md, README, user guide, skill adapters, workflows, workspace settings,
+  `apps.json` and a root `package.json` that depends on `@sempods/apps`.
+- `.sempods-baseline.json` records the package version and the content
+  revision of the starter a repository was created from.
+- INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
+  record; the setup procedure ships in the package
+  (`instructions/setup.md`). Setup no longer adapts inherited files:
+  there are no contributor documents, CODEOWNERS or DCO workflow to remove.
+- The tooling commands come from the installed package: `sempods-apps
+  <command>` behind the unchanged `pnpm run` scripts. `pnpm run regenerate`
+  rewrites every app's generated configuration; the generated files name
+  `@sempods/apps` in their header.
 - `check` reports an SDK version outside the range the tooling supports, its
-  `peerDependencies`.
-- TypeScript 6 for the import check and the Markdown link check tooling are
-  dependencies of the package, not of the root `package.json`.
-- The package carries a snapshot of the shared files with a content revision;
-  `.sempods-baseline.json` is the format a repository will use to record the
-  snapshot it applied.
-- The SDK update checkpoint is `.sdk-update-pending` in the repository root.
-- A tag publishes the package to npm with provenance
-  (`.github/workflows/publish.yml`, template repository only). Owners are not
-  pointed to the npm package yet.
+  `peerDependencies`. It no longer checks Markdown links.
+- The SDK update workflow installs the dependencies before it resolves the
+  release. The checkpoint of an unfinished SDK update is
+  `.sdk-update-pending` in the repository root.
+- The template version is the version of `@sempods/apps`; `.sempods/` is gone.
 
 ### Upgrade notes
 
-1. `update-template` cannot move a copy from 0.6.x to 0.7.0: the tooling
-   changed its place. Do it by hand in a clean working tree, and finish an
-   unfinished SDK update (`.sempods/.sdk-update-pending`) first:
-   1. Delete `.sempods/` and copy `packages/apps/` from the release.
-   2. Take `scripts` and the `@sempods/apps` dependency from the release's root
-      `package.json`; remove the root's `typescript`, `remark`,
-      `remark-validate-links`, `unified-engine` and `markdown-extensions`
-      unless the owner uses them. Add `packages/*` to `pnpm-workspace.yaml`.
-   3. Merge the other shared files by hand, keeping the owner section of
-      AGENTS.md and the setup record of INIT.md; in the setup record the
-      starting template version now points to `packages/apps/package.json`.
-   4. Run `pnpm install`, `pnpm run regenerate` and `pnpm run check`.
+1. A repository from 0.6.x does not update to 0.7.0 with `update-template`.
+   Create a new repository with `pnpm create @sempods/apps <directory>` and
+   move the owner's content into it: `apps/`, `apps.json`, the owner section
+   of AGENTS.md and the setup record of INIT.md (its starting version is now
+   the `Created from` field). Finish an unfinished SDK update first
+   (`.sempods/.sdk-update-pending`). Then run `pnpm install`,
+   `pnpm run regenerate` and `pnpm run check`.
+2. Updating a repository created from the starter to a later starter is not
+   supported yet.
 
 ## 0.6.1
 

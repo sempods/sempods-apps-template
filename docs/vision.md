@@ -9,7 +9,7 @@ person describes what they need, the assistant builds a small slice, and they
 try it and decide what comes next. Users do not need to identify as developers.
 
 **Your own apps repository.** One person or team keeps all of their small
-sempods apps in one repository, created from this template. The one-time work
+sempods apps in one repository, created from the starter. The one-time work
 happens once: instructions for the coding assistant, tooling, checks, hosting
 and one domain. After that, a new app is a folder and a conversation: describe
 the idea, let the assistant build it with the SDK, try it on your Pod.
@@ -38,7 +38,7 @@ other's JavaScript. Deployed under one site, they share a browser security
 boundary
 ([deployment guide](https://github.com/sempods/sempods-typescript/blob/main/docs/deployment.md)).
 Apps of different people never share a site: at an event, every participant
-creates their own repository from this template, not a folder in a shared one.
+creates their own repository, not a folder in a shared one.
 
 **Two readers, two entrances.** The README answers "What can I make?", "What do
 I need?" and "What do I tell my assistant?" in a few short paragraphs with a
@@ -66,8 +66,8 @@ offline shell is not offline editing; sign-in, update behavior and
 installed-device support keep the SDK's documented constraints and evidence
 requirements.
 
-**Success** means that someone with a Pod and a coding assistant goes from "Use
-this template" to a first working app on their Pod in one session, and adds the
+**Success** means that someone with a Pod and a coding assistant goes from
+creating their repository to a first working app on their Pod in one session, and adds the
 next app with one prompt. The user can follow the short introduction, see what
 was tested and retain control over real data and publication. The reference is
 a small app built from one short prompt, with time and friction recorded.

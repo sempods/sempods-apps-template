@@ -1,0 +1,48 @@
+# Version updates. Security updates are enabled in the repository settings.
+version: 2
+
+updates:
+  # The pinned `uses:` SHAs in the workflows are supply-chain dependencies too.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # Reviewed releases of shared sempods actions need no waiting period;
+    # third-party actions keep Dependabot's default three-day cooldown.
+    cooldown:
+      exclude:
+        - 'sempods/.github/*'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Dependabot's npm ecosystem updates pnpm-lock.yaml too.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    versioning-strategy: 'increase'
+    # Regular version updates wait three days; Dependabot also attempts an age
+    # gate for newly resolved transitive dependencies. Security updates skip
+    # it.
+    cooldown:
+      default-days: 3
+    ignore:
+      # sdk-update moves the SDK and the tooling's updates are applied with
+      # their shared files, so neither comes from here.
+      - dependency-name: '@sempods/*'
+      # Match the Node 24 runtime baseline; review runtime and typings together.
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
+    groups:
+      npm:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'

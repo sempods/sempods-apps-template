@@ -9,8 +9,10 @@ description:
 # Update the template
 
 Use this when the owner asks to update the template, or to pick up a template
-release. Read the repository's [AGENTS.md](../../../../AGENTS.md) and the setup
-record in [INIT.md](../../../../INIT.md) first. The script follows
+release. It applies to a repository that holds the tooling in `packages/apps/`,
+a copy of the template; a repository created from the starter cannot update
+this way yet. Read the repository's `AGENTS.md` and the setup record in its
+`INIT.md` first. The script follows
 [the update policy](../../update-policy.json); this entry adds the review around
 it.
 

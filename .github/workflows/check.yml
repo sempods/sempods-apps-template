@@ -1,8 +1,7 @@
 name: Check
-# Checks the owner's apps as they are. In the template repository it also
-# checks the tooling itself: script tests, Markdown links, a self-test in an
-# isolated copy that never touches apps or apps.json, and the packed package
-# installed into a fresh repository.
+# Checks the tooling package: script tests and Markdown links, then the
+# self-test: the packed packages create a starter repository, which creates,
+# checks, configures and builds an app.
 on:
   pull_request:
   push:
@@ -27,10 +26,5 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run check --standalone all
-      - if: github.repository == 'sempods/sempods-apps-template'
-        run: node packages/apps/maintainer/check-tooling.mjs
-      - if: github.repository == 'sempods/sempods-apps-template'
-        run: node packages/apps/maintainer/self-test.mjs
-      - if: github.repository == 'sempods/sempods-apps-template'
-        run: node packages/apps/maintainer/pack-test.mjs
+      - run: pnpm run check
+      - run: pnpm run self-test
