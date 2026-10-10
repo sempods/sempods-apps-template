@@ -18,6 +18,13 @@ import { readSnapshot, writeBaseline } from './lib/shared.mjs';
 
 const NAME = /^[a-z0-9][a-z0-9._-]*$/;
 
+/** A path as one shell word, quoted only when it needs to be. */
+export function shellWord(path) {
+  return /^[\w@%+=:,./-]+$/.test(path)
+    ? path
+    : `'${path.replaceAll("'", "'\\''")}'`;
+}
+
 /**
  * Writes the starter of `snapshot` into `target`, which must be missing or
  * empty, with the tooling `version` in its manifest.
@@ -59,7 +66,7 @@ export function main(args = scriptArgs()) {
   console.log(`Created ${dir}.
 
 Next:
-  cd ${args[0]}
+  cd ${shellWord(args[0])}
   git init -b main
   pnpm install
 
