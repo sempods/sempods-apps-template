@@ -29,6 +29,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { formatJson, readJson } from './lib/json.mjs';
+import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { matches } from './lib/shared.mjs';
 import { compareVersions, EXACT_VERSION, PENDING_UPDATE } from './lib/sdk.mjs';
@@ -714,6 +715,13 @@ async function main() {
     if (report.conflicts?.length || report.review?.length) process.exitCode = 3;
     return;
   }
+  // The repository the command runs in. Only a template copy, which holds
+  // the tooling in packages/apps, can take a release this way.
+  const instance = repositoryRoot();
+  if (!existsSync(join(instance, TOOLING_MANIFEST)))
+    throw new Error(
+      `update-template updates a repository that contains the template tooling in ${TOOLING}. This repository uses the installed @sempods/apps package; updating such a repository is not supported yet (https://github.com/sempods/sempods-apps-template/issues/61). Nothing was changed.`,
+    );
   // Fetch the release, then let its own script apply it here.
   const work = mkdtempSync(join(tmpdir(), 'sempods-template-'));
   try {
@@ -729,7 +737,7 @@ async function main() {
         `No template release ${target ?? '(none tagged)'}; available: ${tags.join(', ') || 'none'}`,
       );
     gitOk(work, ['checkout', '--quiet', `v${target}`]);
-    const flags = ['--instance', here];
+    const flags = ['--instance', instance];
     if (values['allow-dirty']) flags.push('--allow-dirty');
     if (values['no-install']) flags.push('--no-install');
     const run = spawnSync(

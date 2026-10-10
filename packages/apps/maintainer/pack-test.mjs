@@ -2,6 +2,8 @@
 // Acceptance test of the packed tooling package: pack it, check what the
 // tarball contains, install it into a fresh repository without any template
 // files, then create an app, check, regenerate, configure a site and build it.
+// The shared-file snapshot must be complete in the tarball and in the
+// installation, and update-template must refuse the installed package.
 // Source-workspace tests alone can miss a file the package forgets to ship or
 // a dependency only the template root provides. Needs the npm registry.
 // Usage: node packages/apps/maintainer/pack-test.mjs
@@ -20,6 +22,7 @@ import { join } from 'node:path';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
+import { baselineSnapshot, readSnapshot } from '../scripts/lib/shared.mjs';
 
 const root = join(TOOLING, '..', '..');
 // Files the CLI needs at run time, and sources that must stay out.
@@ -33,7 +36,6 @@ const REQUIRED = [
   'instructions/app-workflow.md',
   'skills/app-workflow/SKILL.md',
   'shared/snapshot.json',
-  'shared/files/AGENTS.md',
   'update-policy.json',
   'LICENSE',
 ];
@@ -49,6 +51,22 @@ function run(command, args, cwd, capture = false) {
   if (result.status !== 0)
     throw new Error(`${command} ${args.join(' ')} failed in ${cwd}`);
   return result.stdout;
+}
+
+/** The snapshot an unpacked package ships, resolved as a baseline would be. */
+function checkSnapshot(dir, label) {
+  const { version } = readJson(join(dir, 'package.json'));
+  const { revision, files } = readSnapshot(join(dir, 'shared'));
+  baselineSnapshot(
+    { version, revision },
+    {
+      installed: dir,
+      download: () => {
+        throw new Error('the installed version needs no download');
+      },
+    },
+  );
+  console.log(`✓ ${label}: ${Object.keys(files).length} shared files`);
 }
 
 const work = mkdtempSync(join(tmpdir(), 'sempods-pack-test-'));
@@ -71,6 +89,10 @@ try {
       `tarball: missing ${missing.join(', ') || 'nothing'}; must not contain ${leaked.join(', ') || 'nothing'}`,
     );
   console.log(`✓ tarball contents (${listed.length} files)`);
+  const unpacked = join(work, 'unpacked');
+  mkdirSync(unpacked);
+  run('tar', ['-xzf', tarball, '-C', unpacked], work);
+  checkSnapshot(join(unpacked, 'package'), 'tarball snapshot');
 
   // A repository with the owner's files only: no tooling sources, no
   // template documents.
@@ -98,6 +120,10 @@ try {
     '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
   );
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  checkSnapshot(
+    join(repo, 'node_modules', '@sempods', 'apps'),
+    'installed snapshot',
+  );
   run('pnpm', ['run', 'new-app', 'demo', '--title', 'Demo'], repo);
   run('pnpm', ['run', 'check', '--standalone', 'demo'], repo);
   run('pnpm', ['run', 'regenerate'], repo);
@@ -121,6 +147,17 @@ try {
     if (existsSync(join(repo, path)))
       throw new Error(`the repository must not need ${path}`);
   console.log('✓ installed package creates, checks and builds an app');
+  const update = spawnSync('pnpm', ['run', 'update-template'], {
+    cwd: repo,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  });
+  if (
+    update.status === 0 ||
+    !/not supported yet/.test(`${update.stdout}${update.stderr}`)
+  )
+    throw new Error('update-template must refuse the installed package');
+  console.log('✓ update-template refuses the installed package');
   console.log('\npack test passed.');
 } catch (error) {
   console.error(`pack-test: ${error.message}`);

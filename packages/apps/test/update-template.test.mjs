@@ -399,6 +399,27 @@ describe('update-template', () => {
     assert.equal(git(instance, 'diff').trim(), '');
   });
 
+  it('refuses a repository that uses the installed package, before fetching', () => {
+    const repo = join(work, 'installed');
+    file(repo, 'apps.json', json({ schemaVersion: 1, apps: [] }));
+    file(repo, 'package.json', json({ name: 'owner' }));
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(templateRoot, 'packages/apps/scripts/update-template.mjs'),
+        '--source',
+        join(work, 'no-such-source'),
+      ],
+      { cwd: repo, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stderr,
+      /installed @sempods\/apps package; updating such a repository is not supported yet/,
+    );
+    assert.doesNotMatch(result.stderr, /git clone/);
+  });
+
   it('fetches a tagged release and lets its script run, then has nothing to do', async () => {
     const { release, instance } = setup();
     await applyRelease(release, instance, { install: false });

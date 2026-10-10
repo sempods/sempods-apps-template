@@ -3,6 +3,7 @@ import {
   cpSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -20,7 +21,10 @@ import {
   writeSnapshot,
 } from '../scripts/lib/shared.mjs';
 
-const policy = { shared: ['AGENTS.md', '.github/workflows/check.yml'] };
+// .gitignore and .npmrc are names npm leaves out of a package.
+const policy = {
+  shared: ['AGENTS.md', '.gitignore', '.npmrc', '.github/workflows/check.yml'],
+};
 
 describe('shared-file snapshots and baselines', () => {
   let work;
@@ -39,6 +43,8 @@ describe('shared-file snapshots and baselines', () => {
     work = mkdtempSync(join(tmpdir(), 'sempods-shared-'));
     file(template(), 'AGENTS.md', '# Agents\n');
     file(template(), '.github/workflows/check.yml', 'name: Check\n');
+    file(template(), '.gitignore', 'node_modules/\n');
+    file(template(), '.npmrc', 'engine-strict=true\n');
     file(template(), 'apps/demo/AGENTS.md', 'not shared\n');
     file(template(), 'node_modules/x/AGENTS.md', 'not shared\n');
   });
@@ -47,6 +53,8 @@ describe('shared-file snapshots and baselines', () => {
   it('snapshots exactly the shared files under a content revision', () => {
     assert.deepEqual(sharedFiles(template(), policy), [
       '.github/workflows/check.yml',
+      '.gitignore',
+      '.npmrc',
       'AGENTS.md',
     ]);
     const first = publish('1.0.0');
@@ -58,17 +66,31 @@ describe('shared-file snapshots and baselines', () => {
     const read = readSnapshot(join(changed.dir, 'shared'));
     assert.equal(read.revision, changed.revision);
     assert.equal(
-      readFileSync(join(read.dir, 'AGENTS.md'), 'utf8'),
+      readFileSync(read.path('AGENTS.md'), 'utf8'),
       '# Agents, revised\n',
     );
+    assert.equal(
+      readFileSync(read.path('.gitignore'), 'utf8'),
+      'node_modules/\n',
+    );
+    // Stored under content names, so packing keeps every file.
+    for (const name of readdirSync(join(changed.dir, 'shared', 'files')))
+      assert.match(name, /^[0-9a-f]{64}$/);
+    assert.throws(() => read.path('README.md'), /not a shared file/);
   });
 
   it('rejects a snapshot whose files do not match its index', () => {
-    const { dir } = publish('1.0.0');
-    writeFileSync(join(dir, 'shared', 'files', 'AGENTS.md'), 'edited\n');
+    const { dir, files } = publish('1.0.0');
+    const stored = join(dir, 'shared', 'files', files['AGENTS.md']);
+    writeFileSync(stored, 'edited\n');
     assert.throws(
       () => readSnapshot(join(dir, 'shared')),
-      /do not match their index/,
+      /AGENTS\.md is missing or does not match its index/,
+    );
+    rmSync(stored);
+    assert.throws(
+      () => readSnapshot(join(dir, 'shared')),
+      /AGENTS\.md is missing/,
     );
   });
 
@@ -110,7 +132,7 @@ describe('shared-file snapshots and baselines', () => {
     });
     assert.deepEqual(downloads, ['1.0.0']);
     assert.equal(
-      readFileSync(join(snapshot.dir, 'AGENTS.md'), 'utf8'),
+      readFileSync(snapshot.path('AGENTS.md'), 'utf8'),
       '# Agents\n',
     );
     // The installed version itself needs no download.
