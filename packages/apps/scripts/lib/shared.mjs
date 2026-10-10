@@ -1,7 +1,7 @@
-// Snapshots of the shared files and the baseline that records which snapshot
-// a repository last applied.
+// Snapshots of the starter and the baseline that records which snapshot a
+// repository last applied.
 //
-// A published package carries the shared files of its template commit and
+// A published package carries the starter files (starter/ in its source) and
 // their index in shared/snapshot.json:
 //   { "format": 1, "revision": "<sha256>", "files": { "<path>": "<sha256>" } }
 // Each file is stored as shared/files/<sha256> of its content: npm leaves some
@@ -60,11 +60,9 @@ function walk(dir, base = dir) {
   });
 }
 
-/** The shared files of a template checkout, as the update policy names them. */
-export function sharedFiles(root, policy) {
-  return walk(root)
-    .filter((file) => policy.shared.some((pattern) => matches(pattern, file)))
-    .sort();
+/** Every file of a starter directory, sorted. */
+export function starterFiles(dir) {
+  return walk(dir).sort();
 }
 
 const revisionOf = (index) => sha256(JSON.stringify(index));
@@ -79,9 +77,9 @@ export function snapshotOf(root, files) {
   return { format: FORMAT, revision: revisionOf(index), files: index };
 }
 
-/** Writes shared/files/<sha256> and shared/snapshot.json for a package. */
-export function writeSnapshot(root, policy, outDir) {
-  const files = sharedFiles(root, policy);
+/** Writes shared/files/<sha256> and shared/snapshot.json for a starter. */
+export function writeSnapshot(root, outDir) {
+  const files = starterFiles(root);
   const snapshot = snapshotOf(root, files);
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(join(outDir, 'files'), { recursive: true });

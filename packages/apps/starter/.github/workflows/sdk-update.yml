@@ -20,8 +20,7 @@ jobs:
     # starting the update job. Organization variables cannot enable it.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'schedule' &&
-       github.repository != 'sempods/sempods-apps-template')
+      github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -70,12 +69,14 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
+      # The tooling that resolves the release is an installed package.
+      - run: pnpm install --frozen-lockfile
       - name: Resolve SDK release and check for an existing PR
         id: target
         env:
           REQUESTED_VERSION: ${{ inputs.version || 'latest' }}
         run: |
-          node packages/apps/scripts/sdk-update.mjs "$REQUESTED_VERSION" --resolve-only
+          pnpm exec sempods-apps sdk-update "$REQUESTED_VERSION" --resolve-only
       - name: Decide whether to update
         id: needed
         env:

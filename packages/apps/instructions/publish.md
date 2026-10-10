@@ -79,7 +79,7 @@ Use `--host netlify`: `build-site` writes `_redirects` with one rule per app,
 `/<id>/callback /<id>/index.html 200!` (forced, so no file at that path shadows
 it), and a top-level `404.html` that Netlify
 serves for unknown paths. Write this `netlify.toml` in the
-repository root when the owner asks for Netlify (the template ships none):
+repository root when the owner asks for Netlify (the starter ships none):
 
 ```toml
 [build]
@@ -98,7 +98,7 @@ repository root when the owner asks for Netlify (the template ships none):
 Connect the repository to a Netlify site. For a preview, enable branch deploys
 for the `preview` branch: its address is `https://preview--<site>.netlify.app`.
 
-### Cloudflare Pages (not tested by the template)
+### Cloudflare Pages (not tested by sempods apps)
 
 Use `--host cloudflare-pages`: `build-site` writes `<id>/callback.html`, which
 Pages serves at `/<id>/callback`, and a top-level `404.html`. Without it Pages
@@ -115,7 +115,7 @@ addresses (`https://<hash>.<project>.pages.dev`) have no working sign-in.
 
 The `static` layout (`callback.html` per app, top-level `404.html`) suits hosts
 that serve `/<path>` from `<path>.html`. Cloudflare Workers static assets do
-this by default, but the template has no recipe yet for their asset and
+this by default, but the tooling has no recipe yet for their asset and
 deploy configuration. For any other host, check the requirements above before
 the first sign-in.
 

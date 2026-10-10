@@ -16,19 +16,15 @@ import {
   baselineSnapshot,
   readBaseline,
   readSnapshot,
-  sharedFiles,
+  starterFiles,
   writeBaseline,
   writeSnapshot,
 } from '../scripts/lib/shared.mjs';
 
-// .gitignore and .npmrc are names npm leaves out of a package.
-const policy = {
-  shared: ['AGENTS.md', '.gitignore', '.npmrc', '.github/workflows/check.yml'],
-};
-
 describe('shared-file snapshots and baselines', () => {
   let work;
-  const template = () => join(work, 'template');
+  // A starter; .gitignore and .npmrc are names npm leaves out of a package.
+  const template = () => join(work, 'starter');
   const file = (root, path, content) => {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), content);
@@ -37,7 +33,7 @@ describe('shared-file snapshots and baselines', () => {
   const publish = (version) => {
     const dir = join(work, `package-${version}`);
     file(dir, 'package.json', JSON.stringify({ version }));
-    return { dir, ...writeSnapshot(template(), policy, join(dir, 'shared')) };
+    return { dir, ...writeSnapshot(template(), join(dir, 'shared')) };
   };
   beforeEach(() => {
     work = mkdtempSync(join(tmpdir(), 'sempods-shared-'));
@@ -45,13 +41,12 @@ describe('shared-file snapshots and baselines', () => {
     file(template(), '.github/workflows/check.yml', 'name: Check\n');
     file(template(), '.gitignore', 'node_modules/\n');
     file(template(), '.npmrc', 'engine-strict=true\n');
-    file(template(), 'apps/demo/AGENTS.md', 'not shared\n');
-    file(template(), 'node_modules/x/AGENTS.md', 'not shared\n');
+    file(template(), 'node_modules/x/AGENTS.md', 'not a starter file\n');
   });
   afterEach(() => rmSync(work, { recursive: true, force: true }));
 
-  it('snapshots exactly the shared files under a content revision', () => {
-    assert.deepEqual(sharedFiles(template(), policy), [
+  it('snapshots the starter files under a content revision', () => {
+    assert.deepEqual(starterFiles(template()), [
       '.github/workflows/check.yml',
       '.gitignore',
       '.npmrc',

@@ -1,0 +1,20 @@
+node_modules/
+dist/
+site-dist/
+.netlify/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+dev-dist/
+# Personal assistant instructions stay local.
+CLAUDE.local.md
+AGENTS.override.md
+
+# Editor settings stay local.
+.idea/
+.vscode/
+
+# Local SDK update checkpoint; removed only after install and checks succeed.
+/.sdk-update-pending

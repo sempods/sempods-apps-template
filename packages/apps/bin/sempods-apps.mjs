@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const COMMANDS = {
+  create: 'create a new apps repository from the starter',
   'new-app': 'create apps/<id> and add it to apps.json',
   dev: 'start the development server of one app',
   regenerate: "rewrite every app's generated configuration from apps.json",

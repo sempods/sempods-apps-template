@@ -1,5 +1,4 @@
 # Repository instructions
 
-Read [AGENTS.md](AGENTS.md). It routes to setup and the canonical app workflow.
-The [app-workflow skill](.claude/skills/app-workflow/SKILL.md) uses the same
-instructions.
+Read [AGENTS.md](AGENTS.md). It routes to the maintainer guide and the
+contribution rules of this repository.

@@ -11,10 +11,13 @@ export const templateRoot = resolve(
   '..',
 );
 
-/** A temporary repository with the template's root manifest and no apps. */
+/** A temporary repository with the starter's root manifest and no apps. */
 export function tempRepository(prefix) {
   const root = mkdtempSync(join(tmpdir(), prefix));
-  cpSync(join(templateRoot, 'package.json'), join(root, 'package.json'));
+  cpSync(
+    join(templateRoot, 'packages', 'apps', 'starter', 'package.json'),
+    join(root, 'package.json'),
+  );
   writeFileSync(
     join(root, 'apps.json'),
     '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',

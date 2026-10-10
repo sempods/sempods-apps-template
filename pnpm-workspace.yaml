@@ -1,5 +1,4 @@
 packages:
-  - 'apps/*'
   - 'packages/*'
 
 # Added dependencies get exact versions; installs require the Node version

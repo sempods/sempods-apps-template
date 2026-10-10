@@ -1,0 +1,36 @@
+{
+  "name": "@sempods/create-apps",
+  "version": "0.7.0-dev",
+  "description": "Create a sempods apps repository: pnpm create @sempods/apps <directory>.",
+  "keywords": [
+    "sempods",
+    "create",
+    "starter"
+  ],
+  "license": "MIT-0",
+  "author": "Danilo Stein",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sempods/sempods-apps-template.git",
+    "directory": "packages/create-apps"
+  },
+  "homepage": "https://github.com/sempods/sempods-apps-template/tree/main/packages/create-apps#readme",
+  "bugs": {
+    "url": "https://github.com/sempods/sempods-apps-template/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "bin": {
+    "create-apps": "index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@sempods/apps": "workspace:*"
+  }
+}

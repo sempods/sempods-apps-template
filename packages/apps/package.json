@@ -28,6 +28,10 @@
   "bin": {
     "sempods-apps": "bin/sempods-apps.mjs"
   },
+  "exports": {
+    "./create": "./scripts/create.mjs",
+    "./package.json": "./package.json"
+  },
   "files": [
     "bin/",
     "scripts/",

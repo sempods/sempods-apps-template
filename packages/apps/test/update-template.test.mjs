@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { staleGenerated } from '../scripts/lib/generate.mjs';
 import {
   applyRelease,
+  CHECKPOINT,
   decide,
   formatReport,
   upgradeNotes,
@@ -84,7 +85,9 @@ function templateFiles(root, v) {
     { recursive: true },
   );
   cpSync(
-    join(templateRoot, 'packages', 'apps', 'update-policy.json'),
+    // The policy of a template copy; the starter's own policy describes
+    // generated repositories, which this command does not update.
+    new URL('fixtures/copy-policy.json', import.meta.url),
     join(root, 'packages', 'apps', 'update-policy.json'),
   );
   file(
@@ -722,6 +725,26 @@ describe('update-template', () => {
       }),
       [],
     );
+  });
+
+  it('refuses a starter release before changing anything', async () => {
+    const { release, instance } = setup();
+    // The policy the package ships describes the starter, not a copy.
+    cpSync(
+      join(templateRoot, 'packages', 'apps', 'update-policy.json'),
+      join(release, 'packages', 'apps', 'update-policy.json'),
+    );
+    commit(release, 'starter policy');
+    git(release, 'tag', '-f', 'v0.2.0');
+    const status = () => git(instance, 'status', '--porcelain');
+    const before = status();
+    await assert.rejects(
+      applyRelease(release, instance, { install: false }),
+      /creates repositories from a starter[\s\S]*Nothing was changed/,
+    );
+    assert.equal(existsSync(join(instance, CHECKPOINT)), false);
+    assert.equal(status(), before);
+    assert.equal(toolingVersion(instance), '0.1.0');
   });
 
   it('refuses a release older than the repository', async () => {

@@ -1,0 +1,6 @@
+name: sempods apps
+# Explicit roots: the apps and the workflows. Keep them in the scan as the
+# repository grows.
+paths:
+  - apps
+  - .github
