@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { create, packagedStarter, shellWord } from '../scripts/create.mjs';
+import { create, packagedStarter } from '../scripts/create.mjs';
 import { readApps } from '../scripts/lib/apps.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import {
@@ -82,14 +82,6 @@ describe('create', () => {
       /already exists and is not empty/,
     );
     assert.equal(readFileSync(join(dir, 'notes.txt'), 'utf8'), 'mine\n');
-  });
-
-  it('prints the directory as one shell word', () => {
-    assert.equal(shellWord('my-apps'), 'my-apps');
-    assert.equal(shellWord('../apps/My.Apps'), '../apps/My.Apps');
-    assert.equal(shellWord('My Apps'), "'My Apps'");
-    assert.equal(shellWord("Dan's apps"), "'Dan'\\''s apps'");
-    assert.equal(shellWord('a;b$(c)'), "'a;b$(c)'");
   });
 
   it('works only from a packed package', () => {

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Creates a new apps repository from the starter this package ships, and
-// records the starter snapshot it applied as the repository's baseline.
+// Creates a new apps repository from the starter this package ships, records
+// the starter snapshot it applied as the repository's baseline and initializes
+// Git on main, the branch the starter's workflows check.
 // Usage: sempods-apps create <directory>   (pnpm create @sempods/apps <dir>)
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -17,13 +19,6 @@ import { scriptArgs } from './lib/pnpm.mjs';
 import { readSnapshot, writeBaseline } from './lib/shared.mjs';
 
 const NAME = /^[a-z0-9][a-z0-9._-]*$/;
-
-/** A path as one shell word, quoted only when it needs to be. */
-export function shellWord(path) {
-  return /^[\w@%+=:,./-]+$/.test(path)
-    ? path
-    : `'${path.replaceAll("'", "'\\''")}'`;
-}
 
 /**
  * Writes the starter of `snapshot` into `target`, which must be missing or
@@ -63,14 +58,19 @@ export function main(args = scriptArgs()) {
   if (args.length !== 1 || args[0].startsWith('-'))
     throw new Error('Usage: pnpm create @sempods/apps <directory>');
   const dir = create(args[0], packagedStarter());
-  console.log(`Created ${dir}.
+  const git = spawnSync('git', ['init', '--quiet', '-b', 'main'], {
+    cwd: dir,
+    stdio: 'ignore',
+  });
+  console.log(`Created ${dir}.`);
+  if (git.status !== 0)
+    console.log(
+      'Git is missing or failed: initialize the repository on the main branch before the first commit.',
+    );
+  // No shell command to copy: open the folder; INIT.md has the setup steps.
+  console.log(`
+Open this folder in your coding assistant and paste:
 
-Next:
-  cd ${shellWord(args[0])}
-  git init -b main
-  pnpm install
-
-Then open the folder in your coding assistant and paste:
   Read AGENTS.md and INIT.md. Help me build my first app.`);
 }
 

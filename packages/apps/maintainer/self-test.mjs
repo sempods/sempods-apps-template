@@ -250,6 +250,9 @@ try {
   const baseline = readBaseline(repo);
   if (baseline?.version !== version || baseline.revision !== revision)
     throw new Error('the new repository records another baseline');
+  const branch = run('git', ['symbolic-ref', '--short', 'HEAD'], repo, true);
+  if (branch.trim() !== 'main')
+    throw new Error(`the new repository starts on ${branch.trim()}, not main`);
   for (const path of ['LICENSE', 'CONTRIBUTING.md', 'packages', '.sempods'])
     if (existsSync(join(repo, path)))
       throw new Error(`the new repository must not contain ${path}`);
