@@ -9,9 +9,9 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
 import { MIGRATION_FILE } from './migrate.mjs';
-import { readJson } from './lib/json.mjs';
+import { ifPresent, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
-import { pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { EXACT_VERSION } from './lib/sdk.mjs';
 import { PACKAGE } from './lib/shared.mjs';
 
@@ -56,6 +56,43 @@ export function prerequisiteOrder(target, problems) {
   ].join('\n');
 }
 
+/** The @sempods/apps version installed in node_modules, if any. */
+export function installedVersion(root) {
+  return ifPresent(
+    () => readJson(join(root, 'node_modules', PACKAGE, 'package.json')).version,
+  );
+}
+
+/**
+ * Makes `version` the declared and the installed tooling: a version pull
+ * request may name it in package.json before node_modules has it.
+ */
+export function installTarget(
+  root,
+  version,
+  {
+    run = (args) => pnpm(args, { cwd: root }).status === 0,
+    installed = () => installedVersion(root),
+  } = {},
+) {
+  const declared = readJson(join(root, 'package.json')).devDependencies?.[
+    PACKAGE
+  ];
+  const ok =
+    declared !== version
+      ? run(['add', '--save-dev', '--save-exact', `${PACKAGE}@${version}`])
+      : installed() === version || run(INSTALL);
+  if (!ok)
+    throw new Error(
+      `installing ${PACKAGE} ${version} failed; fix the cause and run the update again`,
+    );
+  const now = installed();
+  if (now !== version)
+    throw new Error(
+      `${PACKAGE} ${now ?? '(none)'} is installed instead of ${version}; run pnpm install and the update again`,
+    );
+}
+
 export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
   if (args.length > 1)
     throw new Error('Usage: pnpm run update [<version>|latest]');
@@ -82,19 +119,7 @@ export function main(args = scriptArgs(), { lookup = lookupTarget } = {}) {
     process.exitCode = 2;
     return;
   }
-  const current = readJson(join(root, 'package.json')).devDependencies?.[
-    PACKAGE
-  ];
-  if (current !== target.version) {
-    const add = pnpm(
-      ['add', '--save-dev', '--save-exact', `${PACKAGE}@${target.version}`],
-      { cwd: root },
-    );
-    if (add.status !== 0)
-      throw new Error(
-        `installing ${PACKAGE} ${target.version} failed; fix the cause and run the update again`,
-      );
-  }
+  installTarget(root, target.version);
   // The installed version migrates with its own code.
   const run = spawnSync('pnpm', ['exec', 'sempods-apps', 'migrate'], {
     cwd: root,

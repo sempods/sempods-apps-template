@@ -22,7 +22,11 @@ import {
 } from '../scripts/lib/shared.mjs';
 import { MIGRATION_FILE, migrate } from '../scripts/migrate.mjs';
 import { createApp } from '../scripts/new-app.mjs';
-import { preflight, prerequisiteOrder } from '../scripts/update.mjs';
+import {
+  installTarget,
+  preflight,
+  prerequisiteOrder,
+} from '../scripts/update.mjs';
 
 const OWNER = [
   '<!-- BEGIN OWNER INSTRUCTIONS -->',
@@ -217,6 +221,26 @@ describe('migrate', () => {
     assert.equal(between(read(repo, 'INIT.md'), RECORD), record);
   });
 
+  it('does not resume an unfinished migration toward another starter', () => {
+    publish('2.0.0', v2);
+    publish('3.0.0', v3);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
+    const before = read(repo, 'docs/start.md');
+    install(repo, '3.0.0');
+    assert.throws(
+      () => migrateTo(repo, '3.0.0'),
+      /unfinished migration from @sempods\/apps 1\.0\.0 to 2\.0\.0[\s\S]*Nothing was changed/,
+    );
+    assert.equal(read(repo, 'docs/start.md'), before);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+  });
+
   it('removes unchanged shared files the starter drops and keeps changed ones', () => {
     publish('2.0.0', (starter) => {
       rmSync(join(starter, '.agents'), { recursive: true });
@@ -299,6 +323,62 @@ describe('migrate', () => {
     const repo = createRepo('1.0.0');
     rmSync(join(repo, '.sempods-baseline.json'));
     assert.throws(() => migrateTo(repo, '1.0.0'), /baseline\.json is missing/);
+  });
+});
+
+describe('update install', () => {
+  let root;
+  let installed;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'sempods-update-'));
+    writeJson(join(root, 'package.json'), {
+      devDependencies: { '@sempods/apps': '2.0.0' },
+    });
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  const runs = [];
+  const run = (args) => {
+    runs.push(args.join(' '));
+    installed = '2.0.0';
+    return true;
+  };
+  const options = () => ({ run, installed: () => installed });
+
+  it('installs a version the manifest names but node_modules lacks', () => {
+    runs.length = 0;
+    installed = '1.0.0';
+    installTarget(root, '2.0.0', options());
+    assert.deepEqual(runs, ['install --no-frozen-lockfile']);
+  });
+  it('adds a version the manifest does not name yet', () => {
+    runs.length = 0;
+    installed = '1.0.0';
+    installTarget(root, '3.0.0', {
+      run: (args) => {
+        runs.push(args.join(' '));
+        installed = '3.0.0';
+        return true;
+      },
+      installed: () => installed,
+    });
+    assert.deepEqual(runs, [
+      'add --save-dev --save-exact @sempods/apps@3.0.0',
+    ]);
+  });
+  it('skips installing what is installed and refuses a wrong result', () => {
+    runs.length = 0;
+    installed = '2.0.0';
+    installTarget(root, '2.0.0', options());
+    assert.deepEqual(runs, []);
+    installed = '1.0.0';
+    assert.throws(
+      () =>
+        installTarget(root, '2.0.0', {
+          run: () => true,
+          installed: () => installed,
+        }),
+      /1\.0\.0 is installed instead of 2\.0\.0/,
+    );
   });
 });
 

@@ -107,6 +107,14 @@ export function migrate(
     notes: [],
     regenerated: [],
   };
+  if (
+    pending &&
+    (pending.from?.revision !== baseline.revision ||
+      pending.to?.revision !== target.snapshot.revision)
+  )
+    throw new Error(
+      `an unfinished migration from ${PACKAGE} ${pending.from?.version} to ${pending.to?.version} is recorded in ${MIGRATION_FILE}, but ${target.version} is installed. Install ${pending.to?.version} again, finish that migration with pnpm run migrate, then update. Nothing was changed.`,
+    );
   if (!pending && baseline.revision === target.snapshot.revision)
     return { ...report, unchanged: true };
 
