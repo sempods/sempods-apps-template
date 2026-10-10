@@ -300,6 +300,32 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
+  it('leaves a file alone when its owner section cannot be kept', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    // The owner removed the closing marker of their section.
+    edit(repo, 'AGENTS.md', (text) =>
+      text
+        .replace('No instance-specific instructions recorded yet.', 'German.')
+        .replace('<!-- END OWNER INSTRUCTIONS -->\n', ''),
+    );
+    const before = read(repo, 'AGENTS.md');
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.equal(report.unfinished, true);
+    assert.deepEqual(report.conflicts, ['AGENTS.md']);
+    assert.match(report.review.join('\n'), /owner section .* is incomplete/);
+    assert.equal(read(repo, 'AGENTS.md'), before);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+    // Restored: the next run applies the starter and keeps the section.
+    edit(repo, 'AGENTS.md', (text) =>
+      text.replace('German.\n', 'German.\n\n<!-- END OWNER INSTRUCTIONS -->\n'),
+    );
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.match(read(repo, 'AGENTS.md'), /Scope: all of it\./);
+    assert.match(read(repo, 'AGENTS.md'), /German\./);
+  });
+
   it('waits for an unfinished SDK update', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

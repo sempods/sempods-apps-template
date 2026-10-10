@@ -13,6 +13,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmdirSync,
   rmSync,
   writeFileSync,
@@ -210,8 +211,12 @@ export function migrate(
     beforeWrite(file);
     if (content === null) remove(path);
     else {
+      // Replaced in one step: an interrupted write leaves the old or the
+      // complete new file, never part of it.
       mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, content);
+      const temporary = `${path}.${process.pid}.tmp`;
+      writeFileSync(temporary, content);
+      renameSync(temporary, path);
     }
     afterWrite(file);
     state.files[file] = outcome;
@@ -219,15 +224,21 @@ export function migrate(
     list.push(file);
     if (outcome === 'conflict') report.conflicts.push(file);
   };
+  /**
+   * The text with the owner's sections from `ours`, or null when a section
+   * cannot be kept; the file then stays unchanged and the migration open.
+   */
   const ownerSections = (text, ours, file) => {
     let result = text;
     for (const markers of policy.sections?.[file] ?? []) {
-      const kept = withSection(result, markers, ours);
-      if (kept === null)
+      result = withSection(result, markers, ours);
+      if (result === null) {
+        report.conflicts.push(file);
         report.review.push(
-          `${file}: the owner section ${markers[0]} could not be kept; restore it from your previous version`,
+          `${file}: the owner section ${markers[0]} … ${markers[1]} is incomplete here or in the starter; restore both marker lines with the section between them, then run pnpm run migrate again`,
         );
-      else result = kept;
+        return null;
+      }
     }
     return result;
   };
@@ -305,23 +316,20 @@ export function migrate(
     // Unchanged on either side, or only the owner's change: nothing to do.
     if (ours === theirs || theirs === baseText) continue;
     if (ours === baseText) {
-      apply(
-        file,
-        ours,
-        ownerSections(theirs, ours, file),
-        'done',
-        report.updated,
-      );
+      const updated = ownerSections(theirs, ours, file);
+      if (updated !== null) apply(file, ours, updated, 'done', report.updated);
       continue;
     }
     const size = markerSize(ours, baseText, theirs);
     const merged = mergeText(ours, baseText ?? '', theirs, labels, size);
+    const result = ownerSections(merged.text, ours, file);
+    if (result === null) continue;
     if (merged.conflicts > 0)
       state.markers = { ...state.markers, [file]: size };
     apply(
       file,
       ours,
-      ownerSections(merged.text, ours, file),
+      result,
       merged.conflicts > 0 ? 'conflict' : 'done',
       merged.conflicts > 0 ? [] : report.merged,
     );
