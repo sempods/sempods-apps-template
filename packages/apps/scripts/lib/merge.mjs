@@ -7,8 +7,8 @@ import { join } from 'node:path';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-function git(cwd, args) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+export function git(cwd, args, options = {}) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', ...options });
   if (result.error) throw result.error;
   return result;
 }

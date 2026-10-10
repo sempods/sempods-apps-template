@@ -54,16 +54,21 @@ export function openMigration(root, baseline) {
     : undefined;
 }
 
+/** Stops before anything changes while an SDK update is unfinished. */
+export function refuseUnfinishedSdkUpdate(root) {
+  if (existsSync(join(root, PENDING_UPDATE)))
+    throw new Error(
+      `an SDK update is unfinished (${PENDING_UPDATE}); complete it with pnpm run sdk-update first. Nothing was changed.`,
+    );
+}
+
 /**
  * Stops a tooling update or migration that would be unsafe, before anything
  * changes: during an unfinished SDK update, toward a version older than the
  * repository's, or toward another version than an open migration's.
  */
 export function refuseUnsafe(root, version) {
-  if (existsSync(join(root, PENDING_UPDATE)))
-    throw new Error(
-      `an SDK update is unfinished (${PENDING_UPDATE}); complete it with pnpm run sdk-update first. Nothing was changed.`,
-    );
+  refuseUnfinishedSdkUpdate(root);
   const baseline = readBaseline(root);
   for (const current of [
     baseline?.version,

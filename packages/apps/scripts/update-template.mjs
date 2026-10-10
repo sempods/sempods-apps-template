@@ -18,7 +18,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
-  readFileSync,
   realpathSync,
   rmSync,
   statSync,
@@ -30,14 +29,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { formatJson, readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
+import { readText } from './lib/files.mjs';
 import {
+  git,
   mergeManifest,
   mergeText,
   withSection,
 } from './lib/merge.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { matches } from './lib/shared.mjs';
-import { compareVersions, EXACT_VERSION, PENDING_UPDATE } from './lib/sdk.mjs';
+import { compareVersions, EXACT_VERSION } from './lib/sdk.mjs';
+import { refuseUnfinishedSdkUpdate } from './migrate.mjs';
 
 export const SOURCE = 'https://github.com/sempods/sempods-apps-template.git';
 // The tooling package inside a template repository and its copies; its
@@ -51,11 +53,6 @@ const here = resolve(
   '..',
 );
 
-function git(cwd, args, options = {}) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', ...options });
-  if (result.error) throw result.error;
-  return result;
-}
 function gitOk(cwd, args) {
   const result = git(cwd, args);
   if (result.status !== 0)
@@ -67,8 +64,6 @@ function gitOk(cwd, args) {
 // merged, main carries its prerelease (for example 0.5.0-dev), which sorts
 // before the release, so a copy made then still updates to it.
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
-const readText = (path) =>
-  existsSync(path) ? readFileSync(path, 'utf8') : null;
 const versionOf = (text) => {
   try {
     return JSON.parse(text).version;
@@ -287,10 +282,7 @@ export async function applyRelease(
     }
   };
 
-  if (existsSync(join(instance, PENDING_UPDATE)))
-    throw new Error(
-      'An SDK update is unfinished; complete it with the sdk-update script first.',
-    );
+  refuseUnfinishedSdkUpdate(instance);
   write(CHECKPOINT, checkpoint);
 
   // Template-owned: replaced as a whole. The version follows at the very end.
