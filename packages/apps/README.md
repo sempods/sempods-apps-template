@@ -23,9 +23,11 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 - `pnpm run check` checks all apps; `--standalone all` also installs, lints,
   builds and tests each app on its own. It reports an SDK version outside the
   range this package supports (its `peerDependencies`).
-- `pnpm run update-template` updates a repository that holds this tooling in
-  `packages/apps/`; a repository created from the starter cannot update this
-  way yet.
+- `sempods-apps update-template` served copies of the template, which held
+  the tooling themselves. From 0.7.0 on it refuses to apply a release, without
+  changing anything: such a copy follows the 0.7.0 upgrade notes in
+  `CHANGELOG.md`. Updating a repository created from the starter is not
+  supported yet.
 
 Contents:
 

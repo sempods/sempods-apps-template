@@ -392,6 +392,12 @@ export async function applyRelease(
     throw new Error(`This repository has template ${from}, newer than ${to}.`);
 
   const policy = readJson(join(release, TOOLING, 'update-policy.json'));
+  // From 0.7.0 on, a release describes the starter of new repositories
+  // instead of a copy of the template; this command cannot apply it.
+  if (!Array.isArray(policy.replace))
+    throw new Error(
+      `Template ${to} creates repositories from a starter and cannot be applied to this copy with update-template. Create a new repository with pnpm create @sempods/apps and move your apps, apps.json, the owner section of AGENTS.md and the setup record of INIT.md into it, as the ${to} upgrade notes describe. Nothing was changed.`,
+    );
   const bases = new Bases(release, from, instance, resumed?.origin);
   const parse = (text) => (text === null ? undefined : JSON.parse(text));
   // The copy's skeleton is replaced early; its SDK version, which may be ahead

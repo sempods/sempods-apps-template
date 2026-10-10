@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { staleGenerated } from '../scripts/lib/generate.mjs';
 import {
   applyRelease,
+  CHECKPOINT,
   decide,
   formatReport,
   upgradeNotes,
@@ -724,6 +725,26 @@ describe('update-template', () => {
       }),
       [],
     );
+  });
+
+  it('refuses a starter release before changing anything', async () => {
+    const { release, instance } = setup();
+    // The policy the package ships describes the starter, not a copy.
+    cpSync(
+      join(templateRoot, 'packages', 'apps', 'update-policy.json'),
+      join(release, 'packages', 'apps', 'update-policy.json'),
+    );
+    commit(release, 'starter policy');
+    git(release, 'tag', '-f', 'v0.2.0');
+    const status = () => git(instance, 'status', '--porcelain');
+    const before = status();
+    await assert.rejects(
+      applyRelease(release, instance, { install: false }),
+      /creates repositories from a starter[\s\S]*Nothing was changed/,
+    );
+    assert.equal(existsSync(join(instance, CHECKPOINT)), false);
+    assert.equal(status(), before);
+    assert.equal(toolingVersion(instance), '0.1.0');
   });
 
   it('refuses a release older than the repository', async () => {
