@@ -29,8 +29,11 @@ export function withSection(text, markers, from) {
   );
 }
 
-/** Three-way merge with git; returns the merged text and its conflict count. */
-export function mergeText(ours, base, theirs, labels) {
+/**
+ * Three-way merge with git; returns the merged text and its conflict count.
+ * `markerSize` sets the length of the conflict marker lines (default 7).
+ */
+export function mergeText(ours, base, theirs, labels, markerSize = 7) {
   const dir = mkdtempSync(join(tmpdir(), 'sempods-merge-'));
   try {
     const files = ['ours', 'base', 'theirs'].map((name, i) => {
@@ -41,6 +44,7 @@ export function mergeText(ours, base, theirs, labels) {
     const result = git(dir, [
       'merge-file',
       '-p',
+      `--marker-size=${markerSize}`,
       '-L',
       labels[0],
       '-L',

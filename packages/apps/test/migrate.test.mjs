@@ -345,16 +345,36 @@ describe('migrate', () => {
     );
     install(repo, '2.0.0');
     assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    // The underlines make the merge use eight-character markers.
+    assert.match(read(repo, 'README.md'), /^<{8} this repository/m);
     // Resolve only the title conflict; both underlines stay.
     edit(repo, 'README.md', (text) =>
-      text.replace(
-        /^<{7} .*\n([\s\S]*?)^={7}\n[\s\S]*?^>{7} .*\n/m,
-        '$1',
-      ),
+      text.replace(/^<{8} .*\n([\s\S]*?)^={8}\n[\s\S]*?^>{8} .*\n/m, '$1'),
     );
     assert.equal(read(repo, 'README.md').match(/^={7}$/gm).length, 2);
     assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
     assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('keeps a conflict while its own separator remains', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text
+        .replace('# My sempods apps', '# Annas Apps')
+        .replace('## Licence', 'Owner\n=======\n\n## Licence'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    // The owner drops the legitimate underline but leaves the separator.
+    edit(repo, 'README.md', (text) =>
+      text
+        .replace('Owner\n=======\n', 'Owner\n')
+        .replace(/^[<>]{8}.*\n/gm, ''),
+    );
+    assert.match(read(repo, 'README.md'), /^={8}$/m);
+    assert.deepEqual(migrateTo(repo, '2.0.0').conflicts, ['README.md']);
+    assert.equal(readBaseline(repo).version, '1.0.0');
   });
 
   it('keeps a conflict while a bare marker line remains', () => {

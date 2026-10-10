@@ -36,12 +36,21 @@ import {
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_FILE = '.sempods-migration.json';
-// The lines git merge-file opens and closes a conflict with, labelled or
-// not. Its separator, a line of seven `=`, can also underline a Markdown
-// heading, so it counts only beyond the number the merge left outside its
-// conflict blocks.
-const MARKER = /^(<{7}|>{7})( |$)/m;
-const separators = (text) => (text?.match(/^={7}$/gm) ?? []).length;
+// Conflict marker lines of a given length: labelled or bare `<` and `>`
+// lines, and the `=` separator, which can also underline a Markdown heading.
+const markerLine = (size) =>
+  new RegExp(`^(<{${size}}|>{${size}})( |$)|^={${size}}$`, 'm');
+/**
+ * The shortest marker length, from git's 7 up, that none of the merged texts
+ * uses, so every marker line of that length in the result comes from the
+ * merge and none is legitimate content.
+ */
+export function markerSize(...texts) {
+  let size = 7;
+  while (texts.some((text) => text !== null && markerLine(size).test(text)))
+    size += 1;
+  return size;
+}
 
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
@@ -227,11 +236,9 @@ export function migrate(
     `${PACKAGE} ${baseline.version}`,
     `${PACKAGE} ${target.version}`,
   ];
-  /** Whether a file still has conflict markers or a leftover separator. */
+  /** Whether a file still has a marker line of its recorded length. */
   const conflicted = (file, text) =>
-    text !== null &&
-    (MARKER.test(text) ||
-      separators(text) > (state.separators?.[file] ?? 0));
+    text !== null && markerLine(state.markers?.[file] ?? 7).test(text);
   /** Settles a file an earlier run touched; true when nothing is left to do. */
   const settled = (file, ours) => {
     const recorded = state.files[file];
@@ -307,13 +314,10 @@ export function migrate(
       );
       continue;
     }
-    const merged = mergeText(ours, baseText ?? '', theirs, labels);
+    const size = markerSize(ours, baseText, theirs);
+    const merged = mergeText(ours, baseText ?? '', theirs, labels, size);
     if (merged.conflicts > 0)
-      state.separators = {
-        ...state.separators,
-        // Each conflict block adds exactly one separator.
-        [file]: separators(merged.text) - merged.conflicts,
-      };
+      state.markers = { ...state.markers, [file]: size };
     apply(
       file,
       ours,
