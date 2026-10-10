@@ -16,6 +16,7 @@ import {
   renameSync,
   rmdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -279,11 +280,21 @@ export function migrate(
     return false;
   };
 
+  // Files the starter drops go first, so a file that takes the place of a
+  // dropped directory finds the path free.
+  const dropped = (file) => (snapshot.files[file] ? 1 : 0);
   const files = [
     ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
-  ].sort();
+  ].sort((a, b) => dropped(a) - dropped(b) || (a < b ? -1 : a > b ? 1 : 0));
   for (const file of files) {
     if (file === policy.rootManifest) continue;
+    if (statSync(join(root, file), { throwIfNoEntry: false })?.isDirectory()) {
+      report.conflicts.push(file);
+      report.review.push(
+        `${file}: the starter has a file where this repository has a directory; move what you keep out of it and remove the directory, then run pnpm run migrate again`,
+      );
+      continue;
+    }
     const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
     const ours = readText(join(root, file));
     if (settled(file, ours)) continue;

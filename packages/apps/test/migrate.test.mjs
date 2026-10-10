@@ -326,6 +326,27 @@ describe('migrate', () => {
     assert.match(read(repo, 'AGENTS.md'), /German\./);
   });
 
+  it('replaces a dropped directory with a file of the same name', () => {
+    const swap = (starter) => {
+      rmSync(join(starter, 'docs'), { recursive: true });
+      writeFileSync(join(starter, 'docs'), 'Documents moved.\n');
+    };
+    publish('2.0.0', swap);
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.equal(read(repo, 'docs'), 'Documents moved.\n');
+
+    // With the owner's file still in the directory, the step is theirs.
+    const kept = createRepo('1.0.0', 'kept');
+    edit(kept, 'docs/start.md', (text) => `${text}\nMine.\n`);
+    install(kept, '2.0.0');
+    const report = migrateTo(kept, '2.0.0');
+    assert.equal(report.unfinished, true);
+    assert.deepEqual(report.conflicts, ['docs']);
+    assert.match(read(kept, 'docs/start.md'), /Mine\./);
+  });
+
   it('waits for an unfinished SDK update', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
