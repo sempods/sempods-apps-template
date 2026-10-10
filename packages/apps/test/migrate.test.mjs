@@ -251,6 +251,86 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '2.0.0');
   });
 
+  it('keeps a conflict written just before the run stopped', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    assert.throws(
+      () =>
+        migrateTo(repo, '2.0.0', {
+          afterWrite: (file) => {
+            if (file === 'README.md') throw new Error('interrupted');
+          },
+        }),
+      /interrupted/,
+    );
+    const marked = read(repo, 'README.md');
+    const rerun = migrateTo(repo, '2.0.0');
+    assert.deepEqual(rerun.conflicts, ['README.md']);
+    // Not merged again: one conflict block, unchanged.
+    assert.equal(read(repo, 'README.md'), marked);
+    assert.equal(marked.match(/^<{7} /gm).length, 1);
+  });
+
+  it('keeps a resolution when a later step of the rerun fails', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
+    // Regeneration fails on a broken apps.json.
+    const apps = read(repo, 'apps.json');
+    writeFileSync(join(repo, 'apps.json'), '{');
+    assert.throws(() => migrateTo(repo, '2.0.0'), /apps\.json/);
+    writeFileSync(join(repo, 'apps.json'), apps);
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.equal(read(repo, 'README.md'), '# Annas Apps\n\nResolved.\n');
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('installs after a workspace-only change, also after a failure', () => {
+    publish('2.0.0', (starter) =>
+      edit(
+        starter,
+        'pnpm-workspace.yaml',
+        (text) => `${text}\noverrides:\n  left-pad: 1.3.0\n`,
+      ),
+    );
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    assert.throws(
+      () =>
+        migrateTo(repo, '2.0.0', {
+          afterWrite: () => {
+            throw new Error('interrupted');
+          },
+        }),
+      /interrupted/,
+    );
+    assert.equal(
+      migrateTo(repo, '2.0.0', { install: () => false }).unfinished,
+      true,
+    );
+    assert.equal(readBaseline(repo).version, '1.0.0');
+    let installs = 0;
+    const done = migrateTo(repo, '2.0.0', {
+      install: () => {
+        installs += 1;
+        return true;
+      },
+    });
+    assert.equal(done.unfinished, undefined);
+    assert.equal(installs, 1);
+    assert.match(read(repo, 'pnpm-workspace.yaml'), /left-pad: 1\.3\.0/);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
   it('does not resume an unfinished migration toward another starter', () => {
     publish('2.0.0', v2);
     publish('3.0.0', v3);

@@ -40,7 +40,8 @@ const CONFLICT = /^<{7} /m;
 
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
-const hash = (text) => createHash('sha256').update(text ?? '').digest('hex');
+const hash = (text) =>
+  text === null ? 'absent' : createHash('sha256').update(text).digest('hex');
 
 /** The starter of an installed package: its version, snapshot and policy. */
 export function installedStarter(installed = TOOLING) {
@@ -64,7 +65,13 @@ export function migrationState(root, installed = TOOLING) {
     return undefined;
   const pending = readText(join(root, MIGRATION_FILE));
   if (pending) {
-    const { to, conflicts = [] } = JSON.parse(pending);
+    const { to, files = {} } = JSON.parse(pending);
+    const conflicts = Object.entries(files)
+      .filter(
+        ([, recorded]) =>
+          recorded === 'conflict' || recorded?.outcome === 'conflict',
+      )
+      .map(([file]) => file);
     return `the migration to ${PACKAGE} ${to.version} is unfinished${conflicts.length ? `: resolve the conflicts in ${conflicts.join(', ')}` : ''}, then run pnpm run migrate`;
   }
   const { revision } = readJson(join(installed, 'shared', 'snapshot.json'));
@@ -123,42 +130,43 @@ export function migrate(
 
   const base = baselineSnapshot(baseline, { installed, download });
   const { policy, snapshot } = target;
-  // Files whose conflicts an earlier run left; the owner resolves them.
-  // `unmerged` holds a file's content hash from when its conflict was recorded
-  // until the marked merge is written, so a run interrupted in between merges
-  // it again instead of taking the untouched file for a resolution.
-  const resolving = new Set(pending?.conflicts ?? []);
-  const unmerged = { ...pending?.unmerged };
-  // An install an earlier run still owed: its manifest is already written.
-  let installPending = pending?.install === true;
-  const save = () =>
-    writeJson(pendingPath, {
-      from: baseline,
-      to: { version: target.version, revision: snapshot.revision },
-      conflicts: report.conflicts,
-      unmerged: Object.fromEntries(
-        report.conflicts.map((file) => [file, unmerged[file]]),
-      ),
-      install: installPending,
-    });
+  // Durable progress of this migration, kept across reruns until it is
+  // complete. Per file: `done`, `conflict` (markers written; the owner
+  // resolves them), or `writing` with the content hash from before the write
+  // and the intended outcome, so an interrupted write is detected either way.
+  const state = pending ?? {
+    from: baseline,
+    to: { version: target.version, revision: snapshot.revision },
+    files: {},
+  };
+  const save = () => writeJson(pendingPath, state);
   save();
-  const write = (file, content) => {
+  const remove = (path) => {
+    rmSync(path, { force: true });
+    // Directories the removed file leaves empty go with it.
+    for (
+      let dir = dirname(path);
+      dir !== root && existsSync(dir) && readdirSync(dir).length === 0;
+      dir = dirname(dir)
+    )
+      rmdirSync(dir);
+  };
+  /** Writes (or, for null, removes) a file, recording the intent first. */
+  const apply = (file, ours, content, outcome, list) => {
+    state.files[file] = { status: 'writing', before: hash(ours), outcome };
+    save();
     const path = join(root, file);
     beforeWrite(file);
-    if (content === null) {
-      rmSync(path, { force: true });
-      // Directories the removed file leaves empty go with it.
-      for (
-        let dir = dirname(path);
-        dir !== root && existsSync(dir) && readdirSync(dir).length === 0;
-        dir = dirname(dir)
-      )
-        rmdirSync(dir);
-    } else {
+    if (content === null) remove(path);
+    else {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
     }
     afterWrite(file);
+    state.files[file] = outcome;
+    save();
+    list.push(file);
+    if (outcome === 'conflict') report.conflicts.push(file);
   };
   const ownerSections = (text, ours, file) => {
     let result = text;
@@ -177,6 +185,27 @@ export function migrate(
     `${PACKAGE} ${baseline.version}`,
     `${PACKAGE} ${target.version}`,
   ];
+  /** Settles a file an earlier run touched; true when nothing is left to do. */
+  const settled = (file, ours) => {
+    const recorded = state.files[file];
+    if (recorded === 'done') return true;
+    if (recorded === 'conflict') {
+      if (ours !== null && CONFLICT.test(ours)) report.conflicts.push(file);
+      else {
+        state.files[file] = 'done';
+        save();
+      }
+      return true;
+    }
+    if (recorded?.status === 'writing' && hash(ours) !== recorded.before) {
+      // The write happened before the run stopped.
+      state.files[file] = recorded.outcome;
+      save();
+      if (recorded.outcome === 'conflict') report.conflicts.push(file);
+      return true;
+    }
+    return false;
+  };
 
   const files = [
     ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
@@ -185,39 +214,27 @@ export function migrate(
     if (file === policy.rootManifest) continue;
     const theirs = snapshot.files[file] ? readText(snapshot.path(file)) : null;
     const ours = readText(join(root, file));
+    if (settled(file, ours)) continue;
     if (policy.seed.includes(file)) {
       // Written once; the owner's from then on.
-      if (theirs !== null && ours === null) {
-        write(file, theirs);
-        report.added.push(file);
-      }
+      if (theirs !== null && ours === null)
+        apply(file, ours, theirs, 'done', report.added);
       continue;
     }
     const baseText = base.files[file] ? readText(base.path(file)) : null;
-    if (
-      resolving.has(file) &&
-      !(unmerged[file] !== undefined && hash(ours) === unmerged[file])
-    ) {
-      if (ours !== null && CONFLICT.test(ours)) report.conflicts.push(file);
-      continue;
-    }
     if (theirs === null) {
       // The new starter no longer has this shared file.
       if (ours === null) continue;
-      if (ours === baseText) {
-        write(file, null);
-        report.removed.push(file);
-      } else
+      if (ours === baseText) apply(file, ours, null, 'done', report.removed);
+      else
         report.review.push(
           `${file}: the starter removed it; you changed it, so it stays`,
         );
       continue;
     }
     if (ours === null) {
-      if (baseText === null) {
-        write(file, theirs);
-        report.added.push(file);
-      } else if (baseText !== theirs)
+      if (baseText === null) apply(file, ours, theirs, 'done', report.added);
+      else if (baseText !== theirs)
         report.review.push(
           `${file}: you removed it and the starter changed it; compare with ${PACKAGE} ${target.version} by hand`,
         );
@@ -226,56 +243,56 @@ export function migrate(
     // Unchanged on either side, or only the owner's change: nothing to do.
     if (ours === theirs || theirs === baseText) continue;
     if (ours === baseText) {
-      write(file, ownerSections(theirs, ours, file));
-      report.updated.push(file);
+      apply(
+        file,
+        ours,
+        ownerSections(theirs, ours, file),
+        'done',
+        report.updated,
+      );
       continue;
     }
     const merged = mergeText(ours, baseText ?? '', theirs, labels);
-    if (merged.conflicts > 0) {
-      // Recorded before the markers appear, with the content they replace.
-      report.conflicts.push(file);
-      unmerged[file] = hash(ours);
-      save();
-    } else report.merged.push(file);
-    write(file, ownerSections(merged.text, ours, file));
-    if (unmerged[file] !== undefined) {
-      delete unmerged[file];
-      save();
-    }
+    apply(
+      file,
+      ours,
+      ownerSections(merged.text, ours, file),
+      merged.conflicts > 0 ? 'conflict' : 'done',
+      merged.conflicts > 0 ? [] : report.merged,
+    );
   }
 
   // The root manifest: tooling, SDK and script entries only. The SDK stays at
   // the repository's version; sdk-update moves it.
   const manifestFile = policy.rootManifest;
-  const ours = readJson(join(root, manifestFile));
-  const starterManifest = (snap, version) => {
-    const manifest = JSON.parse(readText(snap.path(manifestFile)));
-    manifest.devDependencies[PACKAGE] = version;
-    return manifest;
-  };
-  const sdkVersion = ours.devDependencies?.[policy.sdk[0]];
-  const manifest = mergeManifest(
-    ours,
-    [starterManifest(base, baseline.version)],
-    starterManifest(snapshot, target.version),
-    policy.sdk,
-    sdkVersion,
-    report.notes,
-    manifestFile,
-  );
-  if (formatJson(manifest) !== formatJson(ours)) {
-    installPending = true;
-    save();
-    write(manifestFile, formatJson(manifest));
-    report.updated.push(manifestFile);
+  const oursText = readText(join(root, manifestFile));
+  if (!settled(manifestFile, oursText)) {
+    const ours = JSON.parse(oursText);
+    const starterManifest = (snap, version) => {
+      const manifest = JSON.parse(readText(snap.path(manifestFile)));
+      manifest.devDependencies[PACKAGE] = version;
+      return manifest;
+    };
+    const manifest = formatJson(
+      mergeManifest(
+        ours,
+        [starterManifest(base, baseline.version)],
+        starterManifest(snapshot, target.version),
+        policy.sdk,
+        ours.devDependencies?.[policy.sdk[0]],
+        report.notes,
+        manifestFile,
+      ),
+    );
+    if (manifest !== formatJson(ours))
+      apply(manifestFile, oursText, manifest, 'done', report.updated);
   }
 
   report.regenerated = regenerate(root);
-  if (report.conflicts.length > 0) {
-    save();
-    return { ...report, unfinished: true };
-  }
-  if (installPending && !install(root)) {
+  if (report.conflicts.length > 0) return { ...report, unfinished: true };
+  // A new starter can change the manifest or the workspace settings, so the
+  // lockfile and node_modules follow before the migration counts as done.
+  if (!install(root)) {
     report.review.push(
       'pnpm install failed; fix the cause, then run pnpm run migrate again',
     );
