@@ -7,6 +7,7 @@
 // everything is applied without unresolved conflicts; until then
 // MIGRATION_FILE records the unfinished migration and a rerun continues it.
 // Usage: pnpm run migrate
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -39,6 +40,7 @@ const CONFLICT = /^<{7} /m;
 
 const readText = (path) =>
   existsSync(path) ? readFileSync(path, 'utf8') : null;
+const hash = (text) => createHash('sha256').update(text ?? '').digest('hex');
 
 /** The starter of an installed package: its version, snapshot and policy. */
 export function installedStarter(installed = TOOLING) {
@@ -84,6 +86,7 @@ export function migrate(
     download = downloadPackage,
     install = () =>
       pnpm(INSTALL, { cwd: root, stdio: ['ignore', 2, 2] }).status === 0,
+    beforeWrite = () => {},
     afterWrite = () => {},
   } = {},
 ) {
@@ -121,7 +124,11 @@ export function migrate(
   const base = baselineSnapshot(baseline, { installed, download });
   const { policy, snapshot } = target;
   // Files whose conflicts an earlier run left; the owner resolves them.
+  // `unmerged` holds a file's content hash from when its conflict was recorded
+  // until the marked merge is written, so a run interrupted in between merges
+  // it again instead of taking the untouched file for a resolution.
   const resolving = new Set(pending?.conflicts ?? []);
+  const unmerged = { ...pending?.unmerged };
   // An install an earlier run still owed: its manifest is already written.
   let installPending = pending?.install === true;
   const save = () =>
@@ -129,11 +136,15 @@ export function migrate(
       from: baseline,
       to: { version: target.version, revision: snapshot.revision },
       conflicts: report.conflicts,
+      unmerged: Object.fromEntries(
+        report.conflicts.map((file) => [file, unmerged[file]]),
+      ),
       install: installPending,
     });
   save();
   const write = (file, content) => {
     const path = join(root, file);
+    beforeWrite(file);
     if (content === null) {
       rmSync(path, { force: true });
       // Directories the removed file leaves empty go with it.
@@ -183,7 +194,10 @@ export function migrate(
       continue;
     }
     const baseText = base.files[file] ? readText(base.path(file)) : null;
-    if (resolving.has(file)) {
+    if (
+      resolving.has(file) &&
+      !(unmerged[file] !== undefined && hash(ours) === unmerged[file])
+    ) {
       if (ours !== null && CONFLICT.test(ours)) report.conflicts.push(file);
       continue;
     }
@@ -217,11 +231,17 @@ export function migrate(
       continue;
     }
     const merged = mergeText(ours, baseText ?? '', theirs, labels);
-    write(file, ownerSections(merged.text, ours, file));
     if (merged.conflicts > 0) {
+      // Recorded before the markers appear, with the content they replace.
       report.conflicts.push(file);
+      unmerged[file] = hash(ours);
       save();
     } else report.merged.push(file);
+    write(file, ownerSections(merged.text, ours, file));
+    if (unmerged[file] !== undefined) {
+      delete unmerged[file];
+      save();
+    }
   }
 
   // The root manifest: tooling, SDK and script entries only. The SDK stays at

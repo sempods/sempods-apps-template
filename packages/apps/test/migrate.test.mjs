@@ -221,6 +221,36 @@ describe('migrate', () => {
     assert.equal(between(read(repo, 'INIT.md'), RECORD), record);
   });
 
+  it('merges a conflicted file again when the run stopped before writing it', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    edit(repo, 'README.md', (text) =>
+      text.replace('# My sempods apps', '# Annas Apps'),
+    );
+    install(repo, '2.0.0');
+    const owner = read(repo, 'README.md');
+    assert.throws(
+      () =>
+        migrateTo(repo, '2.0.0', {
+          beforeWrite: (file) => {
+            if (file === 'README.md') throw new Error('interrupted');
+          },
+        }),
+      /interrupted/,
+    );
+    // Recorded as a conflict, but the markers never reached the file.
+    assert.equal(read(repo, 'README.md'), owner);
+    const rerun = migrateTo(repo, '2.0.0');
+    assert.deepEqual(rerun.conflicts, ['README.md']);
+    assert.match(read(repo, 'README.md'), /^<{7} this repository/m);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+    // Resolved by keeping exactly the owner's earlier text: no new merge.
+    writeFileSync(join(repo, 'README.md'), owner);
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, undefined);
+    assert.equal(read(repo, 'README.md'), owner);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
   it('does not resume an unfinished migration toward another starter', () => {
     publish('2.0.0', v2);
     publish('3.0.0', v3);
