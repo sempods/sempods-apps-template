@@ -262,7 +262,15 @@ describe('migrate', () => {
     assert.equal(failed.unfinished, true);
     assert.equal(readBaseline(repo).version, '1.0.0');
 
-    migrateTo(repo, '3.0.0');
+    // The manifest is already written; the rerun still owes the install.
+    let installs = 0;
+    migrateTo(repo, '3.0.0', {
+      install: () => {
+        installs += 1;
+        return true;
+      },
+    });
+    assert.equal(installs, 1);
     for (const file of Object.keys(
       readSnapshot(join(pkg('3.0.0'), 'shared')).files,
     ))

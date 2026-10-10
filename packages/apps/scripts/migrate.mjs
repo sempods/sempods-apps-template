@@ -114,11 +114,14 @@ export function migrate(
   const { policy, snapshot } = target;
   // Files whose conflicts an earlier run left; the owner resolves them.
   const resolving = new Set(pending?.conflicts ?? []);
+  // An install an earlier run still owed: its manifest is already written.
+  let installPending = pending?.install === true;
   const save = () =>
     writeJson(pendingPath, {
       from: baseline,
       to: { version: target.version, revision: snapshot.revision },
       conflicts: report.conflicts,
+      install: installPending,
     });
   save();
   const write = (file, content) => {
@@ -232,8 +235,9 @@ export function migrate(
     report.notes,
     manifestFile,
   );
-  const manifestChanged = formatJson(manifest) !== formatJson(ours);
-  if (manifestChanged) {
+  if (formatJson(manifest) !== formatJson(ours)) {
+    installPending = true;
+    save();
     write(manifestFile, formatJson(manifest));
     report.updated.push(manifestFile);
   }
@@ -243,7 +247,7 @@ export function migrate(
     save();
     return { ...report, unfinished: true };
   }
-  if (manifestChanged && !install(root)) {
+  if (installPending && !install(root)) {
     report.review.push(
       'pnpm install failed; fix the cause, then run pnpm run migrate again',
     );
