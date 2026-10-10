@@ -10,7 +10,7 @@
 // regenerate the apps' configuration, install, advance the baseline.
 // Usage: pnpm run migrate [--done]
 import { randomBytes } from 'node:crypto';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, renameSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -198,6 +198,7 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
  */
 function record(root, migration, cases, labels) {
   const work = join(root, MIGRATION_DIR);
+  if (cases.length === 0 && existsSync(join(root, MIGRATION_FILE))) return;
   for (const { file, reason, baseText, theirs, ours } of cases) {
     if (baseText !== null) replaceFile(join(work, 'base', file), baseText);
     if (theirs !== null) replaceFile(join(work, 'starter', file), theirs);
@@ -260,6 +261,12 @@ export function migrate(
   refuseUnsafe(root, target.version);
   const work = join(root, MIGRATION_DIR);
   let migration = openMigration(root, baseline);
+  // Same version, other starter (a repacked package): the record does not
+  // describe this starter.
+  if (migration && migration.to.revision !== target.snapshot.revision)
+    throw new Error(
+      `the open migration in ${MIGRATION_FILE} was planned for another ${PACKAGE} ${target.version}; reinstall the package it was planned with, or remove ${MIGRATION_DIR}/ to plan again. Nothing was changed.`,
+    );
   // Without an open record, anything left in MIGRATION_DIR is a leftover of
   // a completed migration.
   if (!migration) rmSync(work, { recursive: true, force: true });
@@ -282,14 +289,25 @@ export function migrate(
       return { ...report, unchanged: true };
   }
 
-  // The baseline's package is unpacked once while the migration is open.
+  // The baseline's package is unpacked once while the migration is open,
+  // into a temporary folder renamed into place, so a partial unpack is never
+  // taken for the cached one.
   const unpacked = join(work, 'package', 'package');
   const base = baselineSnapshot(baseline, {
-    download: (version) =>
-      ifPresent(() => readJson(join(unpacked, 'package.json')))?.version ===
-      version
-        ? unpacked
-        : download(version, join(work, 'package')),
+    download: (version) => {
+      if (
+        ifPresent(() => readJson(join(unpacked, 'package.json')))?.version ===
+        version
+      )
+        return unpacked;
+      const temporary = join(work, `package.${process.pid}`);
+      rmSync(temporary, { recursive: true, force: true });
+      const dir = download(version, temporary);
+      if (dir !== join(temporary, 'package')) return dir;
+      rmSync(join(work, 'package'), { recursive: true, force: true });
+      renameSync(temporary, join(work, 'package'));
+      return unpacked;
+    },
   });
   const { policy, snapshot } = target;
   // A file that was a seed in either starter stays the owner's, also when the

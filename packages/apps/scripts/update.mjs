@@ -74,13 +74,15 @@ if (
     if (spec !== 'latest' && !EXACT_VERSION.test(spec))
       throw new Error('Use latest or an exact version, for example 0.7.0');
     const root = repositoryRoot();
-    const target = pnpmJson(root, [
+    const found = pnpmJson(root, [
       'view',
       `${PACKAGE}@${spec}`,
       'version',
       'engines',
       '--json',
     ]);
+    // With only one of the fields present, pnpm prints that value alone.
+    const target = typeof found === 'string' ? { version: found } : found;
     refuseUnsafe(root, target.version);
     const version = pnpm(['--version'], {
       cwd: root,

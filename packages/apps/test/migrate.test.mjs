@@ -234,6 +234,41 @@ describe('migrate', () => {
     assert.deepEqual(outstanding(repo, '2.0.0'), []);
   });
 
+  it('adds a case that becomes ambiguous while the migration is open', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    conflicting(repo);
+    install(repo, '2.0.0');
+    const first = migrateTo(repo, '2.0.0');
+    assert.deepEqual(first.updated, ['AGENTS.md']);
+    assert.deepEqual(manualFiles(first), ['README.md']);
+    // The owner edits the starter text the first run applied.
+    edit(repo, 'AGENTS.md', (text) =>
+      text.replace('Scope: all of it.', 'Scope: everything here.'),
+    );
+    const second = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(second), ['README.md', 'AGENTS.md']);
+    assert.deepEqual(
+      readJson(join(repo, MIGRATION_FILE)).manual.map(({ file }) => file),
+      ['README.md', 'AGENTS.md'],
+    );
+    assert.match(read(repo, 'AGENTS.md'), /Scope: everything here\./);
+  });
+
+  it('does not continue a migration planned for another starter', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    conflicting(repo);
+    install(repo, '2.0.0');
+    assert.equal(migrateTo(repo, '2.0.0').unfinished, true);
+    // The same version repacked with another starter.
+    publish('2.0.0', v3);
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /planned for another @sempods\/apps 2\.0\.0[\s\S]*Nothing was changed/,
+    );
+  });
+
   it('refuses to finish while a suggestion is copied unresolved', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
