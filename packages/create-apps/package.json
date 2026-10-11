@@ -1,6 +1,6 @@
 {
   "name": "@sempods/create-apps",
-  "version": "0.7.1-dev",
+  "version": "0.7.1",
   "description": "Create a sempods apps repository: pnpm create @sempods/apps <directory>.",
   "keywords": [
     "sempods",
