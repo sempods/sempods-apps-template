@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
@@ -77,6 +84,15 @@ describe('update', () => {
     assert.throws(
       () => refuseUnsafe(root, '2.0.0'),
       /SDK update is unfinished[\s\S]*Nothing was changed/,
+    );
+  });
+
+  it('does not rewrite a linked root manifest', () => {
+    renameSync(join(root, 'package.json'), join(root, 'real.json'));
+    symlinkSync(join(root, 'real.json'), join(root, 'package.json'));
+    assert.throws(
+      () => refuseUnsafe(root, '2.0.0'),
+      /package\.json is a symbolic link[\s\S]*Nothing was changed/,
     );
   });
 

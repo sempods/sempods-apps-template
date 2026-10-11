@@ -65,11 +65,16 @@ export function refuseUnfinishedSdkUpdate(root) {
 
 /**
  * Stops a tooling update or migration that would be unsafe, before anything
- * changes: during an unfinished SDK update, toward a version older than the
+ * changes: during an unfinished SDK update, with a linked root manifest, toward a version older than the
  * repository's, or toward another version than an open migration's.
  */
 export function refuseUnsafe(root, version) {
   refuseUnfinishedSdkUpdate(root);
+  // Installing and migrating rewrite the root manifest.
+  if (isSymlink(join(root, 'package.json')))
+    throw new Error(
+      'package.json is a symbolic link; replace it with the file it points to, then update. Nothing was changed.',
+    );
   const baseline = readBaseline(root);
   for (const current of [
     baseline?.version,
@@ -161,9 +166,7 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
     [...blocked.keys()].some((path) => file.startsWith(`${path}/`));
 
   for (const file of files) {
-    // The root manifest has its own merge unless it is a collision.
-    const special = file === policy.rootManifest && !blocked.has(file);
-    if (special || skip.has(file) || below(file)) continue;
+    if (file === policy.rootManifest || skip.has(file) || below(file)) continue;
     const { baseText, theirs, ours } = texts(file);
     const add = (reason) =>
       manual.push({ file, reason, baseText, theirs, ours });
@@ -358,15 +361,11 @@ export function migrate(
     else replaceFile(join(root, file), content);
     report[kind].push(file);
   }
-  const manifest = migration.manual.some(
-    ({ file }) => file === policy.rootManifest,
-  )
-    ? null
-    : mergedManifest(
-        root,
-        { base, snapshot, policy, from: baseline.version, to: target.version },
-        report.notes,
-      );
+  const manifest = mergedManifest(
+    root,
+    { base, snapshot, policy, from: baseline.version, to: target.version },
+    report.notes,
+  );
   if (manifest !== null) {
     replaceFile(join(root, policy.rootManifest), manifest);
     report.updated.push(policy.rootManifest);

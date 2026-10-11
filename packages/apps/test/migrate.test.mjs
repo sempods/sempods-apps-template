@@ -15,7 +15,6 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { staticProblems } from '../scripts/check.mjs';
 import { create } from '../scripts/create.mjs';
-import { isSymlink } from '../scripts/lib/files.mjs';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import {
@@ -320,25 +319,18 @@ describe('migrate', () => {
     const outside = join(work, 'outside');
     renameSync(join(repo, 'docs'), outside);
     symlinkSync(outside, join(repo, 'docs'));
-    // A linked file with unchanged content stays the owner's link too, the
-    // root manifest included.
+    // A linked file with unchanged content stays the owner's link too.
     renameSync(join(repo, 'README.md'), join(work, 'README.md'));
     symlinkSync(join(work, 'README.md'), join(repo, 'README.md'));
-    renameSync(join(repo, 'package.json'), join(work, 'package.json'));
-    symlinkSync(join(work, 'package.json'), join(repo, 'package.json'));
     const start = read(repo, 'docs/start.md');
     const readme = read(repo, 'README.md');
     install(repo, '2.0.0');
-    const manifest = read(repo, 'package.json');
     const report = migrateTo(repo, '2.0.0');
     assert.deepEqual(manualFiles(report), [
       'README.md',
       'docs/new.md',
       'docs/start.md',
-      'package.json',
     ]);
-    assert.ok(isSymlink(join(repo, 'package.json')));
-    assert.equal(read(repo, 'package.json'), manifest);
     assert.match(report.manual[0].reason, /README\.md is a symbolic link here/);
     assert.match(report.manual[1].reason, /docs is a symbolic link here/);
     assert.equal(readFileSync(join(outside, 'start.md'), 'utf8'), start);
