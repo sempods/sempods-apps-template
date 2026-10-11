@@ -4,6 +4,19 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.7.1
+
+### Changes
+
+- The update skill starts the installed tooling directly on the branch of a
+  version pull request, where pnpm refuses `pnpm run` until the new version
+  is installed. It merges the default branch first when the branch is
+  behind, and commits the result to the version pull request.
+
+### Upgrade notes
+
+None.
+
 ## 0.7.0
 
 ### Changes

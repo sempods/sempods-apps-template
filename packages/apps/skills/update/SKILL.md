@@ -17,15 +17,21 @@ instead.
 1. **Start clean.** The working tree must have no uncommitted changes, so the
    update is one reviewable diff. Work on a new branch, for example
    `tooling-update-<version>`, or on the branch of the version pull request.
+   If that branch is behind the default branch, for example after an SDK
+   pull request was merged, merge the default branch first: keep the newer
+   version of each package and let `pnpm install` rewrite a conflicting
+   `pnpm-lock.yaml`.
 2. **Update.** `pnpm run update` installs the newest version and migrates;
    `pnpm run update <version>` a specific one. It first checks that Node and
    pnpm suit that version; if not, it changes nothing and prints a numbered
-   order to follow before running it again. On the branch of a version pull request, run
-   `pnpm run update <version>` with the version the pull request names, so
-   the same check runs before anything is installed. If pnpm refuses to run
-   it because the dependencies are out of date, start the installed tooling
-   directly:
+   order to follow before running it again. On the branch of a version pull
+   request, `package.json` already names the new version but `node_modules`
+   does not have it, so pnpm refuses `pnpm run`. Start the installed tooling
+   directly with the version the pull request names; it runs the same check
+   before it installs anything:
    `node node_modules/@sempods/apps/bin/sempods-apps.mjs update <version>`.
+   Without `node_modules`, run `pnpm install` first, then
+   `pnpm run update <version>`.
 3. **Read the upgrade notes** for every version after the old one, including
    skipped ones, in `node_modules/@sempods/apps/CHANGELOG.md`. They name what
    the migration cannot do alone, such as changes the owner's apps need.
@@ -62,8 +68,9 @@ instead.
    `node node_modules/@sempods/apps/bin/sempods-apps.mjs migrate --done`.
    Without manual cases, `pnpm run migrate` finishes on its own.
 6. **Check.** Run `pnpm run check` until it passes.
-7. **Hand over.** With a GitHub remote, open a pull request "Update the tooling
-   to <version>" with the migration report, each manual case and how it was
-   decided, and what to try. Tell the owner what changed in plain words and
+7. **Hand over.** With a GitHub remote, commit the result to the version pull
+   request's branch, or open a pull request "Update the tooling to <version>",
+   with the migration report, each manual case and how it was decided, and
+   what to try. Tell the owner what changed in plain words and
    what they should try. App code, app notes and the owner's entries in
    `package.json` are never rewritten by the migration.
