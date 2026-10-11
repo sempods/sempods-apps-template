@@ -13,10 +13,8 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import {
   applyUpdate,
   planUpdate,
-  lockStateComplete,
   installedStateComplete,
 } from '../scripts/sdk-update.mjs';
-import { readLockfile } from '../scripts/lib/lockfile.mjs';
 import {
   compareVersions,
   EXACT_VERSION,
@@ -38,56 +36,14 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     version: version === 'latest' ? '0.3.0' : version,
     ...(name === SDK[0] ? { dependencies: { [SDK[1]]: '0.3.0' } } : {}),
   });
-  // pnpm-lock.yaml as pnpm writes it: importers with exact specifiers, the
-  // app SDK with its React peer suffix, and one entry per resolved package.
   const LOCK = 'pnpm-lock.yaml';
-  const writeLock = ({ importers, packages }) => {
-    const entry = ([name, version]) => [
-      `      '${name}':`,
-      `        specifier: ${version.replace(/\(.*/, '')}`,
-      `        version: ${version}`,
-    ];
-    const text = [
-      "lockfileVersion: '9.0'",
-      '',
-      'importers:',
-      '',
-      ...Object.entries(importers).flatMap(([path, sections]) => [
-        `  ${path}:`,
-        ...Object.entries(sections).flatMap(([section, deps]) => [
-          `    ${section}:`,
-          ...Object.entries(deps).flatMap(entry),
-        ]),
-        '',
-      ]),
-      'packages:',
-      '',
-      ...packages.flatMap((key) => [`  '${key}':`, '    resolution: {}', '']),
-    ];
-    writeFileSync(join(root, LOCK), `${text.join('\n')}\n`);
-  };
-  const lockFor = (version) => {
-    const deps = {
-      [SDK[0]]: `${version}(react@19.3.0)`,
-      [SDK[1]]: version,
-      other: '1.2.3',
-    };
-    return {
-      importers: {
-        '.': { devDependencies: deps },
-        'apps/one': { dependencies: deps },
-        'apps/two': { dependencies: deps },
-      },
-      packages: SDK.map((name) => `${name}@${version}`),
-    };
-  };
   const installFixture = (version = '0.3.0') => {
     for (const name of SDK) {
       const path = join(root, 'node_modules', name, 'package.json');
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify({ version }));
     }
-    writeLock(lockFor(version));
+    writeFileSync(join(root, LOCK), `lockfile for ${version}\n`);
     const reference = join(
       root,
       'node_modules/@sempods/app-sdk/docs/ai-app-builder.md',
@@ -157,7 +113,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
         if (args[0] === 'install')
           writeFileSync(join(root, LOCK), 'pnpm regenerated lock');
       },
-      referenceExists: () => true,
+      installed: () => true,
     });
     assert.deepEqual(runs, [
       ['install', '--no-frozen-lockfile'],
@@ -197,14 +153,16 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       run: (args) => {
         if (args[0] === 'install') installFixture();
       },
-      referenceExists: () => true,
     });
     const before = snapshot();
     const lockBefore = readFileSync(join(root, LOCK), 'utf8');
     const plan = planUpdate(root, 'latest', { lookup: registry });
     assert.equal(plan.changes.length, 0);
     assert.equal(
-      applyUpdate(root, plan, { run: () => assert.fail('no pnpm on no-op') }),
+      applyUpdate(root, plan, {
+        run: () => assert.fail('no update on no-op'),
+        locked: () => true,
+      }),
       false,
     );
     assert.deepEqual(snapshot(), before);
@@ -231,10 +189,8 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       const retry = planUpdate(root, 'latest', { lookup: registry });
       assert.equal(retry.changes.length, 0);
       assert.equal(existsSync(join(root, PENDING_UPDATE)), true);
-      if (failure === 'check') {
-        assert.equal(lockStateComplete(root, retry.version), true);
+      if (failure === 'check')
         assert.equal(installedStateComplete(root, retry.version), true);
-      }
       const runs = [];
       assert.equal(
         applyUpdate(root, retry, {
@@ -250,11 +206,10 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
         ['run', 'check'],
       ]);
       assert.equal(existsSync(join(root, PENDING_UPDATE)), false);
-      assert.equal(lockStateComplete(root, retry.version), true);
       assert.equal(installedStateComplete(root, retry.version), true);
     });
   }
-  it('repairs stale lockfile and installed state even without a pending checkpoint', () => {
+  it('repairs a stale lockfile or installed state even without a pending checkpoint', () => {
     applyUpdate(root, planUpdate(root, 'latest', { lookup: registry }), {
       run: (args) => {
         if (args[0] === 'install') installFixture();
@@ -262,38 +217,30 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     });
     const plan = planUpdate(root, 'latest', { lookup: registry });
     const damage = [
-      () => rmSync(join(root, LOCK)),
+      // pnpm finds that the lockfile does not match the manifests.
+      () => ({ locked: () => false }),
       () => {
-        const lock = lockFor('0.3.0');
-        lock.importers['.'].devDependencies[SDK[0]] = '0.2.0(react@19.3.0)';
-        writeLock(lock);
-      },
-      () => {
-        const lock = lockFor('0.3.0');
-        lock.importers['apps/two'].dependencies[SDK[1]] = '0.2.0';
-        writeLock(lock);
-      },
-      () => {
-        const lock = lockFor('0.3.0');
-        lock.packages[0] = `${SDK[0]}@0.2.0`;
-        writeLock(lock);
-      },
-      () =>
         writeFileSync(
           join(root, 'node_modules/@sempods/client-sdk/package.json'),
           '{"version":"0.2.0"}',
-        ),
-      () =>
+        );
+        return {};
+      },
+      () => {
         rmSync(
           join(root, 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md'),
-        ),
+        );
+        return {};
+      },
     ];
     for (const breakState of damage) {
-      breakState();
+      const options = breakState();
       const runs = [];
       assert.equal(existsSync(join(root, PENDING_UPDATE)), false);
       assert.equal(
         applyUpdate(root, plan, {
+          locked: () => true,
+          ...options,
           run: (args) => {
             runs.push(args);
             if (args[0] === 'install') installFixture();
@@ -401,47 +348,17 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       );
     }
   });
-  it('fails clearly on a missing shipped reference and never runs check', () => {
+  it('fails clearly when the install lacks the release or its reference and never runs check', () => {
     const runs = [];
     assert.throws(
       () =>
         applyUpdate(root, planUpdate(root, 'latest', { lookup: registry }), {
           run: (args) => runs.push(args),
-          referenceExists: () => false,
+          installed: () => false,
         }),
-      /ships no app-author reference/,
+      /does not have both SDK packages at 0\.3\.0 with node_modules\/@sempods\/app-sdk\/docs\/ai-app-builder\.md/,
     );
     assert.deepEqual(runs, [['install', '--no-frozen-lockfile']]);
   });
 });
 
-describe('lockfile reader', () => {
-  it('keeps importer entries apart around keys with colons', () => {
-    const lock = readLockfile(
-      [
-        'importers:',
-        '  apps/one:',
-        '    dependencies:',
-        "      '@sempods/app-sdk':",
-        '        specifier: 0.5.0',
-        '        version: 0.5.0(react@19.3.0)',
-        "      'tool:x':",
-        '        specifier: github:owner/tool',
-        '        version: https://codeload.github.com/owner/tool/tar.gz/abc',
-        'packages:',
-        "  '@sempods/app-sdk@0.5.0':",
-        "  'tool@https://codeload.github.com/owner/tool/tar.gz/abc':",
-      ].join('\n'),
-    );
-    const deps = lock.importers['apps/one'].dependencies;
-    assert.equal(deps['@sempods/app-sdk'], '0.5.0');
-    assert.equal(
-      deps['tool:x'],
-      'https://codeload.github.com/owner/tool/tar.gz/abc',
-    );
-    assert.ok(lock.packages.has('@sempods/app-sdk@0.5.0'));
-    assert.ok(
-      lock.packages.has('tool@https://codeload.github.com/owner/tool/tar.gz/abc'),
-    );
-  });
-});

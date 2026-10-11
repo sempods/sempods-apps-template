@@ -37,10 +37,18 @@ configuration choices and the SDK migration.
   `@sempods/apps` in their header.
 - `check` reports an SDK version outside the range the tooling supports, its
   `peerDependencies`. It no longer checks Markdown links.
-- The SDK update workflow installs the dependencies before it resolves the
-  release. The checkpoint of an unfinished SDK update is
-  `.sdk-update-pending` in the repository root. `sdk-update` does not start
-  while a tooling migration is open or due; finish the migration first.
+- SDK and tooling version PRs come from Dependabot, in two groups ahead of the
+  general npm group: both SDK packages across the root and every app, and
+  `@sempods/apps`. They stay off until the owner removes the entry in the
+  owner section of `.github/dependabot.yml`; security updates are not
+  affected. The scheduled SDK update workflow, `sdkAutoUpdates` in
+  `apps.json` and the Actions permission it needed are gone.
+- `pnpm run sdk-update <version|latest>` stays the local command. It lets
+  pnpm confirm the lockfile and checks the installed release instead of
+  reading `pnpm-lock.yaml` itself. The checkpoint of an unfinished SDK update
+  is `.sdk-update-pending` in the repository root. `sdk-update` does not
+  start while a tooling migration is open or due; finish the migration
+  first.
 - The template version is the version of `@sempods/apps`; `.sempods/` is gone.
 - `update-template` and its skill are removed with the code that served
   copies of the template: npm conversion and base inference from Git history.
@@ -54,7 +62,10 @@ configuration choices and the SDK migration.
    of AGENTS.md and the setup record of INIT.md (its starting version is now
    the `Created from` field). Finish an unfinished SDK update first
    (`.sempods/.sdk-update-pending`). Then run `pnpm install`,
-   `pnpm run regenerate` and `pnpm run check`.
+   `pnpm run regenerate` and `pnpm run check`. An `sdkAutoUpdates: true` in
+   `apps.json` becomes the opt-in in `.github/dependabot.yml`
+   ([setup](instructions/setup.md#enable-sempods-version-prs)); remove the
+   field.
 
 ## 0.6.1
 

@@ -54,7 +54,8 @@ test requires one for each:
 - `shared`: AGENTS.md, CLAUDE.md, README, INIT.md, `docs/start.md`, the skill
   adapters and the workspace, Git, CI and Dependabot files. Merged on update;
   the delimited `sections` (the owner section of AGENTS.md, the setup record of
-  INIT.md) stay the owner's.
+  INIT.md, the sempods version PR choice in `.github/dependabot.yml`) stay the
+  owner's.
 - `seed`: `apps.json` and `apps/.gitkeep`. Written once; the owner's from then
   on.
 - `rootManifest`: `package.json`. Only the tooling, SDK and script entries
