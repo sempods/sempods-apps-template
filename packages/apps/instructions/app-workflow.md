@@ -9,8 +9,8 @@ app, read `apps/<id>/NOTES.md` and its local instructions.
 
 The installed SDK ships its app-author reference at its own version. After
 `pnpm install`, read `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`,
-then the guides it links in the same directory: `quickstart.md` and `react-authoring.md`
-for API questions, and the others as the task needs. Inspect the installed
+then the guides it links in the same directory: `quickstart.md` and
+`react-authoring.md` for API questions, and the others as the task needs. Inspect the installed
 public types when needed. The root and every app use one exact SDK version, and
 `pnpm run check` verifies it, so this reference applies to all apps. Assistants
 do not look into `node_modules` by themselves: open these files explicitly. Do
@@ -168,23 +168,28 @@ the user's authorized scope.
 ## Update the SDK
 
 An SDK update moves both SDK packages to one release in the root and every
-app. It arrives as a Dependabot PR when the owner has opted in
-([setup](setup.md#enable-sempods-version-prs)); on its branch, run
-`pnpm install` and `pnpm run check --standalone all`. A Dependabot security
-PR may move only the affected SDK package; on its branch, run
-`pnpm install`, then `pnpm run sdk-update <version>` with the version it
-names, so both packages match everywhere, and commit the result to that
-branch. Otherwise run
-`pnpm run sdk-update latest` (the npm dist-tag) or name an exact release, for
-example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in the
-root and every app in `apps.json`, installs, verifies that `node_modules` has
-the release and its shipped reference, and runs `pnpm run check`. Other
-manifest fields are preserved. Already at that version, installed and matching
-the lockfile is a clean no-op; an intentional downgrade requires
-`--allow-downgrade`. Failed installs or checks leave a reviewable diff and a
-local checkpoint: diagnose it and rerun the same update command. It repeats
-installation and checks, even if manifests already name the release, and
-clears the checkpoint only after success. Open a PR after checks pass.
+app. It starts in one of three ways:
+
+- **A Dependabot version PR**, once the owner has opted in
+  ([setup](setup.md#enable-sempods-version-prs)): on its branch, run
+  `pnpm install` and `pnpm run check --standalone all`.
+- **A Dependabot security PR**, which may move only the affected SDK package:
+  on its branch, run `pnpm install`, then `pnpm run sdk-update <version>` with
+  the version it names, so both packages match everywhere, and commit the
+  result to that branch.
+- **Locally**, on a new branch: `pnpm run sdk-update latest` (the npm
+  dist-tag) or an exact release, for example `pnpm run sdk-update 0.3.0`.
+  Open a PR after checks pass.
+
+`sdk-update` coordinates both SDK packages in the root and every app in
+`apps.json`, installs, verifies that `node_modules` has the release and its
+shipped reference, and runs `pnpm run check`. Other manifest fields are
+preserved. Already at that version, installed and matching the lockfile is a
+clean no-op; an intentional downgrade requires `--allow-downgrade`. A failed
+install or check leaves a reviewable diff and a local checkpoint: diagnose it
+and rerun the same command. It repeats installation and checks, even if
+manifests already name the release, and clears the checkpoint only after
+success.
 
 Read that version's release notes,
 `https://github.com/sempods/sempods-typescript/releases/tag/v<version>`, its

@@ -16,6 +16,17 @@ configuration choices and the SDK migration.
   `apps.json` and a root `package.json` that depends on `@sempods/apps`.
 - `.sempods-baseline.json` records the package version and the content
   revision of the starter a repository was created from or last migrated to.
+  The template version is the version of `@sempods/apps`; `.sempods/` is gone,
+  and so is `update-template` with the code that served copies of the
+  template (npm conversion, base inference from Git history).
+- INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
+  record; the setup procedure ships in the package
+  (`instructions/setup.md`). Setup no longer adapts inherited files:
+  there are no contributor documents, CODEOWNERS or DCO workflow to remove.
+- The tooling commands come from the installed package: `sempods-apps
+  <command>` behind the unchanged `pnpm run` scripts. `pnpm run regenerate`
+  rewrites every app's generated configuration; the generated files name
+  `@sempods/apps` in their header.
 - `pnpm run update [<version>]` updates the tooling: it checks that Node and
   pnpm suit the target version and otherwise names what to upgrade first,
   installs the version and runs its `migrate`. `pnpm run migrate` applies the
@@ -27,20 +38,6 @@ configuration choices and the SDK migration.
   advances the baseline. Both commands refuse, before changing anything, to
   write through a symbolic link. `check` names an outstanding or open
   migration and the command for it.
-- INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
-  record; the setup procedure ships in the package
-  (`instructions/setup.md`). Setup no longer adapts inherited files:
-  there are no contributor documents, CODEOWNERS or DCO workflow to remove.
-- The tooling commands come from the installed package: `sempods-apps
-  <command>` behind the unchanged `pnpm run` scripts. `pnpm run regenerate`
-  rewrites every app's generated configuration; the generated files name
-  `@sempods/apps` in their header.
-- `build-site` writes the same layout for every host: `<id>/callback.html`
-  and a top-level `404.html`. Netlify serves the callback from it without a
-  redirect, so `_redirects`, `configure-site --host` and `site.host` in
-  `apps.json` are gone.
-- `check` reports an SDK version outside the range the tooling supports, its
-  `peerDependencies`. It no longer checks Markdown links.
 - SDK and tooling version PRs come from Dependabot, in two groups ahead of the
   general npm group: both SDK packages across the root and every app, and
   `@sempods/apps`. They stay off until the owner removes the entry in the
@@ -53,23 +50,29 @@ configuration choices and the SDK migration.
   is `.sdk-update-pending` in the repository root. `sdk-update` does not
   start while a tooling migration is open or due; finish the migration
   first.
-- The template version is the version of `@sempods/apps`; `.sempods/` is gone.
-- `update-template` and its skill are removed with the code that served
-  copies of the template: npm conversion and base inference from Git history.
-  A copy moves to 0.7.0 as the upgrade notes below describe.
+- `check` reports an SDK version outside the range the tooling supports, its
+  `peerDependencies`. It no longer checks Markdown links.
+- `build-site` writes the same layout for every host: `<id>/callback.html`
+  and a top-level `404.html`. Netlify serves the callback from it without a
+  redirect, so `_redirects`, `configure-site --host` and `site.host` in
+  `apps.json` are gone.
 
 ### Upgrade notes
 
-1. A repository from 0.6.x does not update to 0.7.0 with `update-template`.
-   Create a new repository with `pnpm create @sempods/apps <directory>` and
-   move the owner's content into it: `apps/`, `apps.json`, the owner section
-   of AGENTS.md and the setup record of INIT.md (its starting version is now
-   the `Created from` field). Finish an unfinished SDK update first
-   (`.sempods/.sdk-update-pending`). Then run `pnpm install`,
-   `pnpm run regenerate` and `pnpm run check`. An `sdkAutoUpdates: true` in
-   `apps.json` becomes the opt-in in `.github/dependabot.yml`
-   ([setup](instructions/setup.md#enable-sempods-version-prs)); remove the
-   field. Remove `site.host` from `apps.json` as well.
+1. A repository from 0.6.x is a copy of the template and moves to 0.7.0 by
+   hand:
+   1. Finish an unfinished SDK update first (`.sempods/.sdk-update-pending`).
+   2. Create a new repository with `pnpm create @sempods/apps <directory>`.
+   3. Move the owner's content into it: `apps/`, `apps.json`, the owner
+      section of AGENTS.md, the setup record of INIT.md (its starting version
+      is now the `Created from` field) and `.github/CODEOWNERS` if the owner
+      set one. Reapply the owner's own changes to other shared files, such as
+      the README, where they still fit.
+   4. In `apps.json`, remove `site.host`. An `sdkAutoUpdates: true` becomes
+      the opt-in in `.github/dependabot.yml`
+      ([setup](instructions/setup.md#enable-sempods-version-prs)); remove the
+      field.
+   5. Run `pnpm install`, `pnpm run regenerate` and `pnpm run check`.
 
 ## 0.6.1
 
