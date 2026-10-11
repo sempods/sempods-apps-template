@@ -3,14 +3,23 @@
 // target @sempods/apps, installs it and then runs its own migrate, so the new
 // version applies its starter. Nothing changes when a prerequisite is
 // missing. Usage: pnpm run update [<version>|latest]
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import { refuseUnsafe } from './migrate.mjs';
-import { repositoryRoot } from './lib/paths.mjs';
+import { refuseLinks, refuseUnsafe } from './migrate.mjs';
+import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import { EXACT_VERSION } from './lib/sdk.mjs';
-import { installedVersion, PACKAGE } from './lib/shared.mjs';
+import {
+  baselineSnapshot,
+  downloadPackage,
+  installedVersion,
+  PACKAGE,
+  readBaseline,
+  starterAt,
+} from './lib/shared.mjs';
 
 /** Problems that stop the update before anything is installed. */
 export function preflight(target, { node, pnpmVersion }) {
@@ -37,6 +46,37 @@ export function prerequisiteOrder(target, problems) {
     `${PACKAGE} ${target.version} needs ${problems.map(({ tool, current, range }) => `${tool} ${range} (this machine has ${current})`).join(' and ')}. Nothing was changed.`,
     ...steps.map((step, i) => `${i + 1}. ${step}`),
   ].join('\n');
+}
+
+/**
+ * Refuses before installing when a path the old or the new starter writes is
+ * a symbolic link here: the installed version's migrate would refuse only
+ * after the install.
+ */
+export function refuseLinkedStarter(
+  root,
+  version,
+  { download = downloadPackage, installed = TOOLING } = {},
+) {
+  const dir = mkdtempSync(join(tmpdir(), 'sempods-update-'));
+  try {
+    const files = Object.keys(
+      starterAt(download(version, join(dir, 'target'))).snapshot.files,
+    );
+    const baseline = readBaseline(root);
+    if (baseline)
+      files.push(
+        ...Object.keys(
+          baselineSnapshot(baseline, {
+            installed,
+            download: (from) => download(from, join(dir, 'base')),
+          }).files,
+        ),
+      );
+    refuseLinks(root, files);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /**
@@ -99,6 +139,7 @@ if (
       console.error(prerequisiteOrder(target, problems));
       process.exitCode = 2;
     } else {
+      refuseLinkedStarter(root, target.version);
       installTarget(root, target.version);
       // The installed version migrates with its own code.
       process.exitCode =

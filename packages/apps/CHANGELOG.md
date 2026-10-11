@@ -24,8 +24,9 @@ configuration choices and the SDK migration.
   `.sempods-migration/` with the starter's versions and a merge suggestion.
   The assistant decides them with the update skill; `pnpm run migrate --done`
   confirms the decisions, regenerates the apps' configuration, installs and
-  advances the baseline. `check` names an outstanding or open migration and
-  the command for it.
+  advances the baseline. Both commands refuse, before changing anything, to
+  write through a symbolic link. `check` names an outstanding or open
+  migration and the command for it.
 - INIT.md keeps only the bootstrap steps (Node, pnpm, install) and the setup
   record; the setup procedure ships in the package
   (`instructions/setup.md`). Setup no longer adapts inherited files:

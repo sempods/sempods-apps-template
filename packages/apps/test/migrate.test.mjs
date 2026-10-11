@@ -307,7 +307,7 @@ describe('migrate', () => {
     });
   });
 
-  it('does not write through a symbolic link', () => {
+  it('refuses to write through a symbolic link', () => {
     publish('2.0.0', (starter) => {
       edit(starter, 'docs/start.md', (text) =>
         text.replace('## Change', '## Change an app'),
@@ -324,18 +324,34 @@ describe('migrate', () => {
     symlinkSync(join(work, 'README.md'), join(repo, 'README.md'));
     const start = read(repo, 'docs/start.md');
     const readme = read(repo, 'README.md');
+    const agents = read(repo, 'AGENTS.md');
     install(repo, '2.0.0');
-    const report = migrateTo(repo, '2.0.0');
-    assert.deepEqual(manualFiles(report), [
-      'README.md',
-      'docs/new.md',
-      'docs/start.md',
-    ]);
-    assert.match(report.manual[0].reason, /README\.md is a symbolic link here/);
-    assert.match(report.manual[1].reason, /docs is a symbolic link here/);
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /symbolic links are: README\.md, docs\.[\s\S]*Nothing was changed/,
+    );
+    // Nothing changed, neither the unambiguous AGENTS.md update nor the
+    // migration folder.
+    assert.equal(read(repo, 'AGENTS.md'), agents);
+    assert.equal(existsSync(join(repo, '.sempods-migration')), false);
     assert.equal(readFileSync(join(outside, 'start.md'), 'utf8'), start);
     assert.equal(existsSync(join(outside, 'new.md')), false);
     assert.equal(readFileSync(join(work, 'README.md'), 'utf8'), readme);
+  });
+
+  it('refuses a linked baseline or migration folder', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    install(repo, '2.0.0');
+    renameSync(join(repo, '.sempods-baseline.json'), join(work, 'baseline'));
+    symlinkSync(join(work, 'baseline'), join(repo, '.sempods-baseline.json'));
+    mkdirSync(join(work, 'migration'));
+    symlinkSync(join(work, 'migration'), join(repo, '.sempods-migration'));
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /symbolic links are: \.sempods-baseline\.json, \.sempods-migration\./,
+    );
+    assert.ok(existsSync(join(repo, '.sempods-migration')));
   });
 
   it('does not continue a migration planned for another starter', () => {

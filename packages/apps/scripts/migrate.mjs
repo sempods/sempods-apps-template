@@ -10,8 +10,8 @@
 // regenerate the apps' configuration, install, advance the baseline.
 // Usage: pnpm run migrate [--done]
 import { randomBytes } from 'node:crypto';
-import { existsSync, renameSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
@@ -64,17 +64,47 @@ export function refuseUnfinishedSdkUpdate(root) {
 }
 
 /**
+ * Symbolic links where an update writes: the command's own files and the
+ * given starter paths, each with its ancestors, and anything inside the
+ * migration folder.
+ */
+export function linkedPaths(root, files = []) {
+  const found = new Set();
+  for (const path of ['package.json', BASELINE_FILE, MIGRATION_DIR, ...files]) {
+    const parts = path.split('/');
+    for (let i = 1; i <= parts.length; i += 1) {
+      const prefix = parts.slice(0, i).join('/');
+      if (isSymlink(join(root, prefix))) found.add(prefix);
+    }
+  }
+  if (isDirectory(join(root, MIGRATION_DIR)) && !found.has(MIGRATION_DIR))
+    for (const entry of readdirSync(join(root, MIGRATION_DIR), {
+      recursive: true,
+      withFileTypes: true,
+    }))
+      if (entry.isSymbolicLink())
+        found.add(relative(root, join(entry.parentPath, entry.name)));
+  return [...found].sort();
+}
+
+/** Stops before anything changes where an update would write through a link. */
+export function refuseLinks(root, files) {
+  const links = linkedPaths(root, files);
+  if (links.length > 0)
+    throw new Error(
+      `the update writes where symbolic links are: ${links.join(', ')}. Replace each with the file or directory it points to, then run the command again. Nothing was changed.`,
+    );
+}
+
+/**
  * Stops a tooling update or migration that would be unsafe, before anything
- * changes: during an unfinished SDK update, with a linked root manifest, toward a version older than the
+ * changes: during an unfinished SDK update, with a linked file the update
+ * writes, toward a version older than the
  * repository's, or toward another version than an open migration's.
  */
 export function refuseUnsafe(root, version) {
   refuseUnfinishedSdkUpdate(root);
-  // Installing and migrating rewrite the root manifest.
-  if (isSymlink(join(root, 'package.json')))
-    throw new Error(
-      'package.json is a symbolic link; replace it with the file it points to, then update. Nothing was changed.',
-    );
+  refuseLinks(root);
   const baseline = readBaseline(root);
   for (const current of [
     baseline?.version,
@@ -135,21 +165,16 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
   const files = [
     ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
   ].sort();
-  // Starter paths that change between file and directory here, or lie below
-  // a symbolic link that could lead out of the repository. Nothing at or
+  // Starter paths that change between file and directory here. Nothing at or
   // below them is written automatically, on this run or a later one.
   const blocked = new Map();
   for (const file of files) {
     const parts = file.split('/');
-    const ancestors = parts
+    const obstacle = parts
       .slice(0, -1)
-      .map((_, i) => parts.slice(0, i + 1).join('/'));
-    const link = [...ancestors, file].find((path) =>
-      isSymlink(join(root, path)),
-    );
-    const obstacle = ancestors.find((dir) => isFile(join(root, dir)));
-    if (link) blocked.set(file, `${link} is a symbolic link here`);
-    else if (snapshot.files[file] && obstacle)
+      .map((_, i) => parts.slice(0, i + 1).join('/'))
+      .find((dir) => isFile(join(root, dir)));
+    if (snapshot.files[file] && obstacle)
       blocked.set(
         file,
         `the starter needs a directory where ${obstacle} is a file here`,
@@ -331,6 +356,16 @@ export function migrate(
     },
   });
   const { policy, snapshot } = target;
+  // Links are checked before planning; only the base package was fetched.
+  try {
+    refuseLinks(root, [
+      ...Object.keys(base.files),
+      ...Object.keys(snapshot.files),
+    ]);
+  } catch (error) {
+    if (!migration) rmSync(work, { recursive: true, force: true });
+    throw error;
+  }
   // A file that was a seed in either starter stays the owner's, also when the
   // new starter drops it together with its policy entry.
   const seeds = new Set([...policy.seed, ...(base.policy?.seed ?? [])]);

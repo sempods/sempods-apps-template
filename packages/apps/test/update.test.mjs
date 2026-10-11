@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {
+  cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   renameSync,
@@ -11,11 +13,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { writeJson } from '../scripts/lib/json.mjs';
+import { TOOLING } from '../scripts/lib/paths.mjs';
+import { writeSnapshot } from '../scripts/lib/shared.mjs';
 import { refuseUnsafe } from '../scripts/migrate.mjs';
 import {
   installTarget,
   preflight,
   prerequisiteOrder,
+  refuseLinkedStarter,
 } from '../scripts/update.mjs';
 
 describe('update', () => {
@@ -87,13 +92,39 @@ describe('update', () => {
     );
   });
 
-  it('does not rewrite a linked root manifest', () => {
+  it('does not write through a linked file of its own', () => {
     renameSync(join(root, 'package.json'), join(root, 'real.json'));
     symlinkSync(join(root, 'real.json'), join(root, 'package.json'));
     assert.throws(
       () => refuseUnsafe(root, '2.0.0'),
-      /package\.json is a symbolic link[\s\S]*Nothing was changed/,
+      /symbolic links are: package\.json\.[\s\S]*Nothing was changed/,
     );
+  });
+
+  it('checks the new starter for links before installing it', () => {
+    // A release adds linked/new.md where the owner has a link named linked.
+    const download = (version, into) => {
+      const starter = join(into, 'starter');
+      cpSync(join(TOOLING, 'starter'), starter, { recursive: true });
+      mkdirSync(join(starter, 'linked'));
+      writeFileSync(join(starter, 'linked/new.md'), '# New\n');
+      const dir = join(into, 'package');
+      mkdirSync(dir, { recursive: true });
+      writeJson(join(dir, 'package.json'), { version });
+      writeSnapshot(starter, join(dir, 'shared'));
+      return dir;
+    };
+    const outside = mkdtempSync(join(tmpdir(), 'sempods-outside-'));
+    try {
+      symlinkSync(outside, join(root, 'linked'));
+      assert.throws(
+        () => refuseLinkedStarter(root, '2.0.0', { download }),
+        /symbolic links are: linked\.[\s\S]*Nothing was changed/,
+      );
+      assert.equal(existsSync(join(outside, 'new.md')), false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it('names the tools to upgrade first, in order', () => {
