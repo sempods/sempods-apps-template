@@ -313,18 +313,29 @@ describe('migrate', () => {
         text.replace('## Change', '## Change an app'),
       );
       writeFileSync(join(starter, 'docs/new.md'), '# New\n');
+      v2(starter);
     });
     const repo = createRepo('1.0.0');
     const outside = join(work, 'outside');
     renameSync(join(repo, 'docs'), outside);
     symlinkSync(outside, join(repo, 'docs'));
+    // A linked file with unchanged content stays the owner's link too.
+    renameSync(join(repo, 'README.md'), join(work, 'README.md'));
+    symlinkSync(join(work, 'README.md'), join(repo, 'README.md'));
     const start = read(repo, 'docs/start.md');
+    const readme = read(repo, 'README.md');
     install(repo, '2.0.0');
     const report = migrateTo(repo, '2.0.0');
-    assert.deepEqual(manualFiles(report), ['docs/new.md', 'docs/start.md']);
-    assert.match(report.manual[0].reason, /docs is a symbolic link here/);
+    assert.deepEqual(manualFiles(report), [
+      'README.md',
+      'docs/new.md',
+      'docs/start.md',
+    ]);
+    assert.match(report.manual[0].reason, /README\.md is a symbolic link here/);
+    assert.match(report.manual[1].reason, /docs is a symbolic link here/);
     assert.equal(readFileSync(join(outside, 'start.md'), 'utf8'), start);
     assert.equal(existsSync(join(outside, 'new.md')), false);
+    assert.equal(readFileSync(join(work, 'README.md'), 'utf8'), readme);
   });
 
   it('does not continue a migration planned for another starter', () => {
@@ -350,6 +361,14 @@ describe('migrate', () => {
     cpSync(
       join(repo, '.sempods-migration/suggestion/README.md'),
       join(repo, 'README.md'),
+    );
+    assert.throws(
+      () => migrateTo(repo, '2.0.0', { done: true }),
+      /README\.md still contain an unresolved suggestion/,
+    );
+    // Half resolved: the closing marker is left.
+    edit(repo, 'README.md', (text) =>
+      text.replace(/^<{7} .*\n/m, '').replace(/^={7}\n/m, ''),
     );
     assert.throws(
       () => migrateTo(repo, '2.0.0', { done: true }),
@@ -482,6 +501,17 @@ describe('migrate', () => {
     assert.equal(existsSync(join(repo, '.agents')), false);
     assert.deepEqual(manualFiles(report), ['docs/start.md']);
     assert.match(read(repo, 'docs/start.md'), /Mine\./);
+  });
+
+  it('asks about a directory where the starter drops a file', () => {
+    publish('2.0.0', (starter) => rmSync(join(starter, 'README.md')));
+    const repo = createRepo('1.0.0');
+    rmSync(join(repo, 'README.md'));
+    mkdirSync(join(repo, 'README.md'));
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(report), ['README.md']);
+    assert.match(report.manual[0].reason, /the starter dropped the file/);
   });
 
   it('makes a file manual when its owner section cannot be kept', () => {

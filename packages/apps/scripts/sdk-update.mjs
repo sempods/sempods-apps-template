@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
-import { formatJson, readJson } from './lib/json.mjs';
+import { formatJson, ifPresent, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
 import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
@@ -169,15 +169,18 @@ export function applyUpdate(
   } = {},
 ) {
   const pending = join(root, PENDING_UPDATE);
+  // Read rather than tested, so nothing races between check and write.
+  const resuming =
+    ifPresent(() => readFileSync(pending, 'utf8')) !== undefined;
   if (
     plan.changes.length === 0 &&
-    !existsSync(pending) &&
+    !resuming &&
     lockStateComplete(root, plan.version) &&
     installedStateComplete(root, plan.version)
   )
     return false;
   // Its check would fail on the migration, which waits for this update.
-  const open = !existsSync(pending) && migration();
+  const open = !resuming && migration();
   if (open)
     throw new Error(
       `finish the tooling migration first: ${open}. Nothing was changed.`,

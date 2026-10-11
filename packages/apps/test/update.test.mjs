@@ -39,7 +39,7 @@ describe('update', () => {
       },
       installed: () => installed,
     });
-    assert.deepEqual(runs, ['add --save-dev --save-exact @sempods/apps@2.0.0']);
+    assert.deepEqual(runs, ['add -w --save-dev --save-exact @sempods/apps@2.0.0']);
     assert.throws(
       () =>
         installTarget(root, '3.0.0', {

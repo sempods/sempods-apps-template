@@ -139,7 +139,9 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
     const ancestors = parts
       .slice(0, -1)
       .map((_, i) => parts.slice(0, i + 1).join('/'));
-    const link = ancestors.find((dir) => isSymlink(join(root, dir)));
+    const link = [...ancestors, file].find((path) =>
+      isSymlink(join(root, path)),
+    );
     const obstacle = ancestors.find((dir) => isFile(join(root, dir)));
     if (link) blocked.set(file, `${link} is a symbolic link here`);
     else if (snapshot.files[file] && obstacle)
@@ -147,8 +149,13 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
         file,
         `the starter needs a directory where ${obstacle} is a file here`,
       );
-    else if (snapshot.files[file] && isDirectory(join(root, file)))
-      blocked.set(file, 'a directory here, a file in the starter');
+    else if (isDirectory(join(root, file)))
+      blocked.set(
+        file,
+        snapshot.files[file]
+          ? 'a directory here, a file in the starter'
+          : 'a directory here; the starter dropped the file',
+      );
   }
   const below = (file) =>
     [...blocked.keys()].some((path) => file.startsWith(`${path}/`));
@@ -337,10 +344,11 @@ export function migrate(
   });
   // The complete list of manual cases is saved before any repository file
   // changes; a later run adds what has become ambiguous since.
+  // Both conflict markers carry the label, so --done can find either.
   record(root, migration, manual, [
     label(migration),
     `${PACKAGE} ${baseline.version}`,
-    `${PACKAGE} ${target.version}`,
+    `${label(migration)} ${PACKAGE} ${target.version}`,
   ]);
 
   for (const { file, content, kind } of auto) {
@@ -375,9 +383,12 @@ export function migrate(
   }
   // --done attests that every manual case was decided; a copied suggestion
   // with its conflicts unresolved is the one mistake the script can see.
-  const unresolved = migration.manual.filter(({ file }) =>
-    readText(join(root, file))?.includes(`<<<<<<< ${label(migration)}`),
-  );
+  const unresolved = migration.manual.filter(({ file }) => {
+    const text = readText(join(root, file)) ?? '';
+    return ['<<<<<<<', '>>>>>>>'].some((marker) =>
+      text.includes(`${marker} ${label(migration)}`),
+    );
+  });
   if (unresolved.length > 0)
     throw new Error(
       `${unresolved.map(({ file }) => file).join(', ')} still contain an unresolved suggestion; resolve them, then run pnpm run migrate --done again`,

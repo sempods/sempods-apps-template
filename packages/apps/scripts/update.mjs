@@ -51,7 +51,9 @@ export function installTarget(
     installed = () => installedVersion(root),
   } = {},
 ) {
-  if (!run(['add', '--save-dev', '--save-exact', `${PACKAGE}@${version}`]))
+  // The repository is a pnpm workspace; the tooling belongs to its root.
+  const add = ['add', '-w', '--save-dev', '--save-exact'];
+  if (!run([...add, `${PACKAGE}@${version}`]))
     throw new Error(
       `installing ${PACKAGE} ${version} failed; fix the cause and run the update again`,
     );

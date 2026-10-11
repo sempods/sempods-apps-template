@@ -14,14 +14,22 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const isFile = (path) =>
-  statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
+// What is at a path, or undefined when nothing is, also below a file.
+function entry(path, stat = statSync) {
+  try {
+    return stat(path, { throwIfNoEntry: false });
+  } catch (error) {
+    if (error.code === 'ENOTDIR') return undefined;
+    throw error;
+  }
+}
 
-export const isDirectory = (path) =>
-  statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false;
+export const isFile = (path) => entry(path)?.isFile() ?? false;
+
+export const isDirectory = (path) => entry(path)?.isDirectory() ?? false;
 
 export const isSymlink = (path) =>
-  lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() ?? false;
+  entry(path, lstatSync)?.isSymbolicLink() ?? false;
 
 /** A file's text, or null when there is no file at the path. */
 export const readText = (path) =>
