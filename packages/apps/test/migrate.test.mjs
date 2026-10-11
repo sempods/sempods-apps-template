@@ -519,6 +519,19 @@ describe('migrate', () => {
     assert.match(read(repo, 'docs/start.md'), /Mine\./);
   });
 
+  it('asks about a rename by letter case only', () => {
+    publish('2.0.0', (starter) =>
+      renameSync(join(starter, 'README.md'), join(starter, 'readme.md')),
+    );
+    const repo = createRepo('1.0.0');
+    const readme = read(repo, 'README.md');
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(report), ['README.md', 'readme.md']);
+    assert.match(report.manual[0].reason, /letter case only/);
+    assert.equal(read(repo, 'README.md'), readme);
+  });
+
   it('asks about a directory where the starter drops a file', () => {
     publish('2.0.0', (starter) => rmSync(join(starter, 'README.md')));
     const repo = createRepo('1.0.0');

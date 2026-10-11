@@ -189,6 +189,12 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
   }
   const below = (file) =>
     [...blocked.keys()].some((path) => file.startsWith(`${path}/`));
+  // Paths that differ only in letter case are one file on case-insensitive
+  // file systems; such a rename needs a decision.
+  const caseRenamed = (file) =>
+    files.some(
+      (other) => other !== file && other.toLowerCase() === file.toLowerCase(),
+    );
 
   for (const file of files) {
     if (file === policy.rootManifest || skip.has(file) || below(file)) continue;
@@ -197,6 +203,10 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
       manual.push({ file, reason, baseText, theirs, ours });
     if (blocked.has(file)) {
       add(blocked.get(file));
+      continue;
+    }
+    if (caseRenamed(file)) {
+      add('the starter renames it by letter case only');
       continue;
     }
     if (seeds.has(file)) {
