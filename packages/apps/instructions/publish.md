@@ -17,15 +17,13 @@ Ask the owner for:
   made again. Confirm that the owner controls this address;
 - **a fixed preview address**, optional: an address that always shows the
   latest deploy of one branch, for example a branch named `preview`. It gets its
-  own identity and should use a test Pod or a test context;
-- **the host**: `netlify`, `cloudflare-pages` or `static` (any other static
-  host).
+  own identity and should use a test Pod or a test context.
 
 Record them with:
 
 ```sh
 pnpm run configure-site --production https://apps.example.org \
-  --preview https://preview--apps.netlify.app --host netlify
+  --preview https://preview--apps.netlify.app
 ```
 
 The command writes `site` in `apps.json` and regenerates every app's
@@ -41,7 +39,8 @@ pnpm run build-site --profile preview  # the fixed preview address
 
 It builds every app into `site-dist/<id>/` with the published identity and
 writes the overview, `did.json` per app (`/<id>/did.json`, needed by some
-Pods), the SDK's licence notices and the routing files the host needs.
+Pods), the SDK's licence notices, `<id>/callback.html` for each callback and a
+top-level `404.html` for unknown paths. The layout is the same for every host.
 `site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.
@@ -73,13 +72,15 @@ Every host, whatever it is:
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
+Do not add rewrite rules for `/<id>/*`: the files already answer every path,
+and a rule can replace them.
+
 ### Netlify (tested)
 
-Use `--host netlify`: `build-site` writes `_redirects` with one rule per app,
-`/<id>/callback /<id>/index.html 200!` (forced, so no file at that path shadows
-it), and a top-level `404.html` that Netlify
-serves for unknown paths. Write this `netlify.toml` in the
-repository root when the owner asks for Netlify (the starter ships none):
+Netlify serves `/<id>/callback` from `callback.html` with `200` and the query
+intact, and `404.html` for unknown paths; it needs no `_redirects`. Write this
+`netlify.toml` in the repository root when the owner asks for Netlify (the
+starter ships none):
 
 ```toml
 [build]
@@ -100,10 +101,8 @@ for the `preview` branch: its address is `https://preview--<site>.netlify.app`.
 
 ### Cloudflare Pages (not tested by sempods apps)
 
-Use `--host cloudflare-pages`: `build-site` writes `<id>/callback.html`, which
-Pages serves at `/<id>/callback`, and a top-level `404.html`. Without it Pages
-serves the overview for every unknown path. Do not add a `_redirects` rule for
-`/<id>/*`: on Cloudflare such rules win over existing files.
+Pages serves `<id>/callback.html` at `/<id>/callback`. Without the top-level
+`404.html` it would serve the overview for every unknown path.
 
 In the project's build settings: build command `pnpm run build-site`, build
 output directory `site-dist`. For the fixed preview address, set the variable
@@ -113,10 +112,9 @@ addresses (`https://<hash>.<project>.pages.dev`) have no working sign-in.
 
 ### Cloudflare Workers and other hosts
 
-The `static` layout (`callback.html` per app, top-level `404.html`) suits hosts
-that serve `/<path>` from `<path>.html`. Cloudflare Workers static assets do
-this by default, but the tooling has no recipe yet for their asset and
-deploy configuration. For any other host, check the requirements above before
+The layout suits hosts that serve `/<path>` from `<path>.html`. Cloudflare
+Workers static assets do this by default, but the tooling has no recipe yet
+for their asset and deploy configuration. For any other host, check the requirements above before
 the first sign-in.
 
 ### Secrets

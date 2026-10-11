@@ -35,6 +35,10 @@ configuration choices and the SDK migration.
   <command>` behind the unchanged `pnpm run` scripts. `pnpm run regenerate`
   rewrites every app's generated configuration; the generated files name
   `@sempods/apps` in their header.
+- `build-site` writes the same layout for every host: `<id>/callback.html`
+  and a top-level `404.html`. Netlify serves the callback from it without a
+  redirect, so `_redirects`, `configure-site --host` and `site.host` in
+  `apps.json` are gone.
 - `check` reports an SDK version outside the range the tooling supports, its
   `peerDependencies`. It no longer checks Markdown links.
 - SDK and tooling version PRs come from Dependabot, in two groups ahead of the
@@ -65,7 +69,7 @@ configuration choices and the SDK migration.
    `pnpm run regenerate` and `pnpm run check`. An `sdkAutoUpdates: true` in
    `apps.json` becomes the opt-in in `.github/dependabot.yml`
    ([setup](instructions/setup.md#enable-sempods-version-prs)); remove the
-   field.
+   field. Remove `site.host` from `apps.json` as well.
 
 ## 0.6.1
 

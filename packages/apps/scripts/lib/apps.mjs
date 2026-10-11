@@ -9,8 +9,7 @@ export const LANGUAGES = ['en', 'de'];
 // Where the site is published (configure-site): one origin per profile and the
 // host whose routing build-site writes for.
 export const SITE_PROFILES = ['production', 'preview'];
-export const SITE_HOSTS = ['netlify', 'cloudflare-pages', 'static'];
-const SITE_KEYS = new Set([...SITE_PROFILES, 'host']);
+const SITE_KEYS = new Set(SITE_PROFILES);
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
 // Paths the site itself uses, and directory names that would confuse the
@@ -90,8 +89,6 @@ export function validateSite(site) {
   }
   if (site.preview !== undefined && site.preview === site.production)
     problems.push('site.preview must differ from site.production');
-  if (site.host !== undefined && !SITE_HOSTS.includes(site.host))
-    problems.push(`site.host must be one of ${SITE_HOSTS.join(', ')}`);
   return problems;
 }
 

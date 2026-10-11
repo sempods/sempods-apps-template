@@ -88,7 +88,6 @@ describe('apps.json', () => {
         site: {
           production: 'https://apps.example.org',
           preview: 'https://preview--apps.netlify.app',
-          host: 'netlify',
         },
       }),
       [],
@@ -110,13 +109,11 @@ describe('apps.json', () => {
       apps: [app],
       site: {
         preview: 'https://a.example.org',
-        host: 'ftp',
-        domain: 'x',
+        host: 'netlify',
       },
     });
     assert.ok(problems.some((p) => p.includes('site.production is required')));
-    assert.ok(problems.some((p) => p.includes('site.host must be one of')));
-    assert.ok(problems.some((p) => p.includes('site.domain is not a known')));
+    assert.ok(problems.some((p) => p.includes('site.host is not a known')));
     assert.ok(
       validateApps({
         schemaVersion: 1,
@@ -395,12 +392,10 @@ describe('configure-site', () => {
     configureSite(root, {
       production: 'https://apps.example.org',
       preview: 'https://preview--apps.netlify.app',
-      host: 'netlify',
     });
     assert.deepEqual(apps().site, {
       production: 'https://apps.example.org',
       preview: 'https://preview--apps.netlify.app',
-      host: 'netlify',
     });
     assert.match(runtime(), /did:web:apps\.example\.org:konsum/);
     const dir = join(root, 'apps', 'konsum');
@@ -421,16 +416,14 @@ describe('configure-site', () => {
       /did:web:apps\.example\.org:notes/,
     );
   });
-  it('defaults to static hosting and drops the preview on request', () => {
+  it('drops the preview on request', () => {
     configureSite(root, {
       production: 'https://apps.example.org',
       preview: 'https://preview.apps.pages.dev',
     });
-    assert.equal(apps().site.host, 'static');
     configureSite(root, { noPreview: true });
     assert.deepEqual(apps().site, {
       production: 'https://apps.example.org',
-      host: 'static',
     });
     assert.doesNotMatch(runtime(), /preview\.apps\.pages\.dev/);
   });
@@ -468,14 +461,6 @@ describe('configure-site', () => {
       /site\.production must be an HTTPS origin/,
     );
     assert.throws(() => configureSite(root, {}), /--production/);
-    assert.throws(
-      () =>
-        configureSite(root, {
-          production: 'https://apps.example.org',
-          host: 'ftp',
-        }),
-      /site\.host/,
-    );
     assert.equal(readFileSync(join(root, 'apps.json'), 'utf8'), before);
   });
   it('lets check report generated files behind the site', () => {
