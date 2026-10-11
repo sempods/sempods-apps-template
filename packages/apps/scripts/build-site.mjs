@@ -39,9 +39,16 @@ function appBuild(appDir, mode, outDir) {
 
 // Paths build-site reserves in each app's output, so an app's own copies are
 // left out: did.json (written here), host files that hosts read only at the
-// site root (Cloudflare would serve a nested 404.html), and an extensionless
-// `callback`, which would answer the callback path before the app shell.
-const RESERVED = ['did.json', '_redirects', '404.html', 'callback'];
+// site root (Cloudflare would serve a nested 404.html), and the callback:
+// `callback.html` is written here, and an extensionless `callback` would
+// answer the callback path before it.
+const RESERVED = [
+  'did.json',
+  '_redirects',
+  '404.html',
+  'callback',
+  'callback.html',
+];
 
 /** Removes a file or directory and reports whether there was one. */
 const removeIfPresent = (path) =>

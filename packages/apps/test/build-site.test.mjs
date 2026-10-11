@@ -159,12 +159,20 @@ describe('build-site', () => {
     );
     writeFileSync(join(root, 'apps', 'konsum', 'public', '404.html'), 'own');
     writeFileSync(join(root, 'apps', 'konsum', 'public', 'callback'), 'own');
+    // Even a directory there gives way to the callback shell.
+    mkdirSync(join(root, 'apps', 'konsum', 'public', 'callback.html'));
+    writeFileSync(
+      join(root, 'apps', 'konsum', 'public', 'callback.html', 'x'),
+      'own',
+    );
     const { warnings } = buildSite(root, { build });
     assert.deepEqual(warnings, [
       'apps/konsum/public/_redirects is not published: build-site reserves this path.',
       'apps/konsum/public/404.html is not published: build-site reserves this path.',
       'apps/konsum/public/callback is not published: build-site reserves this path.',
+      'apps/konsum/public/callback.html is not published: build-site reserves this path.',
     ]);
+    assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
     // Cloudflare Pages would otherwise serve the nested 404.html.
     assert.equal(exists('konsum/404.html'), false);
     assert.equal(exists('konsum/_redirects'), false);
