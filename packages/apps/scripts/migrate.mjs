@@ -161,7 +161,9 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
     [...blocked.keys()].some((path) => file.startsWith(`${path}/`));
 
   for (const file of files) {
-    if (file === policy.rootManifest || skip.has(file) || below(file)) continue;
+    // The root manifest has its own merge unless it is a collision.
+    const special = file === policy.rootManifest && !blocked.has(file);
+    if (special || skip.has(file) || below(file)) continue;
     const { baseText, theirs, ours } = texts(file);
     const add = (reason) =>
       manual.push({ file, reason, baseText, theirs, ours });
@@ -356,11 +358,15 @@ export function migrate(
     else replaceFile(join(root, file), content);
     report[kind].push(file);
   }
-  const manifest = mergedManifest(
-    root,
-    { base, snapshot, policy, from: baseline.version, to: target.version },
-    report.notes,
-  );
+  const manifest = migration.manual.some(
+    ({ file }) => file === policy.rootManifest,
+  )
+    ? null
+    : mergedManifest(
+        root,
+        { base, snapshot, policy, from: baseline.version, to: target.version },
+        report.notes,
+      );
   if (manifest !== null) {
     replaceFile(join(root, policy.rootManifest), manifest);
     report.updated.push(policy.rootManifest);
