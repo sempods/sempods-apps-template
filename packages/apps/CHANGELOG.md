@@ -38,7 +38,8 @@ configuration choices and the SDK migration.
   `peerDependencies`. It no longer checks Markdown links.
 - The SDK update workflow installs the dependencies before it resolves the
   release. The checkpoint of an unfinished SDK update is
-  `.sdk-update-pending` in the repository root.
+  `.sdk-update-pending` in the repository root. `sdk-update` does not start
+  while a tooling migration is open or due; finish the migration first.
 - The template version is the version of `@sempods/apps`; `.sempods/` is gone.
 
 ### Upgrade notes
