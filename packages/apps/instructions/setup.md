@@ -26,7 +26,7 @@ Choose a short app ID from the idea, such as `konsum`, and tell the owner; the
 generator validates allowed IDs and reserved names. Record choices and
 progress as they become known.
 
-A name, GitHub review identity and automatic-update settings are not needed to
+A name, GitHub review identity and the version PR choice are not needed to
 try an app. Do not ask for them before the first local interaction. A missing
 Pod also allows UI work; record Pod testing as pending. Before accessing a Pod,
 use the owner's full test Pod URL and a dedicated context, with synthetic data.

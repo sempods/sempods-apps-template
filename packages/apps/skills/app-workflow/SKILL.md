@@ -17,8 +17,6 @@ and decisions in their own folder and `NOTES.md`.
 The workflow owns commands, pinned SDK references, verification and handoff. It
 works without skill discovery; this entry adds no separate rules.
 
-For SDK updates, follow [Update the SDK](../../instructions/app-workflow.md#update-the-sdk);
-for tooling updates, the [update skill](../update/SKILL.md).
-A patch update is merged when checks pass. Before 1.0, a minor update may break
-apps: follow the SDK migration guide, adapt the apps, run checks and list what
-to try on the Pod before merging.
+For SDK updates, follow
+[Update the SDK](../../instructions/app-workflow.md#update-the-sdk); for
+tooling updates, the [update skill](../update/SKILL.md).

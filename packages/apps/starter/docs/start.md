@@ -41,6 +41,12 @@ update is merged when checks pass. Before 1.0 a minor update may break apps;
 your assistant follows the migration guide, adapts your apps and lists what to
 try on the Pod. You decide when to merge.
 
+When the tooling gets better, ask your assistant: “Update the tooling.” It
+brings in the new version as a change you can review and tells you if your
+computer needs a newer Node or pnpm first. Your apps, notes and instructions
+stay yours. Where the update and one of your changes overlap, your assistant
+combines them and asks you when it is a matter of choice.
+
 ## Publish
 
 When an app is ready, ask your assistant: “Publish my apps.” It asks for the
@@ -50,14 +56,6 @@ each under its own path, with an overview page. Choose the address once:
 changing it later means signing in to every app again. On the published site,
 apps can be installed on a device. Offline startup will not make Pod edits
 work offline. You decide when to publish.
-
-## Update
-
-When the tooling gets better, ask your assistant: “Update the tooling.” It
-brings in the new version as a change you can review and tells you if your
-computer needs a newer Node or pnpm first. Your apps, notes and instructions
-stay yours. Where the update and one of your changes overlap, your assistant
-combines them and asks you when it is a matter of choice.
 
 Your assistant follows the repository's instructions and records progress in
 each app's `NOTES.md`, so a later session can pick up where you left off.
