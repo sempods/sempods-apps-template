@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// One SDK release for the root and every registered app.
+// One SDK release for the root and every registered app: the manifests name
+// it, pnpm installs it, and the update counts only once node_modules has it
+// and check passes. Usage: pnpm run sdk-update <version|latest>
 import {
-  appendFileSync,
   existsSync,
   readFileSync,
   rmSync,
@@ -12,7 +13,6 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { formatJson, ifPresent, readJson } from './lib/json.mjs';
-import { readLockfile } from './lib/lockfile.mjs';
 import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
@@ -122,27 +122,7 @@ export function planUpdate(
 }
 
 
-export function lockStateComplete(root, version) {
-  try {
-    const lock = readLockfile(
-      readFileSync(join(root, 'pnpm-lock.yaml'), 'utf8'),
-    );
-    const entries = [
-      ['.', 'devDependencies'],
-      ...readApps(root).apps.map(({ id }) => [`apps/${id}`, 'dependencies']),
-    ];
-    return (
-      entries.every(([path, section]) =>
-        SDK.every(
-          (name) => lock.importers[path]?.[section]?.[name] === version,
-        ),
-      ) && SDK.every((name) => lock.packages.has(`${name}@${version}`))
-    );
-  } catch {
-    return false;
-  }
-}
-
+/** Whether node_modules has both SDK packages at `version` and the reference. */
 export function installedStateComplete(root, version) {
   try {
     return (
@@ -164,7 +144,10 @@ export function applyUpdate(
   plan,
   {
     run = (args) => pnpmOrThrow(root, args),
-    referenceExists = () => existsSync(join(root, REFERENCE)),
+    installed = () => installedStateComplete(root, plan.version),
+    // pnpm confirms that the lockfile matches every manifest.
+    locked = () =>
+      pnpm(['install', '--frozen-lockfile'], { cwd: root }).status === 0,
     migration = () => migrationState(root),
   } = {},
 ) {
@@ -175,8 +158,8 @@ export function applyUpdate(
   if (
     plan.changes.length === 0 &&
     !resuming &&
-    lockStateComplete(root, plan.version) &&
-    installedStateComplete(root, plan.version)
+    installed() &&
+    locked()
   )
     return false;
   // Its check would fail on the migration, which waits for this update.
@@ -188,9 +171,9 @@ export function applyUpdate(
   writeFileSync(pending, `${plan.version}\n`);
   for (const { path, updated } of plan.changes) writeFileSync(path, updated);
   run(INSTALL);
-  if (!referenceExists())
+  if (!installed())
     throw new Error(
-      `${REFERENCE} is missing: this SDK release ships no app-author reference`,
+      `node_modules does not have both SDK packages at ${plan.version} with ${REFERENCE}; fix the cause and run the same command again`,
     );
   run(['run', 'check']);
   rmSync(pending);
@@ -203,7 +186,6 @@ function main() {
     allowPositionals: true,
     options: {
       'allow-downgrade': { type: 'boolean' },
-      'resolve-only': { type: 'boolean' },
     },
   });
   if (positionals.length !== 1)
@@ -214,30 +196,12 @@ function main() {
   const plan = planUpdate(root, positionals[0], {
     allowDowngrade: values['allow-downgrade'],
   });
-  if (values['resolve-only']) {
-    // A fresh Actions checkout has no node_modules; committed dependency state
-    // determines whether a release branch is needed there.
-    const changed =
-      plan.changes.length > 0 || !lockStateComplete(root, plan.version);
-    if (process.env.GITHUB_OUTPUT)
-      appendFileSync(
-        process.env.GITHUB_OUTPUT,
-        `version=${plan.version}\nchanged=${changed}\n`,
-      );
-    console.log(
-      JSON.stringify({
-        version: plan.version,
-        changed,
-      }),
-    );
-  } else {
-    const changed = applyUpdate(root, plan);
-    console.log(
-      changed
-        ? `Updated SDK to ${plan.version}.`
-        : `Already at SDK ${plan.version}; nothing changed.`,
-    );
-  }
+  const changed = applyUpdate(root, plan);
+  console.log(
+    changed
+      ? `Updated SDK to ${plan.version}.`
+      : `Already at SDK ${plan.version}; nothing changed.`,
+  );
   console.log(
     `SDK release: ${plan.release}\nMigration guide: ${plan.migration}`,
   );

@@ -20,7 +20,8 @@ updates:
           - 'minor'
           - 'patch'
 
-  # Dependabot's npm ecosystem updates pnpm-lock.yaml too.
+  # Dependabot's npm ecosystem updates pnpm-lock.yaml too, and every
+  # package.json of the pnpm workspace: the root and each app.
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
@@ -28,21 +29,43 @@ updates:
     versioning-strategy: 'increase'
     # Regular version updates wait three days; Dependabot also attempts an age
     # gate for newly resolved transitive dependencies. Security updates skip
-    # it.
+    # it. sempods releases are reviewed upstream and need no waiting period.
     cooldown:
       default-days: 3
+      exclude:
+        - '@sempods/*'
+    # Ignore rules with update-types stop only version updates; security
+    # updates for these packages still arrive.
     ignore:
-      # sdk-update moves the SDK and the tooling's updates are applied with
-      # their shared files, so neither comes from here.
+      # BEGIN OWNER SEMPODS UPDATES
+      # No version PRs for the SDK and the tooling. Remove the entry between
+      # these markers to receive them; updates keep this section as it is.
       - dependency-name: '@sempods/*'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
+      # END OWNER SEMPODS UPDATES
       # Match the Node 24 runtime baseline; review runtime and typings together.
       - dependency-name: '@types/node'
         update-types:
           - 'version-update:semver-major'
+    # A dependency joins the first group it matches. Both SDK packages move
+    # together in one PR; the tooling has its own, since it brings a starter
+    # migration (update skill).
     groups:
+      sempods-sdk:
+        patterns:
+          - '@sempods/app-sdk'
+          - '@sempods/client-sdk'
+      sempods-apps:
+        patterns:
+          - '@sempods/apps'
       npm:
         patterns:
           - '*'
+        exclude-patterns:
+          - '@sempods/*'
         update-types:
           - 'minor'
           - 'patch'

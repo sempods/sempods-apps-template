@@ -100,10 +100,7 @@ needs it, ask the owner before approving it under `allowBuilds` in
 `title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
 path/port. An optional `site` records where the apps are published; only
 `pnpm run configure-site` writes it, and it regenerates every app's
-configuration from it. The optional root field `sdkAutoUpdates` records the
-owner's boolean choice for scheduled SDK updates; app generation preserves
-it. Do not infer that choice from organization settings. Do
-not add other deployment fields.
+configuration from it. Do not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
 reported setup issue, not permission to silently change the callback origin.
 Run the development server as its own process and stop only that process (its
@@ -170,33 +167,32 @@ the user's authorized scope.
 
 ## Update the SDK
 
-Run `pnpm run sdk-update latest` (the npm dist-tag) or name an exact release,
-for example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in
-the root and every app in `apps.json`, regenerates `pnpm-lock.yaml`,
-verifies the shipped reference and runs `pnpm run check`. Other manifest fields
-are preserved. Already at that version with a matching lockfile, installed
-packages and reference is a clean no-op; an intentional downgrade requires `--allow-downgrade`. Failed installs or checks leave a
-reviewable diff and a local checkpoint: diagnose it and rerun the same update
-command. It repeats installation and checks, even if manifests already name the
-release, and clears the checkpoint only after success. Open a PR after checks
-pass.
+An SDK update moves both SDK packages to one release in the root and every
+app. It arrives as a Dependabot PR when the owner has opted in
+([setup](setup.md#enable-sempods-version-prs)); on its branch, run
+`pnpm install` and `pnpm run check --standalone all`. Otherwise run
+`pnpm run sdk-update latest` (the npm dist-tag) or name an exact release, for
+example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in the
+root and every app in `apps.json`, installs, verifies that `node_modules` has
+the release and its shipped reference, and runs `pnpm run check`. Other
+manifest fields are preserved. Already at that version, installed and matching
+the lockfile is a clean no-op; an intentional downgrade requires
+`--allow-downgrade`. Failed installs or checks leave a reviewable diff and a
+local checkpoint: diagnose it and rerun the same update command. It repeats
+installation and checks, even if manifests already name the release, and
+clears the checkpoint only after success. Open a PR after checks pass.
 
-Use the printed release and migration links pinned to that version and the
-newly installed reference. A patch update is merged when checks pass; automatic
-merging requires the owner's choice. Before 1.0 a minor update may break apps:
-follow the SDK migration guide, adapt the apps, run `pnpm run check
---standalone all`, and list what the owner should try on the Pod before merging.
-Record changed behavior, checks and remaining Pod/device evidence in app notes
-and the PR. The owner controls merging.
-
-The weekly SDK workflow needs `sdkAutoUpdates: true` in the owner's `apps.json`
-on the default branch and permission for Actions to create PRs. Without
-the opt-in, scheduled runs skip the update job; manual dispatch still works.
-When enabled, it opens one PR per version and dispatches Check on its branch.
-If Actions may not create PRs, report automatic SDK updates unavailable
-and use the local command plus an assistant-created PR with the owner's existing
-GitHub access. The [setup procedure](setup.md#enable-automatic-sdk-update-prs)
-explains the repository setting. Never ask for a token.
+Read that version's release notes,
+`https://github.com/sempods/sempods-typescript/releases/tag/v<version>`, its
+migration guide,
+`https://github.com/sempods/sempods-typescript/blob/v<version>/docs/migration.md`
+(the local command prints both), and the newly installed reference. A patch
+update is merged when checks pass; automatic merging requires the owner's
+choice. Before 1.0 a minor update may break apps: follow the SDK migration
+guide, adapt the apps, run `pnpm run check --standalone all`, and list what the
+owner should try on the Pod before merging. Record changed behavior, checks
+and remaining Pod/device evidence in app notes and the PR. The owner controls
+merging.
 
 ## Publish
 

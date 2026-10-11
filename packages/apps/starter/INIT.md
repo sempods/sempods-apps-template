@@ -50,7 +50,7 @@ it. Keep it free of credentials and private data.
 - UI language: not selected
 - First app ID and idea: not selected
 - Test Pod/context: not selected (optional; synthetic data only)
-- Automatic SDK updates / Actions PR setting: not checked
+- sempods version PRs (Dependabot): not chosen
 - Local URL and check result: not checked
 - Pod exercise and remaining gaps: not tested
 

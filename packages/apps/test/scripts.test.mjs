@@ -66,19 +66,6 @@ describe('apps.json', () => {
   it('accepts a valid manifest', () => {
     assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
   });
-  it('accepts an optional boolean SDK update choice, rejecting other values', () => {
-    for (const sdkAutoUpdates of [true, false])
-      assert.deepEqual(
-        validateApps({ schemaVersion: 1, apps: [app], sdkAutoUpdates }),
-        [],
-      );
-    for (const sdkAutoUpdates of ['true', 'false', 1, null])
-      assert.ok(
-        validateApps({ schemaVersion: 1, apps: [app], sdkAutoUpdates }).some(
-          (problem) => problem.includes('sdkAutoUpdates'),
-        ),
-      );
-  });
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
     const problems = validateApps({
       schemaVersion: 1,
@@ -373,14 +360,14 @@ describe('new-app', () => {
     assert.equal(existsSync(join(root, 'apps', 'evil')), false);
   });
 
-  it('preserves the repository SDK update choice when adding an app', () => {
+  it('preserves other fields of apps.json when adding an app', () => {
     writeFileSync(
       join(root, 'apps.json'),
-      JSON.stringify({ schemaVersion: 1, apps: [], sdkAutoUpdates: true }),
+      JSON.stringify({ schemaVersion: 1, apps: [], note: 'owner' }),
     );
     createApp(root, { id: 'konsum' });
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
-    assert.equal(manifest.sdkAutoUpdates, true);
+    assert.equal(manifest.note, 'owner');
     assert.equal(manifest.apps[0].id, 'konsum');
   });
 

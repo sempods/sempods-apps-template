@@ -12,7 +12,6 @@
     ".node-version",
     ".github/dependabot.yml",
     ".github/workflows/check.yml",
-    ".github/workflows/sdk-update.yml",
     ".github/workflows/codeql.yml",
     ".github/codeql/codeql-config.yml"
   ],
@@ -25,6 +24,9 @@
         "<!-- BEGIN INSTANCE SETUP RECORD -->",
         "<!-- END INSTANCE SETUP RECORD -->"
       ]
+    ],
+    ".github/dependabot.yml": [
+      ["# BEGIN OWNER SEMPODS UPDATES", "# END OWNER SEMPODS UPDATES"]
     ]
   },
   "seed": ["apps.json", "apps/.gitkeep"],

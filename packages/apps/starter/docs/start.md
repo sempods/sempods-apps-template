@@ -33,9 +33,9 @@ into chat. Without a Pod, you can still try the screen.
 
 ## Keep apps up to date
 
-If you choose weekly SDK updates after trying your first app, your assistant
-enables them with your existing GitHub access. Until then, the
-scheduled SDK update job stays off.
+After trying your first app, you can ask your assistant to turn on update
+suggestions: GitHub then proposes each new SDK or tooling version as a change
+for you to review. Until then, it proposes none; security fixes still arrive.
 Ask your assistant: “Update my SDK and explain what I should try.” A patch
 update is merged when checks pass. Before 1.0 a minor update may break apps;
 your assistant follows the migration guide, adapts your apps and lists what to
