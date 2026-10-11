@@ -1,4 +1,4 @@
-// Reads and writes JSON files the way the template formats them.
+// Reads and writes JSON files in the format the tooling uses.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { replaceFile } from './files.mjs';
 

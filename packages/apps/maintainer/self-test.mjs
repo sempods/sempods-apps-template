@@ -388,19 +388,6 @@ try {
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
-
-  // The starter offers no update-template script; the command still says why.
-  const update = spawnSync(
-    'pnpm',
-    ['exec', 'sempods-apps', 'update-template'],
-    { cwd: repo, encoding: 'utf8', shell: process.platform === 'win32' },
-  );
-  if (
-    update.status === 0 ||
-    !/not supported yet/.test(`${update.stdout}${update.stderr}`)
-  )
-    throw new Error('update-template must refuse the installed package');
-  console.log('✓ update-template refuses the installed package');
   migrateExercise(repo, work, tooling);
 } catch (error) {
   console.error(`self-test: ${error.message}`);

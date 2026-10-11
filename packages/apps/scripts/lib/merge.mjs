@@ -1,5 +1,5 @@
-// Merges a repository's file with a template change: three-way merges of
-// text, owner sections that stay verbatim, and template entries of manifests.
+// Merges a repository's file with a starter change: three-way merges of
+// text, owner sections that stay verbatim, and starter entries of manifests.
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -7,8 +7,8 @@ import { join } from 'node:path';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-export function git(cwd, args, options = {}) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', ...options });
+function git(cwd, args) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
   if (result.error) throw result.error;
   return result;
 }
@@ -58,18 +58,18 @@ export function mergeText(ours, base, theirs, labels) {
 }
 
 /**
- * Decides one template-owned manifest value. A value equal to one the template
- * shipped is template-owned and follows the release; anything else is the
- * owner's and stays, with a note.
+ * Decides one starter-owned manifest value. A value equal to the one the old
+ * starter shipped follows the new starter; anything else is the owner's and
+ * stays, with a note.
  */
-export function decide(ours, bases, theirs) {
+function decide(ours, base, theirs) {
   if (same(ours, theirs)) return { value: ours };
-  // Absence counts as the owner's removal only if the origin had the entry.
+  // Absence counts as the owner's removal only if the old starter had it.
   if (ours === undefined)
-    return bases[0] !== undefined
+    return base !== undefined
       ? { value: undefined, note: 'removed in this repository; left out' }
       : { value: theirs };
-  if (bases.some((b) => same(b, ours))) return { value: theirs };
+  if (same(base, ours)) return { value: theirs };
   return {
     value: ours,
     note: `changed in this repository; kept ${JSON.stringify(ours)}`,
@@ -86,10 +86,10 @@ const KEYED = [
 const PLAIN = ['type', 'private', 'packageManager', 'workspaces'];
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies'];
 
-/** Template entries of a manifest, merged; owner entries and names are untouched. */
+/** Starter entries of a manifest, merged; owner entries and names are untouched. */
 export function mergeManifest(
   ours,
-  bases,
+  base,
   theirs,
   sdk,
   sdkVersion,
@@ -106,17 +106,13 @@ export function mergeManifest(
     apply(
       result,
       field,
-      decide(
-        ours[field],
-        bases.map((b) => b?.[field]),
-        theirs[field],
-      ),
+      decide(ours[field], base[field], theirs[field]),
       field,
     );
   for (const field of KEYED) {
     const keys = new Set([
       ...Object.keys(theirs[field] ?? {}),
-      ...bases.flatMap((b) => Object.keys(b?.[field] ?? {})),
+      ...Object.keys(base[field] ?? {}),
     ]);
     const target = { ...(result[field] ?? {}) };
     for (const key of keys) {
@@ -124,11 +120,7 @@ export function mergeManifest(
       apply(
         target,
         key,
-        decide(
-          ours[field]?.[key],
-          bases.map((b) => b?.[field]?.[key]),
-          theirs[field]?.[key],
-        ),
+        decide(ours[field]?.[key], base[field]?.[key], theirs[field]?.[key]),
         `${field}.${key}`,
       );
     }

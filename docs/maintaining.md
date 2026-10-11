@@ -69,11 +69,12 @@ published one, so skipped releases need nothing in between. A release that
 leaves the starter unchanged needs no migration. The script applies only
 unambiguous changes; whatever needs judgment (both sides changed a file, a
 dropped file the owner changed, an owner section that cannot be kept, a
-file/directory collision) becomes a manual case that the owner's assistant
-decides with the update skill, confirmed by `migrate --done`. A shared file
-the starter drops is removed only where the owner left it unchanged; keep
-that in mind before removing one. `update-template` only refuses: it
-served copies of the template, which the starter replaces.
+file/directory collision, a rename by letter case only) becomes a manual case
+that the owner's assistant decides with the update skill, confirmed by
+`migrate --done`. `update` and `migrate` refuse to write through a symbolic
+link. A shared file the starter drops is removed only where the owner left it
+unchanged; keep that in mind before removing one, and do not rename a starter
+file by letter case alone.
 
 ## Decisions
 

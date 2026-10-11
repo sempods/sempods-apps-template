@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Checks the template tooling itself: the script tests and the Markdown links
-// of every document. The template repository runs it in CI; a copy's check
-// covers only the owner's apps. self-test.mjs exercises the tooling in an
-// isolated copy.
+// Checks the tooling itself: the script tests and the Markdown links of every
+// document. This repository runs it in CI; an owner repository's check covers
+// only its apps. self-test.mjs exercises the packed tooling in a repository
+// created from the starter.
 // Usage: node packages/apps/maintainer/check-tooling.mjs
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';

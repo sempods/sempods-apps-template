@@ -6,7 +6,7 @@ export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
 
 // A failed SDK update can leave manifests, lockfile and installed packages at
 // the target already. sdk-update keeps this local checkpoint in the repository
-// root until the entire update passes; template updates refuse to start while
+// root until the entire update passes; tooling updates refuse to start while
 // it exists.
 export const PENDING_UPDATE = '.sdk-update-pending';
 
