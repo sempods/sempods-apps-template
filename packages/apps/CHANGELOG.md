@@ -52,6 +52,7 @@ configuration choices and the SDK migration.
   first.
 - `check` reports an SDK version outside the range the tooling supports, its
   `peerDependencies`. It no longer checks Markdown links.
+- The starter README no longer calls the starter a preview.
 - The CodeQL workflow runs only in public repositories, where code scanning
   needs no licence, and has the `actions: read` permission a private
   repository with a GitHub Code Security licence needs once its condition is
