@@ -93,30 +93,13 @@ describe('build-site', () => {
     assert.equal(existsSync(join(root, 'apps', 'konsum', 'dist')), false);
   });
 
-  it('serves callbacks without rewrites outside Netlify', () => {
-    for (const host of ['cloudflare-pages', 'static']) {
-      configureSite(root, { production: 'https://apps.example.org', host });
-      buildSite(root, { build });
-      assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
-      assert.equal(exists('_redirects'), false);
-      assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
-      assert.equal(exists('_headers'), false);
-    }
-  });
-
-  it('rewrites only the callbacks on Netlify', () => {
-    configureSite(root, {
-      production: 'https://apps.example.org',
-      host: 'netlify',
-    });
+  it('serves each callback from a file at its path, without rewrites', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
     buildSite(root, { build });
-    assert.equal(
-      read('_redirects'),
-      '/konsum/callback /konsum/index.html 200!\n/notes/callback /notes/index.html 200!\n',
-    );
-    assert.equal(exists('konsum/callback.html'), false);
-    assert.equal(exists('_headers'), false);
+    assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
+    assert.equal(exists('_redirects'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
+    assert.equal(exists('_headers'), false);
   });
 
   it('lists every app on the overview from apps.json and its icon', () => {

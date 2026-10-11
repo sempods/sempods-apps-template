@@ -3,7 +3,7 @@
 // configuration from it. Each app gets a did:web identity per site origin;
 // local development keeps its own profile.
 // Usage: pnpm run configure-site --production <origin> [--preview <origin> |
-//        --no-preview] [--host netlify|cloudflare-pages|static] [--change-domain]
+//        --no-preview] [--change-domain]
 import { callbackUrl, checkDidWeb } from '@sempods/client-sdk/oauth/host';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -23,7 +23,7 @@ import { scriptArgs } from './lib/pnpm.mjs';
 /** Applies the options to apps.json and regenerates the apps; returns the site. */
 export function configureSite(
   root,
-  { production, preview, noPreview = false, host, changeDomain = false } = {},
+  { production, preview, noPreview = false, changeDomain = false } = {},
 ) {
   const manifest = readApps(root);
   const current = manifest.site;
@@ -43,7 +43,6 @@ export function configureSite(
   const site = {
     production: production ?? current?.production,
     ...(nextPreview && { preview: nextPreview }),
-    host: host ?? current?.host ?? 'static',
   };
   if (site.production === undefined)
     throw new Error('Name the published site: --production <https-origin>.');
@@ -82,7 +81,6 @@ function main() {
       production: { type: 'string' },
       preview: { type: 'string' },
       'no-preview': { type: 'boolean' },
-      host: { type: 'string' },
       'change-domain': { type: 'boolean' },
     },
   });
@@ -91,10 +89,9 @@ function main() {
     production: values.production,
     preview: values.preview,
     noPreview: values['no-preview'],
-    host: values.host,
     changeDomain: values['change-domain'],
   });
-  console.log(`Site configured for ${site.host} hosting.`);
+  console.log('Site configured.');
   for (const profile of SITE_PROFILES) {
     if (!site[profile]) continue;
     console.log(`\n${profile}: ${site[profile]}`);

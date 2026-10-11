@@ -90,7 +90,6 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       `apps.json has no site.${profile}; run pnpm run configure-site first.`,
     );
   if (apps.length === 0) throw new Error('There are no apps to publish yet.');
-  const netlify = site.host === 'netlify';
   const out = join(root, SITE_DIR);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
@@ -105,7 +104,6 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   }
 
   const entries = [];
-  const redirects = [];
   const warnings = [];
   for (const app of apps) {
     const appDir = join(root, 'apps', app.id);
@@ -134,11 +132,10 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     copyLicences([appDir, root], appOut, app.id);
 
     // The callback must answer 200 at its exact path with its query intact.
-    // On Netlify the rewrite is forced (200!), so no file at that path can
-    // shadow it.
+    // Static hosts serve <path>.html for an extensionless path; Netlify does
+    // so without a redirect.
     const callback = new URL(redirectUri).pathname;
-    if (netlify) redirects.push(`${callback} ${app.path}index.html 200!`);
-    else writeFileSync(join(out, `${callback.slice(1)}.html`), html);
+    writeFileSync(join(out, `${callback.slice(1)}.html`), html);
 
     entries.push(overviewEntry(app, appOut));
   }
@@ -147,7 +144,6 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve
   // the overview for every unknown path.
   writeFileSync(join(out, '404.html'), renderNotFound(entries));
-  if (netlify) writeFileSync(join(out, '_redirects'), `${redirects.join('\n')}\n`);
   return { apps, site, warnings };
 }
 

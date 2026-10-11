@@ -127,12 +127,10 @@ function publish(repo) {
   // check built the local profile into dist/; build-site must leave it there.
   const assets = (path) => readdirSync(join(path, 'assets')).sort();
   const localBuild = assets(join(dir, 'dist')).join();
-  // One real build; the routing per host is covered by build-site's tests.
+  // One real build; the layout is covered by build-site's tests.
   pnpmRun(
     repo,
     'configure-site',
-    '--host',
-    'static',
     '--production',
     production,
     '--preview',
