@@ -2,7 +2,7 @@
 // Applies the starter of the installed @sempods/apps to this repository, from
 // the starter it last applied (.sempods-baseline.json). The script applies
 // only what is unambiguous: a file only the starter changed, a new or dropped
-// file nobody changed here, seed files, the template entries of the root
+// file nobody changed here, seed files, the starter entries of the root
 // manifest. Everything that needs judgment is a manual case: the file stays
 // as it is, and MIGRATION_DIR holds the list, the starter's versions and a
 // merge suggestion for the assistant (update skill). With manual cases open,
@@ -312,7 +312,7 @@ function mergedManifest(root, { base, snapshot, policy, from, to }, notes) {
   const merged = formatJson(
     mergeManifest(
       ours,
-      [starter(base, from)],
+      starter(base, from),
       starter(snapshot, to),
       policy.sdk,
       ours.devDependencies?.[policy.sdk[0]],

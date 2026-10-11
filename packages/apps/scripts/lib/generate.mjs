@@ -1,6 +1,6 @@
 // Generated configuration of one app. App code imports these files and never
 // edits them; new-app writes them, and later commands regenerate them from
-// apps.json, so template updates reach existing apps.
+// apps.json, so tooling updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE_PROFILES, siteIdentity } from './apps.mjs';

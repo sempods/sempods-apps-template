@@ -29,7 +29,5 @@
   },
   "seed": ["apps.json", "apps/.gitkeep"],
   "rootManifest": "package.json",
-  "appManifests": "apps/*/package.json",
-  "skeletonManifest": "skeleton/app/package.json",
   "sdk": ["@sempods/app-sdk", "@sempods/client-sdk"]
 }

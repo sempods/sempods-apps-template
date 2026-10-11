@@ -10,7 +10,7 @@ import { templateRoot } from './fixture.mjs';
 
 // Every file of the starter has a role in the update policy: shared files are
 // merged on update, seed files are written once and then belong to the owner,
-// and the root manifest changes only in its template entries. A file without
+// and the root manifest changes only in its starter entries. A file without
 // a role would reach new repositories but never their updates.
 describe('starter and update policy', () => {
   const starter = join(TOOLING, 'starter');

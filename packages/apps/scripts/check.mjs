@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Checks the owner's apps: manifest, generated configuration, the shared SDK
 // version and its shipped app-author reference, declared dependencies, and
-// lint, typecheck, build and tests of every app. The template's own tooling
-// checks run upstream (check-tooling.mjs).
+// lint, typecheck, build and tests of every app. The tooling's own checks
+// run in its source repository (check-tooling.mjs).
 // Usage: pnpm run check [--standalone <id|all>]
 import {
   cpSync,

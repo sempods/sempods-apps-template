@@ -15,14 +15,13 @@ const COMMANDS = {
   'sdk-update': 'move all apps to one SDK release',
   update: 'install a newer @sempods/apps and migrate to its starter',
   migrate: "apply the installed @sempods/apps' starter to this repository",
-  'update-template': 'apply a newer template release',
 };
 
 const [command, ...args] = process.argv.slice(2);
 if (!Object.hasOwn(COMMANDS, command ?? '')) {
   console.error('Usage: sempods-apps <command> [arguments]\n');
   for (const [name, summary] of Object.entries(COMMANDS))
-    console.error(`  ${name.padEnd(16)}${summary}`);
+    console.error(`  ${name.padEnd(15)}${summary}`);
   process.exit(command ? 2 : 0);
 }
 const script = join(

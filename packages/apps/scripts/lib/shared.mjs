@@ -34,7 +34,7 @@ import { join, relative, sep } from 'node:path';
 import { ifPresent, readJson, replaceJson, writeJson } from './json.mjs';
 import { EXACT_VERSION } from './sdk.mjs';
 
-export const FORMAT = 1;
+const FORMAT = 1;
 export const PACKAGE = '@sempods/apps';
 export const BASELINE_FILE = '.sempods-baseline.json';
 const HASH = /^[0-9a-f]{64}$/;
@@ -68,7 +68,7 @@ export function starterFiles(dir) {
 const revisionOf = (index) => sha256(JSON.stringify(index));
 
 /** The index of a set of shared files and its revision. */
-export function snapshotOf(root, files) {
+function snapshotOf(root, files) {
   const index = Object.fromEntries(
     [...files]
       .sort()
