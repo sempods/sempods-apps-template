@@ -2,6 +2,7 @@
 // or a directory, writing in one step, removing with emptied directories.
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -18,6 +19,9 @@ export const isFile = (path) =>
 
 export const isDirectory = (path) =>
   statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false;
+
+export const isSymlink = (path) =>
+  lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() ?? false;
 
 /** A file's text, or null when there is no file at the path. */
 export const readText = (path) =>

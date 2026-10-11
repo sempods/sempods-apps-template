@@ -5,7 +5,9 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,7 +22,11 @@ import {
   readSnapshot,
   writeSnapshot,
 } from '../scripts/lib/shared.mjs';
-import { MIGRATION_FILE, migrate } from '../scripts/migrate.mjs';
+import {
+  formatMigration,
+  MIGRATION_FILE,
+  migrate,
+} from '../scripts/migrate.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 
 // The owner section of AGENTS.md and the setup record of INIT.md.
@@ -253,6 +259,72 @@ describe('migrate', () => {
       ['README.md', 'AGENTS.md'],
     );
     assert.match(read(repo, 'AGENTS.md'), /Scope: everything here\./);
+  });
+
+  it('asks again when --done finds a new manual case', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    conflicting(repo);
+    install(repo, '2.0.0');
+    migrateTo(repo, '2.0.0');
+    writeFileSync(join(repo, 'README.md'), '# Annas Apps\n');
+    // The owner edits the starter text the first run applied.
+    edit(repo, 'AGENTS.md', (text) =>
+      text.replace('Scope: all of it.', 'Scope: everything here.'),
+    );
+    const deferred = migrateTo(repo, '2.0.0', { done: true });
+    assert.equal(deferred.unfinished, true);
+    assert.deepEqual(deferred.deferred, ['AGENTS.md']);
+    assert.deepEqual(manualFiles(deferred), ['README.md', 'AGENTS.md']);
+    assert.equal(readBaseline(repo).version, '1.0.0');
+    assert.match(formatMigration(deferred), /--done was not applied: AGENTS\.md/);
+    // Decided now: the next --done completes.
+    const done = migrateTo(repo, '2.0.0', { done: true });
+    assert.equal(done.unfinished, undefined);
+    assert.match(read(repo, 'AGENTS.md'), /Scope: everything here\./);
+    assert.equal(readBaseline(repo).version, '2.0.0');
+  });
+
+  it('installs automatic changes before it pauses for manual cases', () => {
+    publish('3.0.0', v3);
+    const repo = createRepo('1.0.0');
+    conflicting(repo);
+    install(repo, '3.0.0');
+    let installs = 0;
+    const report = migrateTo(repo, '3.0.0', {
+      install: () => {
+        installs += 1;
+        return true;
+      },
+    });
+    assert.equal(report.unfinished, true);
+    assert.ok(report.updated.includes('package.json'));
+    // pnpm run migrate --done would otherwise stop on outdated dependencies.
+    assert.equal(installs, 1);
+    // A rerun with nothing new to apply does not install again.
+    migrateTo(repo, '3.0.0', {
+      install: () => assert.fail('nothing changed since the last install'),
+    });
+  });
+
+  it('does not write through a symbolic link', () => {
+    publish('2.0.0', (starter) => {
+      edit(starter, 'docs/start.md', (text) =>
+        text.replace('## Change', '## Change an app'),
+      );
+      writeFileSync(join(starter, 'docs/new.md'), '# New\n');
+    });
+    const repo = createRepo('1.0.0');
+    const outside = join(work, 'outside');
+    renameSync(join(repo, 'docs'), outside);
+    symlinkSync(outside, join(repo, 'docs'));
+    const start = read(repo, 'docs/start.md');
+    install(repo, '2.0.0');
+    const report = migrateTo(repo, '2.0.0');
+    assert.deepEqual(manualFiles(report), ['docs/new.md', 'docs/start.md']);
+    assert.match(report.manual[0].reason, /docs is a symbolic link here/);
+    assert.equal(readFileSync(join(outside, 'start.md'), 'utf8'), start);
+    assert.equal(existsSync(join(outside, 'new.md')), false);
   });
 
   it('does not continue a migration planned for another starter', () => {

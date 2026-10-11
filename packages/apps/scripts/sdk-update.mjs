@@ -13,6 +13,7 @@ import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
 import { formatJson, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
+import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import {
@@ -164,6 +165,7 @@ export function applyUpdate(
   {
     run = (args) => pnpmOrThrow(root, args),
     referenceExists = () => existsSync(join(root, REFERENCE)),
+    migration = () => migrationState(root),
   } = {},
 ) {
   const pending = join(root, PENDING_UPDATE);
@@ -174,6 +176,12 @@ export function applyUpdate(
     installedStateComplete(root, plan.version)
   )
     return false;
+  // Its check would fail on the migration, which waits for this update.
+  const open = !existsSync(pending) && migration();
+  if (open)
+    throw new Error(
+      `finish the tooling migration first: ${open}. Nothing was changed.`,
+    );
   writeFileSync(pending, `${plan.version}\n`);
   for (const { path, updated } of plan.changes) writeFileSync(path, updated);
   run(INSTALL);

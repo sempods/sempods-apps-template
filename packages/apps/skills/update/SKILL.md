@@ -55,9 +55,12 @@ instead.
    applies anything automatic still left, rewrites the apps' generated
    configuration, installs and advances the baseline in
    `.sempods-baseline.json`. It refuses while a file still contains an
-   unresolved suggestion. If a step fails, fix the cause and run the same
-   command again; the list and the decisions stay. Without manual cases,
-   `pnpm run migrate` finishes on its own.
+   unresolved suggestion. If it names new manual cases instead, decide them
+   and run it again. If a step fails, fix the cause and run the same command
+   again; the list and the decisions stay. If pnpm refuses to run it because
+   the dependencies are out of date, run
+   `node node_modules/@sempods/apps/bin/sempods-apps.mjs migrate --done`.
+   Without manual cases, `pnpm run migrate` finishes on its own.
 6. **Check.** Run `pnpm run check` until it passes.
 7. **Hand over.** With a GitHub remote, open a pull request "Update the tooling
    to <version>" with the migration report, each manual case and how it was

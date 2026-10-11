@@ -17,6 +17,7 @@ import { parseArgs } from 'node:util';
 import {
   isDirectory,
   isFile,
+  isSymlink,
   readText,
   removeFile,
   replaceFile,
@@ -129,21 +130,24 @@ function plan(root, { base, snapshot, policy, seeds, skip }) {
   const files = [
     ...new Set([...Object.keys(base.files), ...Object.keys(snapshot.files)]),
   ].sort();
-  // Starter paths that change between file and directory here. Nothing at or
+  // Starter paths that change between file and directory here, or lie below
+  // a symbolic link that could lead out of the repository. Nothing at or
   // below them is written automatically, on this run or a later one.
   const blocked = new Map();
-  for (const file of Object.keys(snapshot.files)) {
+  for (const file of files) {
     const parts = file.split('/');
-    const obstacle = parts
+    const ancestors = parts
       .slice(0, -1)
-      .map((_, i) => parts.slice(0, i + 1).join('/'))
-      .find((dir) => isFile(join(root, dir)));
-    if (obstacle)
+      .map((_, i) => parts.slice(0, i + 1).join('/'));
+    const link = ancestors.find((dir) => isSymlink(join(root, dir)));
+    const obstacle = ancestors.find((dir) => isFile(join(root, dir)));
+    if (link) blocked.set(file, `${link} is a symbolic link here`);
+    else if (snapshot.files[file] && obstacle)
       blocked.set(
         file,
         `the starter needs a directory where ${obstacle} is a file here`,
       );
-    else if (isDirectory(join(root, file)))
+    else if (snapshot.files[file] && isDirectory(join(root, file)))
       blocked.set(file, 'a directory here, a file in the starter');
   }
   const below = (file) =>
@@ -355,8 +359,20 @@ export function migrate(
   }
 
   report.manual = migration.manual;
-  if (migration.manual.length > 0 && !done)
+  // --done confirms only cases decided before this run; new ones come first.
+  if (done && manual.length > 0)
+    report.deferred = manual.map(({ file }) => file);
+  if (migration.manual.length > 0 && (!done || report.deferred)) {
+    // pnpm refuses `pnpm run` while the manifest and node_modules disagree,
+    // so the next command must find automatic changes installed.
+    const changed =
+      report.updated.length + report.added.length + report.removed.length > 0;
+    if (changed && !install(root))
+      report.notes.push(
+        'pnpm install failed; fix the cause and run pnpm install before pnpm run migrate --done',
+      );
     return { ...report, unfinished: true };
+  }
   // --done attests that every manual case was decided; a copied suggestion
   // with its conflicts unresolved is the one mistake the script can see.
   const unresolved = migration.manual.filter(({ file }) =>
@@ -400,6 +416,11 @@ export function formatMigration(report) {
   if (report.failed) lines.push(report.failed);
   else if (report.unfinished)
     lines.push(
+      ...(report.deferred
+        ? [
+            `--done was not applied: ${report.deferred.join(', ')} became manual cases on this run.`,
+          ]
+        : []),
       ...list(
         `Manual cases (left unchanged; base, starter and suggestion are in ${MIGRATION_DIR}/)`,
         report.manual.map(({ file, reason }) => `${file}: ${reason}`),
