@@ -25,8 +25,9 @@ bootstrap steps in [INIT.md](INIT.md) first.
    owner section below. Do not place credentials or private Pod data there.
 
 The app-workflow skill in `.claude/skills/` and `.agents/skills/` routes to the
-same workflow; skill discovery is optional. [User steps](docs/start.md)
-describe the same journey for the owner.
+same workflow; skill discovery is optional. To update the tooling, follow the
+update skill there, `node_modules/@sempods/apps/skills/update/SKILL.md`.
+[User steps](docs/start.md) describe the same journey for the owner.
 
 ## Owner instructions
 

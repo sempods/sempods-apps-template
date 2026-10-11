@@ -11,9 +11,8 @@ Your assistant helps with the local setup. A hosting account is needed only to
 publish.
 
 > **Preview.** This starter is new and still changing. Today you can build
-> apps, try them locally against your Pod, update the SDK and publish all apps
-> together on one site. Bringing a newer starter into this repository is not
-> supported yet.
+> apps, try them locally against your Pod, update the SDK and the tooling, and
+> publish all apps together on one site.
 
 ## Start with your idea
 

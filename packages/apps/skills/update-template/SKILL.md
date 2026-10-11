@@ -13,9 +13,9 @@ release, in a copy of the template: a repository that holds the tooling itself.
 It applies releases before 0.7.0 only. From 0.7.0 on, repositories are created
 from a starter, and the command refuses such a release without changing
 anything; follow that release's upgrade notes instead. A repository created
-from the starter cannot update this way. Read the repository's `AGENTS.md` and
-the setup record in its `INIT.md` first. This entry adds the review around the
-script.
+from the starter updates with the [update skill](../update/SKILL.md) instead.
+Read the repository's `AGENTS.md` and the setup record in its `INIT.md` first.
+This entry adds the review around the script.
 
 1. **Start clean.** The working tree must have no uncommitted changes, so the
    update is one reviewable diff. Work on a new branch, for example

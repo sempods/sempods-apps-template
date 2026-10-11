@@ -178,6 +178,20 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
       'pnpm regenerated lock',
     );
   });
+  it('waits for an open tooling migration before changing anything', () => {
+    const originals = files.map(json);
+    const plan = planUpdate(root, '0.3.0', { lookup: registry });
+    assert.throws(
+      () =>
+        applyUpdate(root, plan, {
+          run: () => assert.fail('no pnpm while a migration is open'),
+          migration: () => 'the migration to @sempods/apps 2.0.0 is open',
+        }),
+      /finish the tooling migration first[\s\S]*Nothing was changed/,
+    );
+    assert.deepEqual(files.map(json), originals);
+    assert.equal(existsSync(join(root, PENDING_UPDATE)), false);
+  });
   it('is a byte-for-byte no-op when already at the release (no install/check)', () => {
     applyUpdate(root, planUpdate(root, 'latest', { lookup: registry }), {
       run: (args) => {

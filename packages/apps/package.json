@@ -45,7 +45,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "prepack": "node maintainer/snapshot.mjs"
+    "prepack": "node maintainer/snapshot.mjs",
+    "postpack": "node maintainer/snapshot.mjs --clean"
   },
   "dependencies": {
     "semver": "7.8.5",

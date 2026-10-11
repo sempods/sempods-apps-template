@@ -20,14 +20,19 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 - `pnpm run build-site` builds all apps and the overview into one static site,
   `site-dist/`.
 - `pnpm run sdk-update <version>` moves all apps to one SDK release.
+- `pnpm run update [<version>]` checks that Node and pnpm suit the target
+  version, installs it and runs its `migrate`. `pnpm run migrate` applies the
+  installed version's starter to the repository from `.sempods-baseline.json`.
+  It applies unambiguous changes and lists the rest as manual cases in
+  `.sempods-migration/` for the assistant; `pnpm run migrate --done` then
+  completes the migration. See the [update skill](skills/update/SKILL.md).
 - `pnpm run check` checks all apps; `--standalone all` also installs, lints,
   builds and tests each app on its own. It reports an SDK version outside the
   range this package supports (its `peerDependencies`).
 - `sempods-apps update-template` served copies of the template, which held
   the tooling themselves. From 0.7.0 on it refuses to apply a release, without
   changing anything: such a copy follows the 0.7.0 upgrade notes in
-  `CHANGELOG.md`. Updating a repository created from the starter is not
-  supported yet.
+  `CHANGELOG.md`.
 
 Contents:
 

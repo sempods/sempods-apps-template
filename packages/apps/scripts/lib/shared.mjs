@@ -31,7 +31,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
-import { readJson, writeJson } from './json.mjs';
+import { ifPresent, readJson, replaceJson, writeJson } from './json.mjs';
 import { EXACT_VERSION } from './sdk.mjs';
 
 export const FORMAT = 1;
@@ -133,7 +133,7 @@ export function readBaseline(root) {
 
 /** Records that a repository has applied the snapshot of a package version. */
 export function writeBaseline(root, { version, revision }) {
-  writeJson(join(root, BASELINE_FILE), {
+  replaceJson(join(root, BASELINE_FILE), {
     format: FORMAT,
     package: PACKAGE,
     version,
@@ -141,12 +141,20 @@ export function writeBaseline(root, { version, revision }) {
   });
 }
 
-/** Downloads and unpacks a published package version; returns its directory. */
-export function downloadPackage(version) {
-  const work = mkdtempSync(join(tmpdir(), 'sempods-apps-'));
+/**
+ * Unpacks a published package version into `into` and returns its directory.
+ * SEMPODS_APPS_PACKAGES may name a directory of packed tarballs
+ * (sempods-apps-<version>.tgz) to use instead of the registry, for offline
+ * tests of versions not published yet.
+ */
+export function downloadPackage(
+  version,
+  into = mkdtempSync(join(tmpdir(), 'sempods-apps-')),
+) {
+  mkdirSync(into, { recursive: true });
   const run = (command, args) => {
     const result = spawnSync(command, args, {
-      cwd: work,
+      cwd: into,
       encoding: 'utf8',
       shell: process.platform === 'win32',
     });
@@ -156,16 +164,33 @@ export function downloadPackage(version) {
       );
     return result.stdout;
   };
-  const tarball = run('npm', ['pack', `${PACKAGE}@${version}`, '--silent'])
-    .trim()
-    .split('\n')
-    .at(-1);
+  const local = process.env.SEMPODS_APPS_PACKAGES;
+  const tarball = local
+    ? join(local, `sempods-apps-${version}.tgz`)
+    : run('npm', ['pack', `${PACKAGE}@${version}`, '--silent'])
+        .trim()
+        .split('\n')
+        .at(-1);
   run('tar', ['-xzf', tarball]);
-  return join(work, 'package');
+  return join(into, 'package');
+}
+
+/** The starter a packed package directory ships: version, snapshot, policy. */
+export function starterAt(dir) {
+  const shared = join(dir, 'shared');
+  if (!existsSync(join(shared, 'snapshot.json')))
+    throw new Error(
+      `${PACKAGE} at ${dir} has no packed starter; use a published version`,
+    );
+  return {
+    version: readJson(join(dir, 'package.json')).version,
+    snapshot: readSnapshot(shared),
+    policy: ifPresent(() => readJson(join(dir, 'update-policy.json'))),
+  };
 }
 
 /**
- * The snapshot a baseline names: from the installed package when it is that
+ * The starter a baseline names, from the installed package when it is that
  * version, otherwise from the published one.
  */
 export function baselineSnapshot(
@@ -175,11 +200,22 @@ export function baselineSnapshot(
   const local =
     installed &&
     readJson(join(installed, 'package.json')).version === baseline.version;
-  const dir = local ? installed : download(baseline.version);
-  const snapshot = readSnapshot(join(dir, 'shared'));
+  const { snapshot, policy } = starterAt(
+    local ? installed : download(baseline.version),
+  );
   if (snapshot.revision !== baseline.revision)
     throw new Error(
       `${PACKAGE}@${baseline.version} ships shared-file revision ${snapshot.revision}, not the recorded ${baseline.revision}`,
     );
-  return snapshot;
+  return { ...snapshot, policy };
 }
+
+/** The @sempods/apps version a repository declares, as written. */
+export const declaredVersion = (root) =>
+  readJson(join(root, 'package.json')).devDependencies?.[PACKAGE];
+
+/** The @sempods/apps version installed in a repository, if any. */
+export const installedVersion = (root) =>
+  ifPresent(
+    () => readJson(join(root, 'node_modules', PACKAGE, 'package.json')).version,
+  );

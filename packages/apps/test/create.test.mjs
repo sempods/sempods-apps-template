@@ -28,6 +28,10 @@ describe('create', () => {
     work = mkdtempSync(join(tmpdir(), 'sempods-create-'));
     // What prepack writes into the published package.
     writeSnapshot(join(TOOLING, 'starter'), join(work, 'package', 'shared'));
+    writeFileSync(
+      join(work, 'package', 'package.json'),
+      JSON.stringify({ name: '@sempods/apps', version: '1.2.3' }),
+    );
     snapshot = readSnapshot(join(work, 'package', 'shared'));
   });
   afterEach(() => rmSync(work, { recursive: true, force: true }));

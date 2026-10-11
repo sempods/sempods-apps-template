@@ -11,10 +11,11 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
-import { formatJson, readJson } from './lib/json.mjs';
+import { formatJson, ifPresent, readJson } from './lib/json.mjs';
 import { readLockfile } from './lib/lockfile.mjs';
+import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
-import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
+import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import {
   compareVersions,
   EXACT_VERSION,
@@ -24,26 +25,22 @@ import {
 } from './lib/sdk.mjs';
 
 
-function pnpmOrThrow(root, args, capture = false) {
-  const result = pnpm(args, {
-    cwd: root,
-    stdio: capture ? 'pipe' : 'inherit',
-    encoding: 'utf8',
-  });
-  if (result.status !== 0)
+function pnpmOrThrow(root, args) {
+  if (pnpm(args, { cwd: root }).status !== 0)
     throw new Error(
-      `pnpm ${args.join(' ')} failed${capture ? `: ${result.stderr.trim()}` : '; fix the reported problem and rerun'}`,
+      `pnpm ${args.join(' ')} failed; fix the reported problem and rerun`,
     );
-  return capture ? JSON.parse(result.stdout) : undefined;
 }
 
 export function registryLookup(root, name, version) {
   try {
-    return pnpmOrThrow(
-      root,
-      ['view', `${name}@${version}`, 'version', 'dependencies', '--json'],
-      true,
-    );
+    return pnpmJson(root, [
+      'view',
+      `${name}@${version}`,
+      'version',
+      'dependencies',
+      '--json',
+    ]);
   } catch (error) {
     throw new Error(
       `Cannot resolve ${name}@${version} from the npm registry (missing version or registry unavailable): ${error.message}`,
@@ -168,16 +165,26 @@ export function applyUpdate(
   {
     run = (args) => pnpmOrThrow(root, args),
     referenceExists = () => existsSync(join(root, REFERENCE)),
+    migration = () => migrationState(root),
   } = {},
 ) {
   const pending = join(root, PENDING_UPDATE);
+  // Read rather than tested, so nothing races between check and write.
+  const resuming =
+    ifPresent(() => readFileSync(pending, 'utf8')) !== undefined;
   if (
     plan.changes.length === 0 &&
-    !existsSync(pending) &&
+    !resuming &&
     lockStateComplete(root, plan.version) &&
     installedStateComplete(root, plan.version)
   )
     return false;
+  // Its check would fail on the migration, which waits for this update.
+  const open = !resuming && migration();
+  if (open)
+    throw new Error(
+      `finish the tooling migration first: ${open}. Nothing was changed.`,
+    );
   writeFileSync(pending, `${plan.version}\n`);
   for (const { path, updated } of plan.changes) writeFileSync(path, updated);
   run(INSTALL);
