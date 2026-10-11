@@ -11,11 +11,17 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # Code scanning in a private repository needs a GitHub Code Security
+    # licence; without one the upload fails, so the job runs only in public
+    # repositories. With a licence, remove this condition.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
       security-events: write
+      # Private repositories: the analysis reads the workflow run.
+      actions: read
     strategy:
       fail-fast: false
       matrix:

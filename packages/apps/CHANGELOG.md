@@ -52,6 +52,10 @@ configuration choices and the SDK migration.
   first.
 - `check` reports an SDK version outside the range the tooling supports, its
   `peerDependencies`. It no longer checks Markdown links.
+- The CodeQL workflow runs only in public repositories, where code scanning
+  needs no licence, and has the `actions: read` permission a private
+  repository with a GitHub Code Security licence needs once its condition is
+  removed.
 - `build-site` writes the same layout for every host: `<id>/callback.html`
   and a top-level `404.html`. Netlify serves the callback from it without a
   redirect, so `_redirects`, `configure-site --host` and `site.host` in
