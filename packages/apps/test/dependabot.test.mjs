@@ -39,4 +39,12 @@ describe('Dependabot configuration', () => {
       /exclude-patterns:\n\s+- '@sempods\/\*'/,
     );
   });
+
+  it('groups security updates of both SDK packages', () => {
+    const security = groups.slice(groups.indexOf('      sempods-sdk-security:'));
+    assert.match(
+      security,
+      /^ {6}sempods-sdk-security:\n {8}applies-to: 'security-updates'\n {8}patterns:\n {10}- '@sempods\/app-sdk'\n {10}- '@sempods\/client-sdk'\n/,
+    );
+  });
 });

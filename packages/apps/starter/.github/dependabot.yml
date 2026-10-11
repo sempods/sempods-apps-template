@@ -52,9 +52,16 @@ updates:
           - 'version-update:semver-major'
     # A dependency joins the first group it matches. Both SDK packages move
     # together in one PR; the tooling has its own, since it brings a starter
-    # migration (update skill).
+    # migration (update skill). Security updates move only affected packages:
+    # their SDK group joins advisories for both, and a PR that moves one is
+    # completed with sdk-update (Update the SDK in the app workflow).
     groups:
       sempods-sdk:
+        patterns:
+          - '@sempods/app-sdk'
+          - '@sempods/client-sdk'
+      sempods-sdk-security:
+        applies-to: 'security-updates'
         patterns:
           - '@sempods/app-sdk'
           - '@sempods/client-sdk'

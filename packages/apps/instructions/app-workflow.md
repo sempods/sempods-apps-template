@@ -170,7 +170,10 @@ the user's authorized scope.
 An SDK update moves both SDK packages to one release in the root and every
 app. It arrives as a Dependabot PR when the owner has opted in
 ([setup](setup.md#enable-sempods-version-prs)); on its branch, run
-`pnpm install` and `pnpm run check --standalone all`. Otherwise run
+`pnpm install` and `pnpm run check --standalone all`. A Dependabot security
+PR may move only the affected SDK package; on its branch, run
+`pnpm run sdk-update <version>` with the version it names, so both packages
+match everywhere, and commit the result to that branch. Otherwise run
 `pnpm run sdk-update latest` (the npm dist-tag) or name an exact release, for
 example `pnpm run sdk-update 0.3.0`. It coordinates both SDK packages in the
 root and every app in `apps.json`, installs, verifies that `node_modules` has
