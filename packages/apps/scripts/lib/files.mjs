@@ -39,7 +39,9 @@ export const readText = (path) =>
 export function replaceFile(path, content) {
   mkdirSync(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.tmp`;
-  writeFileSync(temporary, content);
+  // Created anew, so a link left at the temporary name is never followed.
+  rmSync(temporary, { force: true });
+  writeFileSync(temporary, content, { flag: 'wx' });
   renameSync(temporary, path);
 }
 

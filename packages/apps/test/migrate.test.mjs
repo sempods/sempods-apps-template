@@ -339,6 +339,28 @@ describe('migrate', () => {
     assert.equal(readFileSync(join(work, 'README.md'), 'utf8'), readme);
   });
 
+  it('refuses a linked generated file and keeps a leftover folder', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo' });
+    const generated = 'apps/demo/src/sempods.generated.ts';
+    const outside = join(work, 'generated.ts');
+    writeFileSync(outside, '// outside\n');
+    rmSync(join(repo, generated));
+    symlinkSync(outside, join(repo, generated));
+    // A leftover of a completed migration, without a record.
+    mkdirSync(join(repo, '.sempods-migration'));
+    writeFileSync(join(repo, '.sempods-migration/leftover'), 'x');
+    install(repo, '2.0.0');
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /symbolic links are: apps\/demo\/src\/sempods\.generated\.ts\./,
+    );
+    assert.equal(readFileSync(outside, 'utf8'), '// outside\n');
+    assert.ok(existsSync(join(repo, '.sempods-migration/leftover')));
+    assert.equal(readBaseline(repo).version, '1.0.0');
+  });
+
   it('refuses a linked baseline or migration folder', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

@@ -10,10 +10,19 @@
 // regenerate the apps' configuration, install, advance the baseline.
 // Usage: pnpm run migrate [--done]
 import { randomBytes } from 'node:crypto';
-import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { readApps } from './lib/apps.mjs';
 import {
   isDirectory,
   isFile,
@@ -22,6 +31,7 @@ import {
   removeFile,
   replaceFile,
 } from './lib/files.mjs';
+import { GENERATED_FILES } from './lib/generate.mjs';
 import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -64,17 +74,38 @@ export function refuseUnfinishedSdkUpdate(root) {
 }
 
 /**
- * Symbolic links where an update writes: the command's own files and the
- * given starter paths, each with its ancestors, and anything inside the
- * migration folder.
+ * Symbolic links where an update writes: the command's own files, the apps'
+ * generated configuration and the given starter paths, each with its
+ * ancestors, and anything inside the migration folder.
  */
 export function linkedPaths(root, files = []) {
   const found = new Set();
-  for (const path of ['package.json', BASELINE_FILE, MIGRATION_DIR, ...files]) {
+  // A broken apps.json names no apps here; regenerating reports it later.
+  const apps = (() => {
+    try {
+      return readApps(root).apps;
+    } catch {
+      return [];
+    }
+  })();
+  for (const path of [
+    'package.json',
+    'pnpm-lock.yaml',
+    'node_modules',
+    BASELINE_FILE,
+    MIGRATION_DIR,
+    ...apps.flatMap(({ id }) =>
+      GENERATED_FILES.map((file) => `apps/${id}/${file}`),
+    ),
+    ...files,
+  ]) {
     const parts = path.split('/');
     for (let i = 1; i <= parts.length; i += 1) {
       const prefix = parts.slice(0, i).join('/');
-      if (isSymlink(join(root, prefix))) found.add(prefix);
+      if (isSymlink(join(root, prefix))) {
+        found.add(prefix);
+        break;
+      }
     }
   }
   if (isDirectory(join(root, MIGRATION_DIR)) && !found.has(MIGRATION_DIR))
@@ -323,9 +354,6 @@ export function migrate(
     throw new Error(
       `the open migration in ${MIGRATION_FILE} was planned for another ${PACKAGE} ${target.version}; reinstall the package it was planned with, or remove ${MIGRATION_DIR}/ to plan again. Nothing was changed.`,
     );
-  // Without an open record, anything left in MIGRATION_DIR is a leftover of
-  // a completed migration.
-  if (!migration) rmSync(work, { recursive: true, force: true });
   const report = {
     from: baseline.version,
     to: target.version,
@@ -341,41 +369,49 @@ export function migrate(
       throw new Error(
         'no migration is open; run pnpm run migrate first and decide its manual cases',
       );
-    if (baseline.revision === target.snapshot.revision)
+    if (baseline.revision === target.snapshot.revision) {
+      // A leftover of a completed migration.
+      rmSync(work, { recursive: true, force: true });
       return { ...report, unchanged: true };
+    }
   }
 
-  // The baseline's package is unpacked once while the migration is open,
-  // into a temporary folder renamed into place, so a partial unpack is never
-  // taken for the cached one.
-  const unpacked = join(work, 'package', 'package');
-  const base = baselineSnapshot(baseline, {
-    download: (version) => {
-      if (
-        ifPresent(() => readJson(join(unpacked, 'package.json')))?.version ===
-        version
-      )
-        return unpacked;
-      const temporary = join(work, `package.${process.pid}`);
-      rmSync(temporary, { recursive: true, force: true });
-      const dir = download(version, temporary);
-      if (dir !== join(temporary, 'package')) return dir;
-      rmSync(join(work, 'package'), { recursive: true, force: true });
-      renameSync(temporary, join(work, 'package'));
-      return unpacked;
-    },
-  });
-  const { policy, snapshot } = target;
-  // Links are checked before planning; only the base package was fetched.
+  // The baseline's package is fetched outside the repository and cached in
+  // MIGRATION_DIR only once the links are checked; an open migration reuses
+  // it. The copy is renamed into place, so a partial copy is never taken for
+  // the cached one.
+  const cache = join(work, 'package');
+  const unpacked = join(cache, 'package');
+  const fetched = mkdtempSync(join(tmpdir(), 'sempods-migrate-'));
+  let base;
   try {
+    const cached =
+      migration &&
+      ifPresent(() => readJson(join(unpacked, 'package.json')))?.version;
+    let dir;
+    base = baselineSnapshot(baseline, {
+      download: (version) =>
+        (dir = version === cached ? unpacked : download(version, fetched)),
+    });
     refuseLinks(root, [
       ...Object.keys(base.files),
-      ...Object.keys(snapshot.files),
+      ...Object.keys(target.snapshot.files),
     ]);
-  } catch (error) {
+    // Without an open record, anything in MIGRATION_DIR is a leftover of a
+    // completed migration.
     if (!migration) rmSync(work, { recursive: true, force: true });
-    throw error;
+    if (dir === join(fetched, 'package')) {
+      const partial = join(work, `package.${process.pid}`);
+      rmSync(partial, { recursive: true, force: true });
+      cpSync(fetched, partial, { recursive: true });
+      rmSync(cache, { recursive: true, force: true });
+      renameSync(partial, cache);
+      base = baselineSnapshot(baseline, { download: () => unpacked });
+    }
+  } finally {
+    rmSync(fetched, { recursive: true, force: true });
   }
+  const { policy, snapshot } = target;
   // A file that was a seed in either starter stays the owner's, also when the
   // new starter drops it together with its policy entry.
   const seeds = new Set([...policy.seed, ...(base.policy?.seed ?? [])]);
