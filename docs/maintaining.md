@@ -135,12 +135,16 @@ with no bypass actors; new tags remain allowed.
 trusted publishing with provenance; there is no npm token. The tag must equal
 the packages' version. A release tag publishes to the `latest` dist-tag. A tag
 with a prerelease part, for example `v0.8.0-dev.1` on a commit whose version is
-`0.8.0-dev.1`, publishes to `next` for acceptance testing. Until the starter
-and the tested update path pass the
-[readiness gate](https://github.com/sempods/sempods-apps-template/issues/10),
-do not point owners to the packages. The npm trusted publisher of each package
-names this repository, `publish.yml` and the `npm` environment; both are
-settings outside the repository.
+`0.8.0-dev.1`, publishes to `next` for acceptance testing. Dependabot
+proposes only the version of the `latest` dist-tag, so owners get version PRs
+for releases, never for prereleases.
+
+The npm trusted publisher of each package names this repository,
+`publish.yml` and the `npm` environment, which requires the owner's approval
+for every run and accepts only `v*` tags; both are settings outside the
+repository. npm accepts a trusted publisher only for a package that exists, so
+a new package is published by hand once, from the tarball the workflow would
+pack.
 
 ## Handoff
 

@@ -13,10 +13,6 @@ This repository is the source of the tooling behind such repositories:
 - [`@sempods/create-apps`](packages/create-apps): creates a repository from
   that starter with `pnpm create @sempods/apps <directory>`.
 
-> **Preview.** The packages are being prepared. Until a release recommends
-> them, they are published for testing only. Progress is tracked in
-> [the roadmap](https://github.com/sempods/sempods-apps-template/issues/10).
-
 The [vision](docs/vision.md) explains the direction. To contribute, read the
 [contribution guide](CONTRIBUTING.md).
 

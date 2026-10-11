@@ -10,10 +10,6 @@ version `.node-version` names, pnpm, and a Pod account for trying real saves.
 Your assistant helps with the local setup. A hosting account is needed only to
 publish.
 
-> **Preview.** This starter is new and still changing. Today you can build
-> apps, try them locally against your Pod, update the SDK and the tooling, and
-> publish all apps together on one site.
-
 ## Start with your idea
 
 Open this repository in your coding assistant and paste:
