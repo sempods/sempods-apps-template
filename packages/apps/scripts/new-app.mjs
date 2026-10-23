@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Creates apps/<id> from the skeleton with the root's SDK version and adds it
 // to apps.json.
-// Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]
+// Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]
 import {
   cpSync,
   existsSync,
@@ -15,8 +15,9 @@ import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
+  APP_LANGUAGES,
+  AUTO,
   invalidId,
-  LANGUAGES,
   nextDevPort,
   readApps,
   writeApps,
@@ -47,7 +48,11 @@ function fillTokens(dir, app) {
     const filled = source
       .replaceAll('__APP_ID__', app.id)
       .replaceAll('__APP_TITLE__', title)
-      .replaceAll('__APP_LANGUAGE__', app.language);
+      // The page's language until the app sets the one it resolved.
+      .replaceAll(
+        '__APP_LANGUAGE__',
+        app.language === AUTO ? 'en' : app.language,
+      );
     if (filled !== source) writeFileSync(path, filled);
   }
 }
@@ -89,12 +94,12 @@ function rootSdk(root) {
  */
 export function createApp(
   root,
-  { id, title = id, language = 'en', pwa = true },
+  { id, title = id, language = AUTO, pwa = true },
 ) {
   const reason = invalidId(id);
   if (reason) throw new Error(reason);
-  if (!LANGUAGES.includes(language))
-    throw new Error(`language must be one of ${LANGUAGES.join(', ')}`);
+  if (!APP_LANGUAGES.includes(language))
+    throw new Error(`language must be one of ${APP_LANGUAGES.join(', ')}`);
   if (typeof title !== 'string' || title.trim() === '')
     throw new Error('the title must not be empty');
   const manifest = readApps(root);
@@ -146,7 +151,7 @@ function main() {
   });
   if (positionals.length !== 1) {
     console.error(
-      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]',
+      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]',
     );
     process.exit(2);
   }

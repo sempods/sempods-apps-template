@@ -222,6 +222,15 @@ describe('overview page', () => {
     assert.match(html, /:focus-visible/);
     assert.match(html, /color-scheme: light dark/);
   });
+  it('announces no language for an app that follows the browser', () => {
+    const html = renderOverview([
+      { id: 'a', title: 'A', href: '/a/' },
+      { id: 'b', title: 'B', language: 'de', href: '/b/' },
+    ]);
+    assert.match(html, /<html lang="en">/);
+    assert.match(html, /<a href="\/a\/">/);
+    assert.match(html, /<a href="\/b\/" lang="de">/);
+  });
   it('has an empty state and a not-found page that links home', () => {
     assert.match(renderOverview([]), /No apps yet\./);
     assert.match(renderNotFound([]), /<a href="\/">All apps<\/a>/);
