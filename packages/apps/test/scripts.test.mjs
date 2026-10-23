@@ -793,6 +793,29 @@ describe('app title', () => {
       regenerate(root);
       assert.match(page(), /<TITLE id="t">Einkauf &#38; Co<\/TITLE >/);
       assert.equal(page().match(/<title/gi).length, 1);
+      // Without </head>, which HTML allows to omit, the title goes after
+      // <head>; without a head, before <body>.
+      for (const [html, expected] of [
+        [
+          '<html>\n<HEAD>\n<meta charset="utf-8">\n<body></body>',
+          /<HEAD>\n {4}<title>Einkauf &#38; Co<\/title>\n<meta/,
+        ],
+        [
+          '<html>\n<body></body>',
+          /<title>Einkauf &#38; Co<\/title>\n {2}<body>/,
+        ],
+      ]) {
+        writeFileSync(join(dir, 'index.html'), html);
+        assert.equal(staticProblems(root).length, 1);
+        regenerate(root);
+        assert.match(page(), expected);
+        assert.deepEqual(staticProblems(root), []);
+      }
+      writeFileSync(
+        join(dir, 'index.html'),
+        '<html><head><TITLE id="t">x</TITLE ></head></html>',
+      );
+      regenerate(root);
       // A replacement pattern in the title is text, not a pattern.
       manifest.apps[0].title = 'A $& B';
       writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
