@@ -17,6 +17,9 @@ const runtime = createBrowserRuntime(runtimeOptions);
 // Vite hot replacement ends this module's runtime lifetime.
 if (import.meta.hot) import.meta.hot.dispose(() => runtime.dispose());
 
+// The app icon (public/favicon.svg), decorative next to the app's name.
+const icon = <img src={`${app.basePath}favicon.svg`} alt="" />;
+
 export default function App({
   registration,
 }: {
@@ -42,7 +45,10 @@ function Frame() {
     <main>
       {header && (
         <header>
-          <h1>{app.title}</h1>
+          <h1>
+            {icon}
+            {app.title}
+          </h1>
           <button
             ref={focusTarget}
             aria-expanded={open}
@@ -55,6 +61,7 @@ function Frame() {
       {/* Below the header's h1, AppAccess uses h2. */}
       <AppAccess
         appName={app.title}
+        icon={icon}
         headingLevel={header ? 2 : 1}
         open={open}
         focusTarget={focusTarget}

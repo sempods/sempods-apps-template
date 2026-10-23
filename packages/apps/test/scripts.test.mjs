@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { inflateSync } from 'node:zlib';
 import {
   invalidId,
   invalidOrigin,
@@ -23,6 +24,7 @@ import {
 import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
+import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
@@ -336,6 +338,24 @@ describe('new-app', () => {
     assert.equal(createApp(root, { id: 'second' }).devPort, 5175);
   });
 
+  it('draws a monogram of the title as the app icon', () => {
+    createApp(root, { id: 'konsum', title: 'Einkaufsliste' });
+    const pub = join(root, 'apps', 'konsum', 'public');
+    assert.match(
+      readFileSync(join(pub, 'favicon.svg'), 'utf8'),
+      /^<svg [^>]*viewBox="0 0 64 64">.*<path d="M/,
+    );
+    for (const size of [192, 512]) {
+      const png = readFileSync(join(pub, `icon-${size}.png`));
+      assert.equal(png.toString('latin1', 1, 4), 'PNG');
+      // IHDR: width and height, 8-bit RGBA.
+      assert.deepEqual(
+        [png.readUInt32BE(16), png.readUInt32BE(20), png[24], png[25]],
+        [size, size, 8, 6],
+      );
+    }
+  });
+
   it('changes nothing for an existing or invalid ID', () => {
     createApp(root, { id: 'konsum' });
     const before = readFileSync(join(root, 'apps.json'), 'utf8');
@@ -371,6 +391,34 @@ describe('new-app', () => {
   it('refuses a directory that exists without a manifest entry', () => {
     mkdirSync(join(root, 'apps', 'orphan'), { recursive: true });
     assert.throws(() => createApp(root, { id: 'orphan' }), /already exists/);
+  });
+});
+
+describe('app icon', () => {
+  it('takes the first letter of the title, without accents', () => {
+    assert.equal(monogramLetter('Einkaufsliste'), 'E');
+    assert.equal(monogramLetter(' ärzte'), 'A');
+    assert.equal(monogramLetter('2048'), undefined);
+    assert.equal(monogramLetter('Ωmega'), undefined);
+  });
+
+  it('draws the letter in white on graphite, with transparent corners', () => {
+    // RGBA of one pixel: the image data follows the 33 bytes of signature and
+    // header and precedes the checksum and the end chunk.
+    const pixel = (letter) => {
+      const png = monogramPng(letter, 64);
+      const rows = inflateSync(png.subarray(41, png.length - 16));
+      return (x, y) => {
+        const start = y * 257 + 1 + x * 4;
+        return [...rows.subarray(start, start + 4)];
+      };
+    };
+    const at = pixel('I');
+    assert.deepEqual(at(0, 0), [0x1f, 0x29, 0x33, 0]);
+    assert.deepEqual(at(10, 32), [0x1f, 0x29, 0x33, 255]);
+    assert.deepEqual(at(32, 32), [255, 255, 255, 255]);
+    // Without a letter, the square stays plain.
+    assert.deepEqual(pixel(undefined)(32, 32), [0x1f, 0x29, 0x33, 255]);
   });
 });
 
