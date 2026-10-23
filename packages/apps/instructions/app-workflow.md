@@ -163,9 +163,11 @@ a rewrite, the installed app opens it offline, and sign-in returns to the
 route it started from. In the app, call `useRoute()` from `src/routes.ts` once
 in the frame: it returns the current `route` (undefined for the start page)
 and `go(route)`, which switches under the SDK's leave policy, so an unsaved
-edit asks first; back and forward do too. Render views as links with the
-route's address (`pathOf`) and call `go` on click. Do not add host rewrites or
-routes with parameters; a single item opens in a dialog or in place.
+edit asks first; back and forward do too. Render views as links with
+`<a {...link(route)}>`: the link has the route's address, and a plain click
+switches through `go` instead of loading the page, while a modified click
+still opens a new tab. Do not add host rewrites or routes with parameters; a
+single item opens in a dialog or in place.
 
 ## Try it and recover deliberately
 

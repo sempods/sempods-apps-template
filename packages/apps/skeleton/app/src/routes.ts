@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+  type MouseEvent,
+} from 'react';
 import { useApp } from '@sempods/app-sdk/react';
 import { app } from './sempods.generated.ts';
 
@@ -56,7 +61,8 @@ export function replaceUrl(url: string) {
 }
 
 /**
- * The current route and `go` to switch it. Switching, back and forward run
+ * The current route, `go` to switch it and `link(route)`, the props of an
+ * `<a>` that switches to it. Switching, back and forward run
  * under the SDK's leave policy: an unsaved edit asks first, and staying keeps
  * the view, its address and the history. Call it once, in the app's frame, and pass the
  * route down.
@@ -107,5 +113,26 @@ export function useRoute() {
     },
     [navigate, route],
   );
-  return { route, go };
+  // Props for a link to a route: its own address, so it opens in a new tab or
+  // gets bookmarked, while a plain click switches in place through `go`
+  // instead of loading the page past the leave policy.
+  const link = useCallback(
+    (next: Route | undefined) => ({
+      href: pathOf(next, app.basePath),
+      onClick: (event: MouseEvent) => {
+        if (
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        )
+          return;
+        event.preventDefault();
+        go(next);
+      },
+    }),
+    [go],
+  );
+  return { route, go, link };
 }
