@@ -629,6 +629,29 @@ describe('migrate', () => {
     assert.equal(read(repo, '.sempods-baseline.json'), before);
   });
 
+  it('still brings the apps to what the tooling generates', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo', title: 'Demo' });
+    const dir = join(repo, 'apps', 'demo');
+    writeFileSync(join(dir, 'vite.sempods.generated.ts'), '// old\n');
+    writeFileSync(
+      join(dir, 'index.html'),
+      read(repo, 'apps/demo/index.html').replace(
+        '</head>',
+        '  <title>Demo</title>\n  </head>',
+      ),
+    );
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.equal(report.unchanged, true);
+    assert.deepEqual(report.updated, ['apps/demo/index.html']);
+    assert.deepEqual(report.regenerated, [
+      'apps/demo/vite.sempods.generated.ts',
+    ]);
+    assert.deepEqual(staticProblems(repo), []);
+  });
+
   it('does not bring back a seed file the owner deleted', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

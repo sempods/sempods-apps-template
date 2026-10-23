@@ -26,6 +26,7 @@ import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
+import { adoptPageTitle, pageProblems } from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
@@ -380,7 +381,16 @@ describe('new-app', () => {
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
     assert.match(html, /<html lang="de">/);
-    assert.match(html, /<title>Einkaufs&#60;liste&#62;<\/title>/);
+    // The title comes from apps.json through the generated Vite plugin.
+    assert.doesNotMatch(html, /<title/);
+    assert.match(
+      readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
+      /\{ tag: 'title', children: "Einkaufs&#60;liste&#62;", injectTo: 'head' \}/,
+    );
+    assert.match(
+      readFileSync(join(dir, 'vite.config.ts'), 'utf8'),
+      /plugins: \[react\(\), pageTitle,/,
+    );
     assert.deepEqual(staleGenerated(dir, app), []);
     assert.match(
       readFileSync(join(dir, 'NOTES.md'), 'utf8'),
@@ -732,6 +742,92 @@ describe('check', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('page title', () => {
+  let root;
+  let dir;
+  const app = { id: 'demo', title: 'Demo & Co' };
+  const file = (name) => join(dir, name);
+  const page = () => readFileSync(file('index.html'), 'utf8');
+  // The skeleton's files of 0.7, which the migration moves.
+  const config07 = `import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { base, pwa, server } from './vite.sempods.generated.ts';
+
+// Base path, development port and PWA settings come from apps.json through the
+// generated file; add your own plugins and options here.
+export default defineConfig({
+  base,
+  server,
+  preview: server,
+  plugins: [react(), ...(pwa ? [VitePWA(pwa)] : [])],
+});
+`;
+  const page07 = (title) => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${title}</title>
+  </head>
+  <body>
+    <svg><title>Logo</title></svg>
+  </body>
+</html>
+`;
+  beforeEach(() => {
+    root = tempRepository('sempods-page-');
+    createApp(root, { id: 'demo', title: app.title });
+    dir = join(root, 'apps', 'demo');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('reports an own page title and a Vite config without the plugin', () => {
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    // An SVG title in the body is not the page's.
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace(/ {4}<title>x<\/title>\n/, ''),
+    );
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace('<title>x</title>', '<TITLE id="t">x</TITLE>'),
+    );
+    writeFileSync(file('vite.config.ts'), config07);
+    const problems = pageProblems(dir, 'demo').join('\n');
+    assert.match(problems, /index\.html has its own <title>/);
+    assert.match(problems, /vite\.config\.ts does not add pageTitle/);
+    assert.match(staticProblems(root).join('\n'), /has its own <title>/);
+  });
+
+  it("moves an app with the skeleton's files to the generated title", () => {
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    assert.deepEqual(adoptPageTitle(dir, app), [
+      'apps/demo/vite.config.ts',
+      'apps/demo/index.html',
+    ]);
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    assert.match(page(), /<svg><title>Logo<\/title><\/svg>/);
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+  });
+
+  it('leaves changed files to the owner', () => {
+    const custom = config07.replace('react()', 'react(), extra()');
+    writeFileSync(file('vite.config.ts'), custom);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    // Without the plugin the page keeps its title.
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+    assert.equal(readFileSync(file('vite.config.ts'), 'utf8'), custom);
+    // With the plugin, a title other than the app's stays for the owner.
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Hand-made'));
+    assert.deepEqual(adoptPageTitle(dir, app), ['apps/demo/vite.config.ts']);
+    assert.match(page(), /<title>Hand-made<\/title>/);
+    assert.equal(pageProblems(dir, 'demo').length, 1);
   });
 });
 
