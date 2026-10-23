@@ -1,9 +1,12 @@
 // Generated configuration of one app. App code imports these files and never
 // edits them; new-app writes them, and later commands regenerate them from
-// apps.json, so tooling updates reach existing apps.
+// apps.json, so tooling updates reach existing apps. The page title in
+// index.html follows apps.json the same way.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE_PROFILES, siteIdentity } from './apps.mjs';
+import { escapeHtml } from './html.mjs';
+import { ifPresent } from './json.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
 // and run pnpm run regenerate.`;
@@ -156,20 +159,38 @@ export function generatedFiles(app, site) {
   };
 }
 
+// index.html is the owner's file except for its page title, which follows
+// apps.json like the manifest and the sign-in screen.
+export const PAGE = 'index.html';
+const TITLE = /<title>[^<]*<\/title>/;
+
+/** The page with the app's title; a page without a title gets one. */
+export function titledPage(html, app) {
+  const title = `<title>${escapeHtml(app.title)}</title>`;
+  return TITLE.test(html)
+    ? html.replace(TITLE, title)
+    : html.replace('</head>', `  ${title}\n  </head>`);
+}
+
+/** Generated files and the page whose content differs from apps.json. */
+function changes(appDir, app, site) {
+  const files = Object.entries(generatedFiles(app, site)).filter(
+    ([file, source]) =>
+      ifPresent(() => readFileSync(join(appDir, file), 'utf8')) !== source,
+  );
+  // A missing page is the build's problem, not the generator's.
+  const html = ifPresent(() => readFileSync(join(appDir, PAGE), 'utf8'));
+  if (html !== undefined && titledPage(html, app) !== html)
+    files.push([PAGE, titledPage(html, app)]);
+  return files;
+}
+
 export function writeGenerated(appDir, app, site) {
-  for (const [file, source] of Object.entries(generatedFiles(app, site)))
+  for (const [file, source] of changes(appDir, app, site))
     writeFileSync(join(appDir, file), source);
 }
 
-/** Lists generated files whose content differs from what apps.json produces. */
+/** Lists generated files and the page whose content differs from apps.json. */
 export function staleGenerated(appDir, app, site) {
-  return Object.entries(generatedFiles(app, site))
-    .filter(([file, source]) => {
-      try {
-        return readFileSync(join(appDir, file), 'utf8') !== source;
-      } catch {
-        return true;
-      }
-    })
-    .map(([file]) => file);
+  return changes(appDir, app, site).map(([file]) => file);
 }

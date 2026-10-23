@@ -26,6 +26,7 @@ import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
+import { regenerate } from '../scripts/regenerate.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
@@ -657,6 +658,56 @@ describe('check', () => {
       );
       assert.match(problems, /must be an exact version/);
       assert.match(problems, /SDK versions differ/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('app title', () => {
+  it('follows apps.json in the page, the manifest and the runtime', () => {
+    const root = tempRepository('sempods-title-');
+    try {
+      createApp(root, { id: 'demo', title: 'Demo' });
+      const dir = join(root, 'apps', 'demo');
+      const page = () => readFileSync(join(dir, 'index.html'), 'utf8');
+      const manifest = JSON.parse(
+        readFileSync(join(root, 'apps.json'), 'utf8'),
+      );
+      manifest.apps[0].title = 'Einkauf & Co';
+      writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /index\.html: its <title> differs from the title in apps\.json/,
+      );
+      assert.deepEqual(regenerate(root).sort(), [
+        'apps/demo/index.html',
+        'apps/demo/src/sempods.generated.ts',
+        'apps/demo/vite.sempods.generated.ts',
+      ]);
+      assert.match(page(), /<title>Einkauf &#38; Co<\/title>/);
+      assert.match(
+        readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
+        /name: "Einkauf & Co"/,
+      );
+      assert.deepEqual(staticProblems(root), []);
+
+      // A title edited in the page is reported and put back.
+      writeFileSync(
+        join(dir, 'index.html'),
+        page().replace(/<title>.*<\/title>/, '<title>Edited</title>'),
+      );
+      assert.equal(staticProblems(root).length, 1);
+      // The rest of the page stays the owner's; a missing title is added.
+      writeFileSync(
+        join(dir, 'index.html'),
+        page()
+          .replace(/<title>.*<\/title>\n/, '')
+          .replace('</body>', '<!-- mine -->\n  </body>'),
+      );
+      assert.deepEqual(regenerate(root), ['apps/demo/index.html']);
+      assert.match(page(), /<title>Einkauf &#38; Co<\/title>\n  <\/head>/);
+      assert.match(page(), /<!-- mine -->/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
