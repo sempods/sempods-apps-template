@@ -8,6 +8,20 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
 - Apps can give their views addresses: `routes` in an app's `apps.json` entry
   lists lowercase English segments, for example `"routes": ["bought"]` for
   `/<id>/bought`. The generated `app.routes` lists them, and
@@ -27,10 +41,17 @@ configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Finishing the migration regenerates every app: `app.routes` is new (empty
+1. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+2. Finishing the migration regenerates every app: `app.routes` is new (empty
    unless the owner lists routes), and so is the service worker's allowlist
    for apps with routes.
-2. Existing apps keep their code. For an app that switches views by itself,
+3. Existing apps keep their code. For an app that switches views by itself,
    offer routes: copy `src/routes.ts` and `src/routes.test.ts` from the
    skeleton (`node_modules/@sempods/apps/skeleton/app/src/`), pass
    `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
