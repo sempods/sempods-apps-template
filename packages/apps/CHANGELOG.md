@@ -13,8 +13,10 @@ configuration choices and the SDK migration.
   the SDK components alike. Its rules style only the app's own markup and
   leave SDK components (`[data-sempods-ui]`) alone, so `AppAccess` keeps its
   layout. App buttons read as text in the accent colour with a calm hover, a
-  visible focus and 44px touch targets; inputs and checkboxes have 44px
-  targets too, and lists lose the browser's indentation and bullets.
+  visible focus and 44px touch targets. Inputs have 44px targets;
+  checkboxes and radios are a compact 24px box whose wrapping `<label>` is
+  the 44px target, as in the SDK. Lists lose the browser's indentation and
+  bullets.
 - The page's `theme-color` follows light and dark mode, and the generated web
   app manifest uses a white background and theme colour instead of green.
 - `new-app` draws the app icon as a monogram, the title's first letter in
