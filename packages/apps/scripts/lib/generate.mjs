@@ -113,8 +113,8 @@ export function viteSource(app) {
       start_url: ${json(p)},
       scope: ${json(p)},
       display: 'standalone',
-      background_color: '#f6faf9',
-      theme_color: '#176354',
+      background_color: '#ffffff',
+      theme_color: '#ffffff',
       icons: [
         { src: ${json(`${p}icon-192.png`)}, sizes: '192x192', type: 'image/png' },
         { src: ${json(`${p}icon-512.png`)}, sizes: '512x512', type: 'image/png' },

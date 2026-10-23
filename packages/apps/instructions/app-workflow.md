@@ -35,7 +35,10 @@ Describe the screen and any data change briefly in the user's language, then
 build it. Do not require the user to choose SDK APIs or RDF terms. Start from
 the skeleton's layout:
 `AppAccess` beside `TargetScreen`, with a header that reopens data access, and
-the SDK's components. Ordinary visual customization is welcome. The SDK owns
+the SDK's components. Ordinary visual customization is welcome: change the
+`--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
+components together, and keep the app's own rules off SDK components
+(`[data-sempods-ui]`), as the skeleton's rules do. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
 rebuilding those facilities. Existing apps on `AppShell` keep working; move them
 only when the owner wants the new layout.

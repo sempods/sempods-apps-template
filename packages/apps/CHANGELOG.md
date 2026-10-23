@@ -4,6 +4,30 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.8.0
+
+### Changes
+
+- The skeleton's `src/index.css` sets a calm, neutral palette through the
+  `--sempods-*` tokens (graphite accent, grey lines), which colour the app and
+  the SDK components alike. Its rules style only the app's own markup and
+  leave SDK components (`[data-sempods-ui]`) alone, so `AppAccess` keeps its
+  layout. App buttons read as text in the accent colour with a calm hover, a
+  visible focus and 44px touch targets; inputs and checkboxes have 44px
+  targets too, and lists lose the browser's indentation and bullets.
+- The page's `theme-color` follows light and dark mode, and the generated web
+  app manifest uses a white background and theme colour instead of green.
+
+### Upgrade notes
+
+1. Finishing the migration regenerates every app's
+   `vite.sempods.generated.ts` with the new manifest colours.
+2. Existing apps keep their own `src/index.css` and `index.html`. Where an
+   app still has the skeleton's global `header`, `button`, `input` or `select`
+   rules, offer the owner the new skeleton rules: they stop shifting the
+   sign-in form and placing the `AppAccess` icon beside its title. Keep the
+   app's own colours unless the owner wants the neutral palette.
+
 ## 0.7.1
 
 ### Changes
