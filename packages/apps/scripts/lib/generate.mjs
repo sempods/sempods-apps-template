@@ -36,10 +36,30 @@ const ${name}: BrowserRuntimeOptions = {
     clientId: ${json(clientId)},
     redirectUri: ${json(redirectUri)},
   },
-  returnTo: app.basePath,
+  ${RETURN_TO[Boolean(app.routes?.length)]},
 };
 `;
 }
+
+// With routes, sign-in returns to the route it started from: read when the
+// runtime is created, as the callback is, so tests can import the module.
+const RETURN_TO = {
+  false: 'returnTo: app.basePath',
+  true: `get returnTo() {
+    return returnPath();
+  }`,
+};
+
+const RETURN_PATH = `
+// The page sign-in returns to: the current route, otherwise the start page.
+function returnPath(): string {
+  const routes: readonly string[] = app.routes;
+  const route = location.pathname.slice(app.basePath.length);
+  return location.pathname.startsWith(app.basePath) && routes.includes(route)
+    ? location.pathname
+    : app.basePath;
+}
+`;
 
 /**
  * Runtime settings per profile: local development with a dynamic identity on
@@ -59,8 +79,9 @@ export const app = {
   language: ${json(app.language)} as Language,
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
+  routes: ${json(app.routes ?? [])},
 } as const;
-
+${app.routes?.length ? RETURN_PATH : ''}
 // Local development: a dynamic identity, local HTTP only.
 const local: BrowserRuntimeOptions = {
   identity: {
@@ -72,7 +93,7 @@ const local: BrowserRuntimeOptions = {
       return \`\${location.origin}${app.path}callback\`;
     },
   },
-  returnTo: app.basePath,
+  ${RETURN_TO[Boolean(app.routes?.length)]},
   development: 'loopback-http',
 };
 ${published.map((name) => publishedProfile(name, site[name], app)).join('')}
@@ -101,6 +122,8 @@ export const runtimeOptions: BrowserRuntimeOptions =
 /** Vite base path, development server and PWA settings for this app's path. */
 export function viteSource(app) {
   const p = app.path;
+  // The start page and every route; route names need no escaping.
+  const routes = app.routes?.length ? `(${app.routes.join('|')})?` : '';
   const escaped = p.replaceAll('/', '\\/');
   const pwa = app.pwa
     ? `{
@@ -127,10 +150,10 @@ export function viteSource(app) {
       // Precache the built shell only; nothing is cached at runtime.
       globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
       runtimeCaching: [],
-      // Serve the cached shell only for this app's start route. The callback,
-      // Pod and login pages always go to the network.
+      // Serve the cached shell only for this app's start page and routes. The
+      // callback, Pod and login pages always go to the network.
       navigateFallback: ${json(`${p}index.html`)},
-      navigateFallbackAllowlist: [/^${escaped}$/],
+      navigateFallbackAllowlist: [/^${escaped}${routes}$/],
       skipWaiting: false,
       clientsClaim: false,
       cleanupOutdatedCaches: true,

@@ -13,6 +13,7 @@ import { buildSite } from '../scripts/build-site.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { renderNotFound, renderOverview } from '../scripts/lib/overview.mjs';
 import { createApp } from '../scripts/new-app.mjs';
+import { regenerate } from '../scripts/regenerate.mjs';
 import { tempRepository } from './fixture.mjs';
 
 describe('build-site', () => {
@@ -100,6 +101,25 @@ describe('build-site', () => {
     assert.equal(exists('_redirects'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
     assert.equal(exists('_headers'), false);
+  });
+
+  it('serves each route from a file at its path, without rewrites', () => {
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.apps[0].routes = ['open', 'bought'];
+    writeFileSync(file, JSON.stringify(manifest));
+    regenerate(root);
+    configureSite(root, { production: 'https://apps.example.org' });
+    buildSite(root, { build });
+    for (const route of ['open', 'bought'])
+      assert.equal(read(`konsum/${route}.html`), read('konsum/index.html'));
+    assert.equal(exists('notes/open.html'), false);
+    // A file of the app at a route's path would answer instead of the page.
+    mkdirSync(join(root, 'apps', 'konsum', 'public', 'bought'));
+    assert.throws(
+      () => buildSite(root, { build }),
+      /route bought collides with bought/,
+    );
   });
 
   it('lists every app on the overview from apps.json and its icon', () => {

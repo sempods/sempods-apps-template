@@ -46,6 +46,28 @@ export function invalidId(id) {
   return undefined;
 }
 
+// Routes answer as <id>/<route>.html next to the app's own build output.
+const ROUTE_RESERVED = new Set([
+  'assets',
+  'callback',
+  'did',
+  'index',
+  'licenses',
+]);
+
+/** Returns a reason when `route` cannot name a route, otherwise undefined. */
+export function invalidRoute(route) {
+  if (
+    typeof route !== 'string' ||
+    !ID_PATTERN.test(route) ||
+    route.endsWith('-')
+  )
+    return 'a route is one lowercase segment: a letter, then up to 39 letters, digits or hyphens';
+  if (ROUTE_RESERVED.has(route))
+    return `"${route}" is reserved by the site layout`;
+  return undefined;
+}
+
 /**
  * Returns a reason when `value` is not an origin as apps.json records it,
  * otherwise undefined. configure-site also lets the SDK check the identity.
@@ -151,6 +173,16 @@ export function validateApps(manifest) {
     ports.add(app.devPort);
     if (typeof app.pwa !== 'boolean')
       problems.push(`${app.id}: pwa must be true or false`);
+    if (app.routes !== undefined && !Array.isArray(app.routes))
+      problems.push(`${app.id}: routes must be a list`);
+    else if (app.routes)
+      app.routes.forEach((route, i) => {
+        const reason = invalidRoute(route);
+        if (reason)
+          problems.push(`${app.id}: route ${JSON.stringify(route)}: ${reason}`);
+        else if (app.routes.indexOf(route) !== i)
+          problems.push(`${app.id}: route ${route} is listed twice`);
+      });
   }
   return problems;
 }
