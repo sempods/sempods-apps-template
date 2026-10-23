@@ -119,7 +119,12 @@ hold connections to it.
 
 Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,
-callback, base path and PWA configuration. `new-app` creates new apps only;
+callback, base path, page title and PWA configuration. The title in
+`apps.json` is the app's only title: `index.html` has no `<title>` of its own,
+and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
+app, change the title there and run `pnpm run regenerate`; the page, the
+sign-in screen, the installed app and the overview follow. The ID and path
+stay, and so does the icon's letter. `new-app` creates new apps only;
 rerunning it does not reconfigure an existing app. `configure-site` changes the
 published identities of all apps. If a requested configuration
 change needs a command not shipped yet, explain that limitation to the owner;

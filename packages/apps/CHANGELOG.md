@@ -39,6 +39,18 @@ configuration choices and the SDK migration.
   so the return after a sign-in shows the right view.
 - The app workflow and the publish guide describe routes and the deployment
   check for them.
+- The app title has one source, `apps.json`. The generated
+  `vite.sempods.generated.ts` exports the Vite plugin `pageTitle`, which adds
+  the title to the head of the served and built page; the skeleton's
+  `vite.config.ts` uses it and its `index.html` has no `<title>` of its own.
+  `check` reports a page with its own title and a `vite.config.ts` without
+  the plugin. The app workflow says how to rename an app.
+- `migrate` moves existing apps where that is unambiguous: a `vite.config.ts`
+  unchanged from the skeleton gets the plugin, and a page whose only title is
+  the app's title from `apps.json` loses it. It does so, and regenerates the
+  apps, also for a release whose starter is unchanged. A page or
+  `vite.config.ts` that is a symbolic link stops `update` and `migrate`
+  before they change anything.
 
 ### Upgrade notes
 
@@ -58,6 +70,13 @@ configuration choices and the SDK migration.
    `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
    list the routes in `apps.json` and run `pnpm run regenerate`. An app that
    rewrote its address itself after a sign-in can drop that code.
+4. The migration lists the apps it moved to the generated page title under
+   "Updated". For any other app, `check` names what is left: add `pageTitle`
+   from `./vite.sempods.generated.ts` to the plugins in its `vite.config.ts`,
+   as the skeleton does, and remove the `<title>` from its `index.html`. A
+   page title other than the one in `apps.json` was chosen by hand: ask the
+   owner whether it should be the app's title, put it into `apps.json` and
+   run `pnpm run regenerate`.
 
 ## 0.7.1
 

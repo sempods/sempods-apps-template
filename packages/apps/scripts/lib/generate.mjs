@@ -4,6 +4,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
+import { escapeHtml } from './html.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
 // and run pnpm run regenerate.`;
@@ -121,7 +122,7 @@ export const runtimeOptions: BrowserRuntimeOptions =
 `;
 }
 
-/** Vite base path, development server and PWA settings for this app's path. */
+/** Vite base path, development server, page title and PWA settings. */
 export function viteSource(app) {
   const p = app.path;
   // The start page and every route, with or without a trailing slash, as the
@@ -166,9 +167,19 @@ ${app.language === AUTO ? '' : `      lang: ${json(app.language)},
   }`
     : 'null';
   return `${HEADER}
+import type { Plugin } from 'vite';
 import type { VitePWAOptions } from 'vite-plugin-pwa';
 
 export const base = ${json(p)};
+
+// The page title from apps.json, added to the head of every page Vite serves
+// or builds; index.html has no <title> of its own.
+export const pageTitle: Plugin = {
+  name: 'sempods-page-title',
+  transformIndexHtml: () => [
+    { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
+  ],
+};
 
 export const server = {
   host: '127.0.0.1',
