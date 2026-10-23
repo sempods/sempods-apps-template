@@ -24,7 +24,7 @@ import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
-import { regenerate } from '../scripts/regenerate.mjs';
+import { adoptPageTitle, pageProblems } from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
@@ -379,7 +379,16 @@ describe('new-app', () => {
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
     assert.match(html, /<html lang="de">/);
-    assert.match(html, /<title>Einkaufs&#60;liste&#62;<\/title>/);
+    // The title comes from apps.json through the generated Vite plugin.
+    assert.doesNotMatch(html, /<title/);
+    assert.match(
+      readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
+      /\{ tag: 'title', children: "Einkaufs&#60;liste&#62;", injectTo: 'head' \}/,
+    );
+    assert.match(
+      readFileSync(join(dir, 'vite.config.ts'), 'utf8'),
+      /plugins: \[react\(\), pageTitle,/,
+    );
     assert.deepEqual(staleGenerated(dir, app), []);
     assert.match(
       readFileSync(join(dir, 'NOTES.md'), 'utf8'),
@@ -688,94 +697,89 @@ describe('check', () => {
   });
 });
 
-describe('app title', () => {
-  it('follows apps.json in the page, the manifest and the runtime', () => {
-    const root = tempRepository('sempods-title-');
-    try {
-      createApp(root, { id: 'demo', title: 'Demo' });
-      const dir = join(root, 'apps', 'demo');
-      const page = () => readFileSync(join(dir, 'index.html'), 'utf8');
-      const manifest = JSON.parse(
-        readFileSync(join(root, 'apps.json'), 'utf8'),
-      );
-      manifest.apps[0].title = 'Einkauf & Co';
-      writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
-      assert.match(
-        staticProblems(root).join('\n'),
-        /index\.html: its <title> differs from the title in apps\.json/,
-      );
-      assert.deepEqual(regenerate(root).sort(), [
-        'apps/demo/index.html',
-        'apps/demo/src/sempods.generated.ts',
-        'apps/demo/vite.sempods.generated.ts',
-      ]);
-      assert.match(page(), /<title>Einkauf &#38; Co<\/title>/);
-      assert.match(
-        readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
-        /name: "Einkauf & Co"/,
-      );
-      assert.deepEqual(staticProblems(root), []);
+describe('page title', () => {
+  let root;
+  let dir;
+  const app = { id: 'demo', title: 'Demo & Co' };
+  const file = (name) => join(dir, name);
+  const page = () => readFileSync(file('index.html'), 'utf8');
+  // The skeleton's files of 0.7, which the migration moves.
+  const config07 = `import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { base, pwa, server } from './vite.sempods.generated.ts';
 
-      // A title edited in the page is reported and put back.
-      writeFileSync(
-        join(dir, 'index.html'),
-        page().replace(/<title>.*<\/title>/, '<title>Edited</title>'),
-      );
-      assert.equal(staticProblems(root).length, 1);
-      // The rest of the page stays the owner's; a missing title is added.
-      writeFileSync(
-        join(dir, 'index.html'),
-        page()
-          .replace(/<title>.*<\/title>\n/, '')
-          .replace('</body>', '<!-- mine -->\n  </body>'),
-      );
-      assert.deepEqual(regenerate(root), ['apps/demo/index.html']);
-      assert.match(page(), /<title>Einkauf &#38; Co<\/title>\n  <\/head>/);
-      assert.match(page(), /<!-- mine -->/);
+// Base path, development port and PWA settings come from apps.json through the
+// generated file; add your own plugins and options here.
+export default defineConfig({
+  base,
+  server,
+  preview: server,
+  plugins: [react(), ...(pwa ? [VitePWA(pwa)] : [])],
+});
+`;
+  const page07 = (title) => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${title}</title>
+  </head>
+  <body>
+    <svg><title>Logo</title></svg>
+  </body>
+</html>
+`;
+  beforeEach(() => {
+    root = tempRepository('sempods-page-');
+    createApp(root, { id: 'demo', title: app.title });
+    dir = join(root, 'apps', 'demo');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-      // Tag names in any case and attributes are kept; one title only.
-      writeFileSync(
-        join(dir, 'index.html'),
-        page().replace(
-          /<title>.*<\/title>/,
-          '<TITLE id="t">Old</TITLE >',
-        ),
-      );
-      assert.equal(staticProblems(root).length, 1);
-      regenerate(root);
-      assert.match(page(), /<TITLE id="t">Einkauf &#38; Co<\/TITLE >/);
-      assert.equal(page().match(/<title/gi).length, 1);
-      // Without </head>, which HTML allows to omit, the title goes after
-      // <head>; without a head, before <body>.
-      for (const [html, expected] of [
-        [
-          '<html>\n<HEAD>\n<meta charset="utf-8">\n<body></body>',
-          /<HEAD>\n {4}<title>Einkauf &#38; Co<\/title>\n<meta/,
-        ],
-        [
-          '<html>\n<body></body>',
-          /<title>Einkauf &#38; Co<\/title>\n {2}<body>/,
-        ],
-      ]) {
-        writeFileSync(join(dir, 'index.html'), html);
-        assert.equal(staticProblems(root).length, 1);
-        regenerate(root);
-        assert.match(page(), expected);
-        assert.deepEqual(staticProblems(root), []);
-      }
-      writeFileSync(
-        join(dir, 'index.html'),
-        '<html><head><TITLE id="t">x</TITLE ></head></html>',
-      );
-      regenerate(root);
-      // A replacement pattern in the title is text, not a pattern.
-      manifest.apps[0].title = 'A $& B';
-      writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
-      regenerate(root);
-      assert.match(page(), /<TITLE id="t">A \$&#38; B<\/TITLE >/);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+  it('reports an own page title and a Vite config without the plugin', () => {
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    // An SVG title in the body is not the page's.
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace(/ {4}<title>x<\/title>\n/, ''),
+    );
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace('<title>x</title>', '<TITLE id="t">x</TITLE>'),
+    );
+    writeFileSync(file('vite.config.ts'), config07);
+    const problems = pageProblems(dir, 'demo').join('\n');
+    assert.match(problems, /index\.html has its own <title>/);
+    assert.match(problems, /vite\.config\.ts does not add pageTitle/);
+    assert.match(staticProblems(root).join('\n'), /has its own <title>/);
+  });
+
+  it("moves an app with the skeleton's files to the generated title", () => {
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    assert.deepEqual(adoptPageTitle(dir, app), [
+      'apps/demo/vite.config.ts',
+      'apps/demo/index.html',
+    ]);
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    assert.match(page(), /<svg><title>Logo<\/title><\/svg>/);
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+  });
+
+  it('leaves changed files to the owner', () => {
+    const custom = config07.replace('react()', 'react(), extra()');
+    writeFileSync(file('vite.config.ts'), custom);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    // Without the plugin the page keeps its title.
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+    assert.equal(readFileSync(file('vite.config.ts'), 'utf8'), custom);
+    // With the plugin, a title other than the app's stays for the owner.
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Hand-made'));
+    assert.deepEqual(adoptPageTitle(dir, app), ['apps/demo/vite.config.ts']);
+    assert.match(page(), /<title>Hand-made<\/title>/);
+    assert.equal(pageProblems(dir, 'demo').length, 1);
   });
 });
 

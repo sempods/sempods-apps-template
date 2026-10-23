@@ -20,7 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import semver from 'semver';
 import { readApps } from './lib/apps.mjs';
-import { PAGE, staleGenerated } from './lib/generate.mjs';
+import { staleGenerated } from './lib/generate.mjs';
+import { pageProblems } from './lib/page.mjs';
 import { migrationState } from './migrate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -118,10 +119,9 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
     }
     for (const file of staleGenerated(dir, app, manifest.site))
       problems.push(
-        file === PAGE
-          ? `apps/${app.id}/${PAGE}: its <title> differs from the title in apps.json; change the title there and run pnpm run regenerate`
-          : `apps/${app.id}/${file} does not match apps.json; regenerate it instead of editing`,
+        `apps/${app.id}/${file} does not match apps.json; regenerate it instead of editing`,
       );
+    problems.push(...pageProblems(dir, app.id));
     const pkg = readJson(join(dir, 'package.json'));
     for (const sdk of SDK)
       expect(`apps/${app.id}`, sdk, pkg.dependencies?.[sdk]);
