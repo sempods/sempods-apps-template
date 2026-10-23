@@ -75,14 +75,26 @@ main > header h1 {
   color: var(--sempods-text);
   font: inherit;
 }
-/* A 22px box with a 44px touch target. */
+/* A compact box; its wrapping <label> is the 44px touch target, as in the
+   SDK. Margins are not clickable, so wrap every checkbox in its label. */
 :where(input[type='checkbox'], input[type='radio']):not(
     :where([data-sempods-ui] *)
   ) {
-  width: 22px;
-  height: 22px;
-  margin: 11px;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  margin-inline-end: 10px;
   accent-color: var(--sempods-accent);
+}
+:where(label):has(input[type='checkbox'], input[type='radio']):not(
+    :where([data-sempods-ui] *)
+  ) {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
 }
 :where(button, input, select, textarea, a):not(
     :where([data-sempods-ui] *, [data-sempods-button])

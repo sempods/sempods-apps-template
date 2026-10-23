@@ -38,7 +38,8 @@ the skeleton's layout:
 the SDK's components. Ordinary visual customization is welcome: change the
 `--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
 components together, and keep the app's own rules off SDK components
-(`[data-sempods-ui]`), as the skeleton's rules do. The SDK owns
+(`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
+radio in its `<label>`: the label is its 44px touch target. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
 rebuilding those facilities. Existing apps on `AppShell` keep working; move them
 only when the owner wants the new layout.
