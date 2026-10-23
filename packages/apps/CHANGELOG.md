@@ -24,9 +24,11 @@ configuration choices and the SDK migration.
   paths and route names English.
 - The app title has one source, `apps.json`. `regenerate` (and every command
   that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
-  one if the page has none; the rest of the page, including the title's
-  attributes, stays the owner's. Like the generated files, a page that is a
-  symbolic link stops `update` and `migrate` before they change anything.
+  one if the page has none (before `</head>`, or after `<head>` or before
+  `<body>` where the end tag is omitted); the rest of the page, including
+  the title's attributes, stays the owner's. Like the generated files, a page
+  that is a symbolic link stops `update` and `migrate` before they change
+  anything.
   `check` reports a page title that differs from `apps.json`. The app
   workflow says how to rename an app.
 

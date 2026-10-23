@@ -168,15 +168,25 @@ export const PAGE = 'index.html';
 // HTML tag names ignore case, and the element may carry attributes; both stay.
 const TITLE = /(<title(?=[\s>])[^>]*>)[^<]*(<\/title\s*>)/i;
 
+// Where a missing title goes: before </head>, or, as the end tag is
+// optional, after <head> or before <body>.
+const HEAD_END = /<\/head\s*>/i;
+const HEAD_START = /<head(?=[\s>])[^>]*>/i;
+const BODY_START = /<body(?=[\s>])/i;
+
 /** The page with the app's title; a page without a title gets one. */
 export function titledPage(html, app) {
   const text = escapeHtml(app.title);
-  return TITLE.test(html)
-    ? html.replace(TITLE, (_, open, close) => `${open}${text}${close}`)
-    : html.replace(
-        /<\/head\s*>/i,
-        (end) => `  <title>${text}</title>\n  ${end}`,
-      );
+  if (TITLE.test(html))
+    return html.replace(TITLE, (_, open, close) => `${open}${text}${close}`);
+  const title = `<title>${text}</title>`;
+  if (HEAD_END.test(html))
+    return html.replace(HEAD_END, (end) => `  ${title}\n  ${end}`);
+  if (HEAD_START.test(html))
+    return html.replace(HEAD_START, (start) => `${start}\n    ${title}`);
+  return BODY_START.test(html)
+    ? html.replace(BODY_START, (start) => `${title}\n  ${start}`)
+    : `${title}\n${html}`;
 }
 
 /** Generated files and the page whose content differs from apps.json. */
