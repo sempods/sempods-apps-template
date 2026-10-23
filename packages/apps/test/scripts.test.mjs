@@ -66,6 +66,28 @@ describe('apps.json', () => {
   it('accepts a valid manifest', () => {
     assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
   });
+  it('accepts routes as distinct lowercase segments', () => {
+    const app = (routes) => ({
+      id: 'konsum',
+      title: 'Konsum',
+      language: 'de',
+      path: '/konsum/',
+      devPort: 5174,
+      pwa: true,
+      routes,
+    });
+    const problems = (routes) =>
+      validateApps({ schemaVersion: 1, apps: [app(routes)] });
+    assert.deepEqual(problems(['open', 'bought']), []);
+    assert.deepEqual(problems(undefined), []);
+    assert.match(problems('bought').join(), /routes must be a list/);
+    assert.match(problems(['Bought']).join(), /one lowercase segment/);
+    assert.match(problems(['a/b']).join(), /one lowercase segment/);
+    assert.match(problems(['callback']).join(), /reserved/);
+    assert.match(problems(['nul']).join(), /device name on Windows/);
+    assert.match(problems(['open', 'open']).join(), /listed twice/);
+  });
+
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
     const problems = validateApps({
       schemaVersion: 1,
@@ -211,6 +233,38 @@ describe('generated configuration', () => {
         redirectUri: 'https://apps.example.org/demo/callback',
       });
       assert.equal(profiles.production.development, undefined);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('returns to the current route after sign-in and caches every route', async () => {
+    const routed = { ...app, routes: ['open', 'bought'] };
+    const files = generatedFiles(routed);
+    assert.match(
+      files['vite.sempods.generated.ts'],
+      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\(open\|bought\)\\\/\?\)\?\$\/\]/,
+    );
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
+    try {
+      const file = join(dir, 'sempods.generated.mts');
+      writeFileSync(file, files['src/sempods.generated.ts']);
+      const { app: generated, runtimeOptions } = await import(
+        pathToFileURL(file).href
+      );
+      assert.deepEqual(generated.routes, ['open', 'bought']);
+      const returnTo = (pathname) => {
+        globalThis.location = { pathname };
+        try {
+          return runtimeOptions.returnTo;
+        } finally {
+          delete globalThis.location;
+        }
+      };
+      assert.equal(returnTo('/demo/bought'), '/demo/bought');
+      assert.equal(returnTo('/demo/bought/'), '/demo/bought');
+      assert.equal(returnTo('/demo/'), '/demo/');
+      assert.equal(returnTo('/demo/callback'), '/demo/');
+      assert.equal(returnTo('/other/bought'), '/demo/');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

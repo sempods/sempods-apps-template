@@ -106,8 +106,8 @@ needs it, ask the owner before approving it under `allowBuilds` in
 `pnpm-workspace.yaml`.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
-`title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
-path/port. An optional `site` records where the apps are published; only
+`title`, `language`, `path`, `devPort` and `pwa`, and optionally `routes`. Read
+the app's assigned path/port. An optional `site` records where the apps are published; only
 `pnpm run configure-site` writes it, and it regenerates every app's
 configuration from it. Do not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
@@ -128,6 +128,24 @@ app or patch generated files as a workaround. The tooling package
 `@sempods/apps` under `node_modules` is not app customization space; after a
 tooling change to the generator, `pnpm run regenerate` rewrites the generated
 files.
+
+### Give views their own addresses
+
+An app used over time gets addressable views, so bookmarks, shared links and
+the back button work. The start page is the app's path and shows the first
+view; each further view is a route, one lowercase English segment in every UI
+language (`/<id>/bought`, never a translated word). List them in the app's
+`apps.json` entry, for example `"routes": ["bought"]`, and run
+`pnpm run regenerate`: the published site then answers `/<id>/bought` without
+a rewrite, the installed app opens it offline, and sign-in returns to the
+route it started from. In the app, call `useRoute()` from `src/routes.ts` once
+in the frame: it returns the current `route` (undefined for the start page)
+and `go(route)`, which switches under the SDK's leave policy, so an unsaved
+edit asks first; back and forward do too. Render views as links with
+`<a {...link(route)}>`: the link has the route's address, and a plain click
+switches through `go` instead of loading the page, while a modified click
+still opens a new tab. Do not add host rewrites or routes with parameters; a
+single item opens in a dialog or in place.
 
 ## Try it and recover deliberately
 
