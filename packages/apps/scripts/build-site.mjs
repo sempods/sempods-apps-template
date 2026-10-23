@@ -15,7 +15,7 @@ import {
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { AUTO, readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { ifPresent, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
@@ -79,7 +79,8 @@ function overviewEntry(app, outDir) {
   const entry = {
     id: app.id,
     title: app.title,
-    language: app.language,
+    // An app that follows the browser has no one language to announce.
+    ...(app.language === AUTO ? {} : { language: app.language }),
     href: app.path,
   };
   if (existsSync(join(outDir, 'icon-192.png')))

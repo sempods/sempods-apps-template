@@ -8,6 +8,20 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
 - `new-app` draws the app icon as a monogram, the title's first letter in
   white on a graphite rounded square, instead of a plain green square:
   `public/favicon.svg` (inverted in dark mode) and the manifest icons
@@ -18,7 +32,14 @@ configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Existing apps keep their icons and code. To show the icon like new apps
+1. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+2. Existing apps keep their icons and code. To show the icon like new apps
    do, pass an image of `public/favicon.svg` under the app's base path, with
    empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
    header, as the skeleton's `src/App.tsx` does.
