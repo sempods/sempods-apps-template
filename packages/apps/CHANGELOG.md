@@ -4,6 +4,25 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.8.0
+
+### Changes
+
+- `new-app` draws the app icon as a monogram, the title's first letter in
+  white on a graphite rounded square, instead of a plain green square:
+  `public/favicon.svg` (inverted in dark mode) and the manifest icons
+  `icon-192.png` and `icon-512.png`, all from the same strokes. A title that
+  does not start with a letter A–Z, accents aside, gets the plain square.
+- The skeleton shows the icon in its header next to the app's name and passes
+  it to `AppAccess` for the sign-in screen.
+
+### Upgrade notes
+
+1. Existing apps keep their icons and code. To show the icon like new apps
+   do, pass an image of `public/favicon.svg` under the app's base path, with
+   empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
+   header, as the skeleton's `src/App.tsx` does.
+
 ## 0.7.1
 
 ### Changes
