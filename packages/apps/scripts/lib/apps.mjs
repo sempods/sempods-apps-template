@@ -5,7 +5,10 @@ import { readJson, writeJson } from './json.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const FIRST_DEV_PORT = 5174;
+// The UI languages of the SDK; "auto" follows the browser among them.
 export const LANGUAGES = ['en', 'de'];
+export const AUTO = 'auto';
+export const APP_LANGUAGES = [AUTO, ...LANGUAGES];
 // Where the site is published (configure-site): one origin per profile and the
 // host whose routing build-site writes for.
 export const SITE_PROFILES = ['production', 'preview'];
@@ -134,9 +137,9 @@ export function validateApps(manifest) {
     ids.add(app.id);
     if (typeof app.title !== 'string' || app.title.trim() === '')
       problems.push(`${app.id}: title must be text`);
-    if (!LANGUAGES.includes(app.language))
+    if (!APP_LANGUAGES.includes(app.language))
       problems.push(
-        `${app.id}: language must be one of ${LANGUAGES.join(', ')}`,
+        `${app.id}: language must be one of ${APP_LANGUAGES.join(', ')}`,
       );
     if (app.path !== `/${app.id}/`)
       problems.push(`${app.id}: path must be "/${app.id}/"`);
