@@ -30,8 +30,9 @@ configuration choices and the SDK migration.
   service worker serves the cached app for the start page and every route, and
   sign-in returns to the route the page was opened at instead of the start
   page.
-- The skeleton's `src/routes.ts` provides `useRoute()`: the current route and
-  `go(route)`, which switches views under the SDK's leave policy
+- The skeleton's `src/routes.ts` provides `useRoute()`: the current route,
+  `link(route)` for an `<a>` to it and `go(route)`, which switches views
+  under the SDK's leave policy
   (`useApp().navigate`); back and forward are guarded the same way, and
   staying keeps the view and its address. It shows unknown paths as the start
   page and drops a trailing slash. The runtime's `replaceUrl` goes through it,
