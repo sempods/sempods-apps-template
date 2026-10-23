@@ -87,7 +87,7 @@ main > header h1 {
   margin-inline-end: 10px;
   accent-color: var(--sempods-accent);
 }
-:where(label):has(input[type='checkbox'], input[type='radio']):not(
+:where(label:has(input[type='checkbox'], input[type='radio'])):not(
     :where([data-sempods-ui] *)
   ) {
   display: inline-flex;
