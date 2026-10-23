@@ -678,6 +678,24 @@ describe('app title', () => {
       assert.deepEqual(regenerate(root), ['apps/demo/index.html']);
       assert.match(page(), /<title>Einkauf &#38; Co<\/title>\n  <\/head>/);
       assert.match(page(), /<!-- mine -->/);
+
+      // Tag names in any case and attributes are kept; one title only.
+      writeFileSync(
+        join(dir, 'index.html'),
+        page().replace(
+          /<title>.*<\/title>/,
+          '<TITLE id="t">Old</TITLE >',
+        ),
+      );
+      assert.equal(staticProblems(root).length, 1);
+      regenerate(root);
+      assert.match(page(), /<TITLE id="t">Einkauf &#38; Co<\/TITLE >/);
+      assert.equal(page().match(/<title/gi).length, 1);
+      // A replacement pattern in the title is text, not a pattern.
+      manifest.apps[0].title = 'A $& B';
+      writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
+      regenerate(root);
+      assert.match(page(), /<TITLE id="t">A \$&#38; B<\/TITLE >/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

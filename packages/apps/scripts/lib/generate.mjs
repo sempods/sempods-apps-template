@@ -165,14 +165,18 @@ export function generatedFiles(app, site) {
 // index.html is the owner's file except for its page title, which follows
 // apps.json like the manifest and the sign-in screen.
 export const PAGE = 'index.html';
-const TITLE = /<title>[^<]*<\/title>/;
+// HTML tag names ignore case, and the element may carry attributes; both stay.
+const TITLE = /(<title(?=[\s>])[^>]*>)[^<]*(<\/title\s*>)/i;
 
 /** The page with the app's title; a page without a title gets one. */
 export function titledPage(html, app) {
-  const title = `<title>${escapeHtml(app.title)}</title>`;
+  const text = escapeHtml(app.title);
   return TITLE.test(html)
-    ? html.replace(TITLE, title)
-    : html.replace('</head>', `  ${title}\n  </head>`);
+    ? html.replace(TITLE, (_, open, close) => `${open}${text}${close}`)
+    : html.replace(
+        /<\/head\s*>/i,
+        (end) => `  <title>${text}</title>\n  ${end}`,
+      );
 }
 
 /** Generated files and the page whose content differs from apps.json. */

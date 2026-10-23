@@ -31,7 +31,7 @@ import {
   removeFile,
   replaceFile,
 } from './lib/files.mjs';
-import { GENERATED_FILES } from './lib/generate.mjs';
+import { GENERATED_FILES, PAGE } from './lib/generate.mjs';
 import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -75,7 +75,7 @@ export function refuseUnfinishedSdkUpdate(root) {
 
 /**
  * Symbolic links where an update writes: the command's own files, the apps'
- * generated configuration and the given starter paths, each with its
+ * generated configuration and page title, and the given starter paths, each with its
  * ancestors, and anything inside the migration folder.
  */
 export function linkedPaths(root, files = []) {
@@ -95,7 +95,7 @@ export function linkedPaths(root, files = []) {
     BASELINE_FILE,
     MIGRATION_DIR,
     ...apps.flatMap(({ id }) =>
-      GENERATED_FILES.map((file) => `apps/${id}/${file}`),
+      [...GENERATED_FILES, PAGE].map((file) => `apps/${id}/${file}`),
     ),
     ...files,
   ]) {
