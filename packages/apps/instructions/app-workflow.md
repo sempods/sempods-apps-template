@@ -62,9 +62,17 @@ restriction: use no write hooks or write operations, as the installed
 
 Keep the screen consistent with the SDK's UI:
 
+- Apps are international: by default (`"language": "auto"`) the UI follows
+  the browser, German or English, otherwise English, and the skeleton passes
+  that language and locale to the SDK and to `<html lang>`. Keep every text
+  of the app in `src/texts.ts`, in English and German, and read it with
+  `textsFor(useSdkLocale().language)`; TypeScript reports a text missing in
+  one language. Write the texts in the owner's words for their language and
+  translate the other. A fixed `--language de` or `en` at creation is for an
+  owner who wants one language only. Paths and route names stay English.
 - Format dates and numbers with the SDK locale, `useSdkLocale().format`
-  (`dateTime`, `dateOnly`, `number`), so they follow the app's language instead
-  of the browser default.
+  (`dateTime`, `dateOnly`, `number`), so they follow the app's language and
+  region instead of the browser default.
 - Ask for confirmation inside the page (for example a second "Löschen" and
   "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
   browsers and webviews may block them and silently answer "cancel".
@@ -78,11 +86,12 @@ Keep the screen consistent with the SDK's UI:
 For a new app, run the root command with the chosen values:
 
 ```sh
-pnpm run new-app konsum --title "Einkaufsliste" --language de
+pnpm run new-app konsum --title "Einkaufsliste"
 pnpm run dev konsum
 ```
 
-The interface also accepts `--no-pwa` at creation. Generation never overwrites
+The interface also accepts `--language de` or `--language en` for one fixed UI
+language and `--no-pwa` at creation. Generation never overwrites
 an app: check `apps.json` and the folder before invoking it. The first app adds
 its dependency tree to `pnpm-lock.yaml` (several thousand lines); that is
 expected, so point the owner to the app's own files when they review the change.
@@ -133,7 +142,7 @@ missing Pod still allows UI work, but not a claim of working login, reads or
 writes.
 
 Tests live next to the code they test, as `src/<module>.test.ts`; the
-skeleton's `src/start.test.ts` shows the pattern. Test the domain logic first,
+skeleton's `src/texts.test.ts` shows the pattern. Test the domain logic first,
 as pure functions. Vitest runs in Node: tests may use Node APIs
 (`tsconfig.test.json`) and import `src/sempods.generated.ts`, but not modules
 that create the runtime on import, such as `App.tsx`. A component test needs a
@@ -155,7 +164,7 @@ establish installation or offline support.
 
 Update the app's existing `NOTES.md`, preserving owner decisions and earlier
 useful evidence. Record the app purpose and vocabulary, whether it only reads
-and which contexts it needs, UI/content language,
+and which contexts it needs, UI languages and content language,
 installed SDK version, test target (no private data), exact local
 URL/run command, changed behavior, checks/results, unresolved outcomes and the
 next useful step. Do not mark an unrun check as complete.

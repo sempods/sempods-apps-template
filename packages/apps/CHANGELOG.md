@@ -4,6 +4,35 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.8.0
+
+### Changes
+
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
+
+### Upgrade notes
+
+1. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+
 ## 0.7.1
 
 ### Changes
