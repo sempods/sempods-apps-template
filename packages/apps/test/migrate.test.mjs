@@ -361,6 +361,24 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '1.0.0');
   });
 
+  it('refuses a linked app page, whose title it regenerates', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo' });
+    const page = 'apps/demo/index.html';
+    const outside = join(work, 'index.html');
+    writeFileSync(outside, '<title>outside</title>\n');
+    rmSync(join(repo, page));
+    symlinkSync(outside, join(repo, page));
+    install(repo, '2.0.0');
+    assert.throws(
+      () => migrateTo(repo, '2.0.0'),
+      /symbolic links are: apps\/demo\/index\.html\./,
+    );
+    assert.equal(readFileSync(outside, 'utf8'), '<title>outside</title>\n');
+    assert.equal(readBaseline(repo).version, '1.0.0');
+  });
+
   it('refuses a linked baseline or migration folder', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

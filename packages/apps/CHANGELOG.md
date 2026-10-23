@@ -28,9 +28,11 @@ configuration choices and the SDK migration.
   it to `AppAccess` for the sign-in screen.
 - The app title has one source, `apps.json`. `regenerate` (and every command
   that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
-  one if the page has none; the rest of the page stays the owner's. `check`
-  reports a page title that differs from `apps.json`. The app workflow says how
-  to rename an app.
+  one if the page has none; the rest of the page, including the title's
+  attributes, stays the owner's. Like the generated files, a page that is a
+  symbolic link stops `update` and `migrate` before they change anything.
+  `check` reports a page title that differs from `apps.json`. The app
+  workflow says how to rename an app.
 - Apps can give their views addresses: `routes` in an app's `apps.json` entry
   lists lowercase English segments, for example `"routes": ["bought"]` for
   `/<id>/bought`. The generated `app.routes` lists them, and
