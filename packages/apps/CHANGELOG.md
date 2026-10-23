@@ -26,15 +26,18 @@ configuration choices and the SDK migration.
   does not start with a letter A–Z, accents aside, gets the plain square.
 - The skeleton shows the icon in its header next to the app's name and passes
   it to `AppAccess` for the sign-in screen.
-- The app title has one source, `apps.json`. `regenerate` (and every command
-  that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
-  one if the page has none (before `</head>`, or after `<head>` or before
-  `<body>` where the end tag is omitted); the rest of the page, including
-  the title's attributes, stays the owner's. Like the generated files, a page
-  that is a symbolic link stops `update` and `migrate` before they change
-  anything.
-  `check` reports a page title that differs from `apps.json`. The app
-  workflow says how to rename an app.
+- The app title has one source, `apps.json`. The generated
+  `vite.sempods.generated.ts` exports the Vite plugin `pageTitle`, which adds
+  the title to the head of the served and built page; the skeleton's
+  `vite.config.ts` uses it and its `index.html` has no `<title>` of its own.
+  `check` reports a page with its own title and a `vite.config.ts` without
+  the plugin. The app workflow says how to rename an app.
+- `migrate` moves existing apps where that is unambiguous: a `vite.config.ts`
+  unchanged from the skeleton gets the plugin, and a page whose only title is
+  the app's title from `apps.json` loses it. It does so, and regenerates the
+  apps, also for a release whose starter is unchanged. A page or
+  `vite.config.ts` that is a symbolic link stops `update` and `migrate`
+  before they change anything.
 - Apps can give their views addresses: `routes` in an app's `apps.json` entry
   lists lowercase English segments, for example `"routes": ["bought"]` for
   `/<id>/bought`. The generated `app.routes` lists them, and
@@ -95,11 +98,13 @@ configuration choices and the SDK migration.
    do, pass an image of `public/favicon.svg` under the app's base path, with
    empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
    header, as the skeleton's `src/App.tsx` does.
-4. Finishing the migration sets each app's page title to its title in
-   `apps.json` and lists the page under "Regenerated". Where the page had
-   another title, the owner chose it by hand: ask whether it should be the
-   app's title, put it into `apps.json` (Git shows the earlier page) and run
-   `pnpm run regenerate`, so the manifest and the sign-in screen use it too.
+4. The migration lists the apps it moved to the generated page title under
+   "Updated". For any other app, `check` names what is left: add `pageTitle`
+   from `./vite.sempods.generated.ts` to the plugins in its `vite.config.ts`,
+   as the skeleton does, and remove the `<title>` from its `index.html`. A
+   page title other than the one in `apps.json` was chosen by hand: ask the
+   owner whether it should be the app's title, put it into `apps.json` and
+   run `pnpm run regenerate`.
 5. Finishing the migration regenerates every app: `app.routes` is new (empty
    unless the owner lists routes), and so is the service worker's allowlist
    for apps with routes.

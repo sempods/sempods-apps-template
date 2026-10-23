@@ -1,12 +1,10 @@
 // Generated configuration of one app. App code imports these files and never
 // edits them; new-app writes them, and later commands regenerate them from
-// apps.json, so tooling updates reach existing apps. The page title in
-// index.html follows apps.json the same way.
+// apps.json, so tooling updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
 import { escapeHtml } from './html.mjs';
-import { ifPresent } from './json.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
 // and run pnpm run regenerate.`;
@@ -124,7 +122,7 @@ export const runtimeOptions: BrowserRuntimeOptions =
 `;
 }
 
-/** Vite base path, development server and PWA settings for this app's path. */
+/** Vite base path, development server, page title and PWA settings. */
 export function viteSource(app) {
   const p = app.path;
   // The start page and every route, with or without a trailing slash, as the
@@ -169,9 +167,19 @@ ${app.language === AUTO ? '' : `      lang: ${json(app.language)},
   }`
     : 'null';
   return `${HEADER}
+import type { Plugin } from 'vite';
 import type { VitePWAOptions } from 'vite-plugin-pwa';
 
 export const base = ${json(p)};
+
+// The page title from apps.json, added to the head of every page Vite serves
+// or builds; index.html has no <title> of its own.
+export const pageTitle: Plugin = {
+  name: 'sempods-page-title',
+  transformIndexHtml: () => [
+    { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
+  ],
+};
 
 export const server = {
   host: '127.0.0.1',
@@ -190,52 +198,20 @@ export function generatedFiles(app, site) {
   };
 }
 
-// index.html is the owner's file except for its page title, which follows
-// apps.json like the manifest and the sign-in screen.
-export const PAGE = 'index.html';
-// HTML tag names ignore case, and the element may carry attributes; both stay.
-const TITLE = /(<title(?=[\s>])[^>]*>)[^<]*(<\/title\s*>)/i;
-
-// Where a missing title goes: before </head>, or, as the end tag is
-// optional, after <head> or before <body>.
-const HEAD_END = /<\/head\s*>/i;
-const HEAD_START = /<head(?=[\s>])[^>]*>/i;
-const BODY_START = /<body(?=[\s>])/i;
-
-/** The page with the app's title; a page without a title gets one. */
-export function titledPage(html, app) {
-  const text = escapeHtml(app.title);
-  if (TITLE.test(html))
-    return html.replace(TITLE, (_, open, close) => `${open}${text}${close}`);
-  const title = `<title>${text}</title>`;
-  if (HEAD_END.test(html))
-    return html.replace(HEAD_END, (end) => `  ${title}\n  ${end}`);
-  if (HEAD_START.test(html))
-    return html.replace(HEAD_START, (start) => `${start}\n    ${title}`);
-  return BODY_START.test(html)
-    ? html.replace(BODY_START, (start) => `${title}\n  ${start}`)
-    : `${title}\n${html}`;
-}
-
-/** Generated files and the page whose content differs from apps.json. */
-function changes(appDir, app, site) {
-  const files = Object.entries(generatedFiles(app, site)).filter(
-    ([file, source]) =>
-      ifPresent(() => readFileSync(join(appDir, file), 'utf8')) !== source,
-  );
-  // A missing page is the build's problem, not the generator's.
-  const html = ifPresent(() => readFileSync(join(appDir, PAGE), 'utf8'));
-  if (html !== undefined && titledPage(html, app) !== html)
-    files.push([PAGE, titledPage(html, app)]);
-  return files;
-}
-
 export function writeGenerated(appDir, app, site) {
-  for (const [file, source] of changes(appDir, app, site))
+  for (const [file, source] of Object.entries(generatedFiles(app, site)))
     writeFileSync(join(appDir, file), source);
 }
 
-/** Lists generated files and the page whose content differs from apps.json. */
+/** Lists generated files whose content differs from what apps.json produces. */
 export function staleGenerated(appDir, app, site) {
-  return changes(appDir, app, site).map(([file]) => file);
+  return Object.entries(generatedFiles(app, site))
+    .filter(([file, source]) => {
+      try {
+        return readFileSync(join(appDir, file), 'utf8') !== source;
+      } catch {
+        return true;
+      }
+    })
+    .map(([file]) => file);
 }

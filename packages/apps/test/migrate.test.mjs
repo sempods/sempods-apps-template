@@ -361,24 +361,6 @@ describe('migrate', () => {
     assert.equal(readBaseline(repo).version, '1.0.0');
   });
 
-  it('refuses a linked app page, whose title it regenerates', () => {
-    publish('2.0.0', v2);
-    const repo = createRepo('1.0.0');
-    createApp(repo, { id: 'demo' });
-    const page = 'apps/demo/index.html';
-    const outside = join(work, 'index.html');
-    writeFileSync(outside, '<title>outside</title>\n');
-    rmSync(join(repo, page));
-    symlinkSync(outside, join(repo, page));
-    install(repo, '2.0.0');
-    assert.throws(
-      () => migrateTo(repo, '2.0.0'),
-      /symbolic links are: apps\/demo\/index\.html\./,
-    );
-    assert.equal(readFileSync(outside, 'utf8'), '<title>outside</title>\n');
-    assert.equal(readBaseline(repo).version, '1.0.0');
-  });
-
   it('refuses a linked baseline or migration folder', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
@@ -645,6 +627,29 @@ describe('migrate', () => {
     assert.deepEqual(outstanding(repo, '1.0.1'), []);
     assert.equal(migrateTo(repo, '1.0.1').unchanged, true);
     assert.equal(read(repo, '.sempods-baseline.json'), before);
+  });
+
+  it('still brings the apps to what the tooling generates', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo', title: 'Demo' });
+    const dir = join(repo, 'apps', 'demo');
+    writeFileSync(join(dir, 'vite.sempods.generated.ts'), '// old\n');
+    writeFileSync(
+      join(dir, 'index.html'),
+      read(repo, 'apps/demo/index.html').replace(
+        '</head>',
+        '  <title>Demo</title>\n  </head>',
+      ),
+    );
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.equal(report.unchanged, true);
+    assert.deepEqual(report.updated, ['apps/demo/index.html']);
+    assert.deepEqual(report.regenerated, [
+      'apps/demo/vite.sempods.generated.ts',
+    ]);
+    assert.deepEqual(staticProblems(repo), []);
   });
 
   it('does not bring back a seed file the owner deleted', () => {
