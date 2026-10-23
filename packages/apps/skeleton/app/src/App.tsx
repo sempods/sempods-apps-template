@@ -8,11 +8,13 @@ import {
   useSdkLocale,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
+import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
 import { textsFor, uiLocale } from './texts.ts';
 
-// One runtime for the app's lifetime, created outside rendering.
-const runtime = createBrowserRuntime(runtimeOptions);
+// One runtime for the app's lifetime, created outside rendering. Its return
+// after a sign-in goes through the router, which then shows that route.
+const runtime = createBrowserRuntime({ ...runtimeOptions, replaceUrl });
 
 // One UI language for the app's texts, the SDK components and the page.
 const { locale, language } = uiLocale(app.language, navigator.languages);

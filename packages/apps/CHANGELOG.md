@@ -22,6 +22,23 @@ configuration choices and the SDK migration.
   new-version notice reads its text from the catalogue.
 - The setup and app workflow ask for texts in English and German and keep
   paths and route names English.
+- Apps can give their views addresses: `routes` in an app's `apps.json` entry
+  lists lowercase English segments, for example `"routes": ["bought"]` for
+  `/<id>/bought`. The generated `app.routes` lists them, and
+  `build-site` writes `<id>/<route>.html`, so the published site answers each
+  route without a rewrite and unknown paths still show the not-found page. The
+  service worker serves the cached app for the start page and every route, and
+  sign-in returns to the route the page was opened at instead of the start
+  page.
+- The skeleton's `src/routes.ts` provides `useRoute()`: the current route,
+  `link(route)` for an `<a>` to it and `go(route)`, which switches views
+  under the SDK's leave policy
+  (`useApp().navigate`); back and forward are guarded the same way, and
+  staying keeps the view and its address. It shows unknown paths as the start
+  page and drops a trailing slash. The runtime's `replaceUrl` goes through it,
+  so the return after a sign-in shows the right view.
+- The app workflow and the publish guide describe routes and the deployment
+  check for them.
 - The skeleton's `src/index.css` sets a calm, neutral palette through the
   `--sempods-*` tokens (graphite accent, grey lines), which colour the app and
   the SDK components alike. Its rules style only the app's own markup and
@@ -43,9 +60,18 @@ configuration choices and the SDK migration.
    `locale`, and `document.documentElement.lang`), because `app.language`
    is then `"auto"`, not a language. Move the app's texts into a catalogue
    with both languages, as the skeleton's `src/texts.ts` does.
-2. Finishing the migration regenerates every app's
+2. Finishing the migration regenerates every app: `app.routes` is new (empty
+   unless the owner lists routes), and so is the service worker's allowlist
+   for apps with routes.
+3. Existing apps keep their code. For an app that switches views by itself,
+   offer routes: copy `src/routes.ts` and `src/routes.test.ts` from the
+   skeleton (`node_modules/@sempods/apps/skeleton/app/src/`), pass
+   `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
+   list the routes in `apps.json` and run `pnpm run regenerate`. An app that
+   rewrote its address itself after a sign-in can drop that code.
+4. Finishing the migration regenerates every app's
    `vite.sempods.generated.ts` with the new manifest colours.
-3. Existing apps keep their own `src/index.css` and `index.html`. Where an
+5. Existing apps keep their own `src/index.css` and `index.html`. Where an
    app still has the skeleton's global `header`, `button`, `input` or `select`
    rules, offer the owner the new skeleton rules: they stop shifting the
    sign-in form and placing the `AppAccess` icon beside its title. Keep the
