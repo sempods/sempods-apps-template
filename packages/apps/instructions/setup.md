@@ -20,8 +20,11 @@ file or anything under `node_modules`.
 ## Choose the first interaction
 
 Use the request and recorded answers. Ask only for missing information needed
-for the first useful interaction. Use the requested UI language, or the owner's
-language when supported (`de` or `en`); otherwise use `en` and tell the owner.
+for the first useful interaction. Apps follow the browser's language, German
+or English (otherwise English), and carry their texts in both; record the
+owner's language for writing them. Fix one language (`--language de` or `en`)
+only when the owner asks for it. If the owner's language is neither, the UI
+still shows English and German only: tell the owner.
 Choose a short app ID from the idea, such as `konsum`, and tell the owner; the
 generator validates allowed IDs and reserved names. Record choices and
 progress as they become known.
@@ -36,11 +39,11 @@ use the owner's full test Pod URL and a dedicated context, with synthetic data.
 From the repository root, after the bootstrap in `INIT.md`:
 
 ```sh
-pnpm run new-app konsum --title "Einkaufsliste" --language de
+pnpm run new-app konsum --title "Einkaufsliste"
 pnpm run dev konsum
 ```
 
-Replace the example ID, title and language with the recorded choices. PWA is on
+Replace the example ID and title with the recorded choices. PWA is on
 by default; `--no-pwa` is available if the owner chooses it when creating an
 app. The dev server is long-running: keep it in a separate terminal/session.
 Open the exact URL it reports; `apps.json` records the assigned `devPort` and

@@ -62,11 +62,12 @@ function card(entry) {
   const icon = entry.icon
     ? `<img src="${escape(entry.icon)}" alt="" width="64" height="64" />`
     : `<span class="letter" aria-hidden="true">${escape(letter)}</span>`;
+  const lang = entry.language ? ` lang="${escape(entry.language)}"` : '';
   const description = entry.description
     ? `\n          <span class="description">${escape(entry.description)}</span>`
     : '';
   return `        <li>
-          <a href="${escape(entry.href)}" lang="${escape(entry.language)}">
+          <a href="${escape(entry.href)}"${lang}>
           ${icon}
           <span class="name">${escape(entry.title)}</span>${description}
           </a>
@@ -81,8 +82,9 @@ export function siteLanguage(entries) {
 }
 
 /**
- * The overview: one card per `{ id, title, language, href, icon?,
- * description? }`, in the given order.
+ * The overview: one card per `{ id, title, language?, href, icon?,
+ * description? }`, in the given order; an app without a language follows the
+ * browser.
  */
 export function renderOverview(entries) {
   const language = siteLanguage(entries);

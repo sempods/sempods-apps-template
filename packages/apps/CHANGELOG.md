@@ -8,6 +8,20 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
 - The skeleton's `src/index.css` sets a calm, neutral palette through the
   `--sempods-*` tokens (graphite accent, grey lines), which colour the app and
   the SDK components alike. Its rules style only the app's own markup and
@@ -22,9 +36,16 @@ configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Finishing the migration regenerates every app's
+1. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+2. Finishing the migration regenerates every app's
    `vite.sempods.generated.ts` with the new manifest colours.
-2. Existing apps keep their own `src/index.css` and `index.html`. Where an
+3. Existing apps keep their own `src/index.css` and `index.html`. Where an
    app still has the skeleton's global `header`, `button`, `input` or `select`
    rules, offer the owner the new skeleton rules: they stop shifting the
    sign-in form and placing the `AppAccess` icon beside its title. Keep the
