@@ -4,7 +4,7 @@
 // index.html follows apps.json the same way.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SITE_PROFILES, siteIdentity } from './apps.mjs';
+import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
 import { escapeHtml } from './html.mjs';
 import { ifPresent } from './json.mjs';
 
@@ -50,13 +50,16 @@ export function runtimeSource(app, site) {
   const modes = SITE_PROFILES.map(
     (name) => `  ${json(PROFILE_MODES[name])}: ${json(name)},`,
   ).join('\n');
+  // "auto" stays a literal: the app resolves it from the browser.
+  const language =
+    app.language === AUTO ? json(AUTO) : `${json(app.language)} as Language`;
   return `${HEADER}
-import type { BrowserRuntimeOptions, Language } from '@sempods/app-sdk';
+import type { BrowserRuntimeOptions${app.language === AUTO ? '' : ', Language'} } from '@sempods/app-sdk';
 
 export const app = {
   id: ${json(app.id)},
   title: ${json(app.title)},
-  language: ${json(app.language)} as Language,
+  language: ${language},
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
 } as const;
@@ -112,8 +115,8 @@ export function viteSource(app) {
       id: ${json(p)},
       name: ${json(app.title)},
       short_name: ${json(app.title)},
-      lang: ${json(app.language)},
-      start_url: ${json(p)},
+${app.language === AUTO ? '' : `      lang: ${json(app.language)},
+`}      start_url: ${json(p)},
       scope: ${json(p)},
       display: 'standalone',
       background_color: '#f6faf9',

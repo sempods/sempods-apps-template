@@ -8,6 +8,20 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
 - The app title has one source, `apps.json`. `regenerate` (and every command
   that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
   one if the page has none; the rest of the page stays the owner's. `check`
@@ -16,7 +30,14 @@ configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Finishing the migration sets each app's page title to its title in
+1. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+2. Finishing the migration sets each app's page title to its title in
    `apps.json` and lists the page under "Regenerated". Where the page had
    another title, the owner chose it by hand: ask whether it should be the
    app's title, put it into `apps.json` (Git shows the earlier page) and run

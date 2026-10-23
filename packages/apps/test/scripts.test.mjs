@@ -216,6 +216,17 @@ describe('generated configuration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+  it('leaves the language to the app with "auto"', () => {
+    const files = generatedFiles({ ...app, language: 'auto' });
+    const runtime = files['src/sempods.generated.ts'];
+    assert.match(runtime, /^  language: "auto",$/m);
+    assert.match(runtime, /import type \{ BrowserRuntimeOptions \} from/);
+    assert.doesNotMatch(files['vite.sempods.generated.ts'], /lang:/);
+    assert.match(
+      generatedFiles(app)['vite.sempods.generated.ts'],
+      /lang: "en",/,
+    );
+  });
   it('has no PWA settings when the app opts out', () => {
     assert.match(
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
@@ -334,7 +345,14 @@ describe('new-app', () => {
     assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
     assert.deepEqual(manifest.apps, [app]);
-    assert.equal(createApp(root, { id: 'second' }).devPort, 5175);
+    // By default an app follows the browser; its page starts in English.
+    const second = createApp(root, { id: 'second' });
+    assert.equal(second.devPort, 5175);
+    assert.equal(second.language, 'auto');
+    assert.match(
+      readFileSync(join(root, 'apps', 'second', 'index.html'), 'utf8'),
+      /<html lang="en">/,
+    );
   });
 
   it('changes nothing for an existing or invalid ID', () => {
