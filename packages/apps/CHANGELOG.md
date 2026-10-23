@@ -4,6 +4,24 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.8.0
+
+### Changes
+
+- The app title has one source, `apps.json`. `regenerate` (and every command
+  that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
+  one if the page has none; the rest of the page stays the owner's. `check`
+  reports a page title that differs from `apps.json`. The app workflow says how
+  to rename an app.
+
+### Upgrade notes
+
+1. Finishing the migration sets each app's page title to its title in
+   `apps.json` and lists the page under "Regenerated". Where the page had
+   another title, the owner chose it by hand: ask whether it should be the
+   app's title, put it into `apps.json` (Git shows the earlier page) and run
+   `pnpm run regenerate`, so the manifest and the sign-in screen use it too.
+
 ## 0.7.1
 
 ### Changes
