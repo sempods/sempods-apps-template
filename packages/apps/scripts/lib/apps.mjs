@@ -65,6 +65,9 @@ export function invalidRoute(route) {
     return 'a route is one lowercase segment: a letter, then up to 39 letters, digits or hyphens';
   if (ROUTE_RESERVED.has(route))
     return `"${route}" is reserved by the site layout`;
+  // build-site writes <route>.html, which Windows refuses for device names.
+  if (WINDOWS_DEVICES.has(route))
+    return `"${route}" is a reserved device name on Windows`;
   return undefined;
 }
 
