@@ -54,9 +54,11 @@ const RETURN_PATH = `
 // The page sign-in returns to: the current route, otherwise the start page.
 function returnPath(): string {
   const routes: readonly string[] = app.routes;
-  const route = location.pathname.slice(app.basePath.length);
+  const route = location.pathname
+    .slice(app.basePath.length)
+    .replace(/\\/$/, '');
   return location.pathname.startsWith(app.basePath) && routes.includes(route)
-    ? location.pathname
+    ? app.basePath + route
     : app.basePath;
 }
 `;
@@ -125,8 +127,11 @@ export const runtimeOptions: BrowserRuntimeOptions =
 /** Vite base path, development server and PWA settings for this app's path. */
 export function viteSource(app) {
   const p = app.path;
-  // The start page and every route; route names need no escaping.
-  const routes = app.routes?.length ? `(${app.routes.join('|')})?` : '';
+  // The start page and every route, with or without a trailing slash, as the
+  // app's router accepts them; route names need no escaping.
+  const routes = app.routes?.length
+    ? `((${app.routes.join('|')})\\/?)?`
+    : '';
   const escaped = p.replaceAll('/', '\\/');
   const pwa = app.pwa
     ? `{

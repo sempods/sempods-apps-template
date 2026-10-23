@@ -87,6 +87,7 @@ describe('apps.json', () => {
     assert.match(problems(['Bought']).join(), /one lowercase segment/);
     assert.match(problems(['a/b']).join(), /one lowercase segment/);
     assert.match(problems(['callback']).join(), /reserved/);
+    assert.match(problems(['nul']).join(), /device name on Windows/);
     assert.match(problems(['open', 'open']).join(), /listed twice/);
   });
 
@@ -244,7 +245,7 @@ describe('generated configuration', () => {
     const files = generatedFiles(routed);
     assert.match(
       files['vite.sempods.generated.ts'],
-      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(open\|bought\)\?\$\/\]/,
+      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\(open\|bought\)\\\/\?\)\?\$\/\]/,
     );
     const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
     try {
@@ -263,6 +264,7 @@ describe('generated configuration', () => {
         }
       };
       assert.equal(returnTo('/demo/bought'), '/demo/bought');
+      assert.equal(returnTo('/demo/bought/'), '/demo/bought');
       assert.equal(returnTo('/demo/'), '/demo/');
       assert.equal(returnTo('/demo/callback'), '/demo/');
       assert.equal(returnTo('/other/bought'), '/demo/');

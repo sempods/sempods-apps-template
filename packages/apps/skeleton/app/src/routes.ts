@@ -29,6 +29,12 @@ export function pathOf(route: string | undefined, base: string): string {
 // The address the app shows. It changes only through the functions below, so
 // a declined navigation keeps the current view.
 let shown = typeof location === 'object' ? location.pathname : '';
+// The position of the shown entry in the session history, kept in its state,
+// so a declined back or forward can return to it without a new entry.
+let position: number =
+  typeof history === 'object' ? (history.state?.position ?? 0) : 0;
+// Set while the router itself undoes a step, whose popstate it ignores.
+let undoing = false;
 const listeners = new Set<() => void>();
 function show(path: string) {
   shown = path;
@@ -45,14 +51,14 @@ function subscribe(listener: () => void) {
  * that route.
  */
 export function replaceUrl(url: string) {
-  history.replaceState(null, '', url);
+  history.replaceState({ position }, '', url);
   show(location.pathname);
 }
 
 /**
  * The current route and `go` to switch it. Switching, back and forward run
  * under the SDK's leave policy: an unsaved edit asks first, and staying keeps
- * the view and its address. Call it once, in the app's frame, and pass the
+ * the view, its address and the history. Call it once, in the app's frame, and pass the
  * route down.
  */
 export function useRoute() {
@@ -62,9 +68,20 @@ export function useRoute() {
 
   useEffect(() => {
     const onPop = () => {
+      if (undoing) {
+        undoing = false;
+        return;
+      }
       const to = location.pathname;
-      void navigate(() => show(to)).then((left) => {
-        if (!left) history.pushState(null, '', shown);
+      const target: number = history.state?.position ?? 0;
+      void navigate(() => {
+        position = target;
+        show(to);
+      }).then((left) => {
+        // Staying: step back to the shown entry; the history stays intact.
+        if (left || target === position) return;
+        undoing = true;
+        history.go(position - target);
       });
     };
     addEventListener('popstate', onPop);
@@ -83,7 +100,8 @@ export function useRoute() {
     (next: Route | undefined) => {
       if (next === route) return;
       void navigate(() => {
-        history.pushState(null, '', pathOf(next, app.basePath));
+        position += 1;
+        history.pushState({ position }, '', pathOf(next, app.basePath));
         show(location.pathname);
       });
     },
