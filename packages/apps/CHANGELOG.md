@@ -17,6 +17,63 @@ configuration choices and the SDK migration.
   targets too, and lists lose the browser's indentation and bullets.
 - The page's `theme-color` follows light and dark mode, and the generated web
   app manifest uses a white background and theme colour instead of green.
+- `new-app` draws the app icon as a monogram, the title's first letter in
+  white on a graphite rounded square, instead of a plain green square:
+  `public/favicon.svg` (inverted in dark mode) and the manifest icons
+  `icon-192.png` and `icon-512.png`, all from the same strokes. A title that
+  does not start with a letter A–Z, accents aside, gets the plain square.
+- The skeleton shows the icon in its header next to the app's name and passes
+  it to `AppAccess` for the sign-in screen.
+- The app title has one source, `apps.json`. `regenerate` (and every command
+  that regenerates) also sets the `<title>` in `apps/<id>/index.html`, adding
+  one if the page has none; the rest of the page stays the owner's. `check`
+  reports a page title that differs from `apps.json`. The app workflow says how
+  to rename an app.
+- Apps can give their views addresses: `routes` in an app's `apps.json` entry
+  lists lowercase English segments, for example `"routes": ["bought"]` for
+  `/<id>/bought`. The generated `app.routes` lists them, and
+  `build-site` writes `<id>/<route>.html`, so the published site answers each
+  route without a rewrite and unknown paths still show the not-found page. The
+  service worker serves the cached app for the start page and every route, and
+  sign-in returns to the route the page was opened at instead of the start
+  page.
+- The skeleton's `src/routes.ts` provides `useRoute()`: the current route and
+  `go(route)`, which switches views under the SDK's leave policy
+  (`useApp().navigate`); back and forward are guarded the same way, and
+  staying keeps the view and its address. It shows unknown paths as the start
+  page and drops a trailing slash. The runtime's `replaceUrl` goes through it,
+  so the return after a sign-in shows the right view.
+- The app workflow and the publish guide describe routes and the deployment
+  check for them.
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the
+  browser with the SDK's `resolveLocale` (German or English, otherwise
+  English, with the browser's region for formats), passes both to
+  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
+  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
+  and the overview announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language (`textsFor(language)`), tested in
+  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
+  new-version notice reads its text from the catalogue.
+- The setup and app workflow ask for texts in English and German and keep
+  paths and route names English.
+- The skeleton has a small UI kit in `src/ui/`, styled by `ui.css` on the
+  `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
+  Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
+  switch between the contexts shared with the app, with their access and
+  "Share more …"), `Tabs` (views as links with their routes), `Composer` (an
+  input bar fixed at the bottom, above the home indicator and, where browsers
+  support it, the on-screen keyboard), `Dialog` (modal, a bottom sheet on
+  phones) and line icons.
+- The skeleton's header shows the app's icon and name, or the context switch
+  once a context is chosen, room for the app's icon actions and a menu (⋮)
+  with "Pods & sharing", which opens `AppAccess` management in the page, and
+  "Sign out", on this device only. It replaces the "Data access" button.
+  `AccessNotice` says when a context is shared read-only, and the viewport
+  adds `viewport-fit=cover` and `interactive-widget=resizes-content`.
+- The app workflow describes the kit and the reference layout of a list app.
 
 ### Upgrade notes
 
@@ -27,6 +84,36 @@ configuration choices and the SDK migration.
    rules, offer the owner the new skeleton rules: they stop shifting the
    sign-in form and placing the `AppAccess` icon beside its title. Keep the
    app's own colours unless the owner wants the neutral palette.
+3. Existing apps keep their icons and code. To show the icon like new apps
+   do, pass an image of `public/favicon.svg` under the app's base path, with
+   empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
+   header, as the skeleton's `src/App.tsx` does.
+4. Finishing the migration sets each app's page title to its title in
+   `apps.json` and lists the page under "Regenerated". Where the page had
+   another title, the owner chose it by hand: ask whether it should be the
+   app's title, put it into `apps.json` (Git shows the earlier page) and run
+   `pnpm run regenerate`, so the manifest and the sign-in screen use it too.
+5. Finishing the migration regenerates every app: `app.routes` is new (empty
+   unless the owner lists routes), and so is the service worker's allowlist
+   for apps with routes.
+6. Existing apps keep their code. For an app that switches views by itself,
+   offer routes: copy `src/routes.ts` and `src/routes.test.ts` from the
+   skeleton (`node_modules/@sempods/apps/skeleton/app/src/`), pass
+   `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
+   list the routes in `apps.json` and run `pnpm run regenerate`. An app that
+   rewrote its address itself after a sign-in can drop that code.
+7. Existing apps keep their fixed language; nothing changes for them. To make
+   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
+   `pnpm run regenerate`, and adopt the skeleton's language resolution in
+   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
+   `locale`, and `document.documentElement.lang`), because `app.language`
+   is then `"auto"`, not a language. Move the app's texts into a catalogue
+   with both languages, as the skeleton's `src/texts.ts` does.
+8. Existing apps keep their layout. To give one the standard look, offer
+   the skeleton's header and `src/ui/` (from
+   `node_modules/@sempods/apps/skeleton/app/src/`) with their texts in
+   `src/texts.ts`; keep `AppAccess` management and `ResourceEditor` out of
+   `Dialog` until the SDK shows its leave confirmation above dialogs.
 
 ## 0.7.1
 
