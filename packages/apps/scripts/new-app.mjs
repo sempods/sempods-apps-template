@@ -5,6 +5,7 @@
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -23,6 +24,7 @@ import {
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { escapeHtml } from './lib/html.mjs';
+import { monogramLetter, monogramPng, monogramSvg } from './lib/icon.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, SKELETON } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -53,6 +55,19 @@ function fillTokens(dir, app) {
       );
     if (filled !== source) writeFileSync(path, filled);
   }
+}
+
+/**
+ * The app's icons: a monogram of the title's first letter as the page icon
+ * and the PNG icons of the web app manifest. They are the owner's from then on.
+ */
+function writeIcons(dir, title) {
+  const letter = monogramLetter(title);
+  const pub = join(dir, 'public');
+  mkdirSync(pub, { recursive: true });
+  writeFileSync(join(pub, 'favicon.svg'), monogramSvg(letter));
+  for (const size of [192, 512])
+    writeFileSync(join(pub, `icon-${size}.png`), monogramPng(letter, size));
 }
 
 /**
@@ -104,6 +119,7 @@ export function createApp(
   try {
     cpSync(SKELETON, appDir, { recursive: true, errorOnExist: true });
     fillTokens(appDir, app);
+    writeIcons(appDir, app.title);
     const pkgFile = join(appDir, 'package.json');
     const pkg = readJson(pkgFile);
     // Package managers keep dependency lists sorted.

@@ -51,6 +51,13 @@ configuration choices and the SDK migration.
   apps, also for a release whose starter is unchanged. A page or
   `vite.config.ts` that is a symbolic link stops `update` and `migrate`
   before they change anything.
+- `new-app` draws the app icon as a monogram, the title's first letter in
+  white on a graphite rounded square, instead of a plain green square:
+  `public/favicon.svg` (inverted in dark mode) and the manifest icons
+  `icon-192.png` and `icon-512.png`, all from the same strokes. A title that
+  does not start with a letter A–Z, accents aside, gets the plain square.
+- The skeleton shows the icon in its header next to the app's name and passes
+  it to `AppAccess` for the sign-in screen.
 
 ### Upgrade notes
 
@@ -77,6 +84,10 @@ configuration choices and the SDK migration.
    page title other than the one in `apps.json` was chosen by hand: ask the
    owner whether it should be the app's title, put it into `apps.json` and
    run `pnpm run regenerate`.
+5. Existing apps keep their icons and code. To show the icon like new apps
+   do, pass an image of `public/favicon.svg` under the app's base path, with
+   empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
+   header, as the skeleton's `src/App.tsx` does.
 
 ## 0.7.1
 
