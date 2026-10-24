@@ -43,10 +43,9 @@ content, a bottom sheet on phones, and the icons) instead of adding a UI
 library; an owner who wants one keeps the tokens and drops `src/ui/`. Actions
 read as text, the main ones as icons in the header. Keep `AppAccess`
 management and `ResourceEditor` out of `Dialog` for now: its comment says
-why. The
-reference layout of a list app: the context switch and icon actions in the
-header, the views as tabs below it, the list, and an input in a `Composer`.
-Ordinary visual customization is welcome: change the
+why. The reference layout of a list app: the context switch and icon actions
+in the header, the views as tabs below it, the list, and an input in a
+`Composer`. Ordinary visual customization is welcome: change the
 `--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
 components together, and keep the app's own rules off SDK components
 (`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
@@ -110,9 +109,10 @@ language and `--no-pwa` at creation. The app's icon is a monogram of the
 title's first letter in `public/` (`favicon.svg`, shown in the header and on
 the sign-in screen, and `icon-192.png`, `icon-512.png` for the installed app);
 replace those files when the owner wants another icon. Generation never
-overwrites an app: check `apps.json` and the folder before invoking it. The first app adds
-its dependency tree to `pnpm-lock.yaml` (several thousand lines); that is
-expected, so point the owner to the app's own files when they review the change.
+overwrites an app: check `apps.json` and the folder before invoking it. The
+first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
+lines); that is expected, so point the owner to the app's own files when they
+review the change.
 For an existing app, work in its existing folder and skip generation. Keep
 Node and pnpm consistent with the root setup; do not switch package managers.
 Use `pnpm install --frozen-lockfile` when restoring the committed dependency
