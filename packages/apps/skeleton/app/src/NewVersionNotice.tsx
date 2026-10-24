@@ -1,9 +1,10 @@
 // Adapted from the sempods TypeScript SDK v0.2.0 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
 // the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the
-// registration function moved to pwa.ts.
+// registration function moved to pwa.ts; the text comes from texts.ts.
 import { useEffect, useState } from 'react';
 import { useSdkLocale } from '@sempods/app-sdk/react';
+import { textsFor } from './texts.ts';
 
 /**
  * Render beneath the app's actual locale provider so notices follow its language.
@@ -53,11 +54,5 @@ export function NewVersionNotice({
     };
   }, [registration]);
   if (!ready) return null;
-  return (
-    <p role="status">
-      {language === 'de'
-        ? 'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.'
-        : 'A new version is ready. It is used once every window of this app has been closed.'}
-    </p>
-  );
+  return <p role="status">{textsFor(language).newVersion}</p>;
 }

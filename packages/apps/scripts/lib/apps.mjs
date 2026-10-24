@@ -5,7 +5,10 @@ import { readJson, writeJson } from './json.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const FIRST_DEV_PORT = 5174;
+// The UI languages of the SDK; "auto" follows the browser among them.
 export const LANGUAGES = ['en', 'de'];
+export const AUTO = 'auto';
+export const APP_LANGUAGES = [AUTO, ...LANGUAGES];
 // Where the site is published (configure-site): one origin per profile and the
 // host whose routing build-site writes for.
 export const SITE_PROFILES = ['production', 'preview'];
@@ -43,6 +46,31 @@ export function invalidId(id) {
   if (SITE_RESERVED.has(id)) return `"${id}" is reserved by the site layout`;
   if (WINDOWS_DEVICES.has(id))
     return `"${id}" is a reserved device name on Windows`;
+  return undefined;
+}
+
+// Routes answer as <id>/<route>.html next to the app's own build output.
+const ROUTE_RESERVED = new Set([
+  'assets',
+  'callback',
+  'did',
+  'index',
+  'licenses',
+]);
+
+/** Returns a reason when `route` cannot name a route, otherwise undefined. */
+export function invalidRoute(route) {
+  if (
+    typeof route !== 'string' ||
+    !ID_PATTERN.test(route) ||
+    route.endsWith('-')
+  )
+    return 'a route is one lowercase segment: a letter, then up to 39 letters, digits or hyphens';
+  if (ROUTE_RESERVED.has(route))
+    return `"${route}" is reserved by the site layout`;
+  // build-site writes <route>.html, which Windows refuses for device names.
+  if (WINDOWS_DEVICES.has(route))
+    return `"${route}" is a reserved device name on Windows`;
   return undefined;
 }
 
@@ -134,9 +162,9 @@ export function validateApps(manifest) {
     ids.add(app.id);
     if (typeof app.title !== 'string' || app.title.trim() === '')
       problems.push(`${app.id}: title must be text`);
-    if (!LANGUAGES.includes(app.language))
+    if (!APP_LANGUAGES.includes(app.language))
       problems.push(
-        `${app.id}: language must be one of ${LANGUAGES.join(', ')}`,
+        `${app.id}: language must be one of ${APP_LANGUAGES.join(', ')}`,
       );
     if (app.path !== `/${app.id}/`)
       problems.push(`${app.id}: path must be "/${app.id}/"`);
@@ -151,6 +179,16 @@ export function validateApps(manifest) {
     ports.add(app.devPort);
     if (typeof app.pwa !== 'boolean')
       problems.push(`${app.id}: pwa must be true or false`);
+    if (app.routes !== undefined && !Array.isArray(app.routes))
+      problems.push(`${app.id}: routes must be a list`);
+    else if (app.routes)
+      app.routes.forEach((route, i) => {
+        const reason = invalidRoute(route);
+        if (reason)
+          problems.push(`${app.id}: route ${JSON.stringify(route)}: ${reason}`);
+        else if (app.routes.indexOf(route) !== i)
+          problems.push(`${app.id}: route ${route} is listed twice`);
+      });
   }
   return problems;
 }

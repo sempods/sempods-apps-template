@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Builds every app with a published profile into its path of one static site
-// folder, site-dist/, and writes the overview and the host's routing files.
+// folder, site-dist/, with a page for each route, and writes the overview and
+// the host's routing files.
 // apps/<id>/dist keeps the app's local build.
 // Usage: pnpm run build-site [--profile production|preview]
 //        (or SEMPODS_SITE_PROFILE=<profile> in the host's environment)
@@ -15,7 +16,7 @@ import {
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { AUTO, readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { ifPresent, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
@@ -79,7 +80,8 @@ function overviewEntry(app, outDir) {
   const entry = {
     id: app.id,
     title: app.title,
-    language: app.language,
+    // An app that follows the browser has no one language to announce.
+    ...(app.language === AUTO ? {} : { language: app.language }),
     href: app.path,
   };
   if (existsSync(join(outDir, 'icon-192.png')))
@@ -143,6 +145,15 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     // so without a redirect.
     const callback = new URL(redirectUri).pathname;
     writeFileSync(join(out, `${callback.slice(1)}.html`), html);
+    // Each route answers the same way from a copy of the page, so the host
+    // needs no rewrite and unknown paths still show the not-found page.
+    for (const route of app.routes ?? []) {
+      if (['', '.html'].some((ext) => existsSync(join(appOut, route + ext))))
+        throw new Error(
+          `apps/${app.id}: the route ${route} collides with ${route} in the app's build output; rename one of them.`,
+        );
+      writeFileSync(join(appOut, `${route}.html`), html);
+    }
 
     entries.push(overviewEntry(app, appOut));
   }

@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { inflateSync } from 'node:zlib';
 import {
   invalidId,
   invalidOrigin,
@@ -23,7 +24,9 @@ import {
 import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
+import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
+import { adoptPageTitle, pageProblems } from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
@@ -66,6 +69,28 @@ describe('apps.json', () => {
   it('accepts a valid manifest', () => {
     assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
   });
+  it('accepts routes as distinct lowercase segments', () => {
+    const app = (routes) => ({
+      id: 'konsum',
+      title: 'Konsum',
+      language: 'de',
+      path: '/konsum/',
+      devPort: 5174,
+      pwa: true,
+      routes,
+    });
+    const problems = (routes) =>
+      validateApps({ schemaVersion: 1, apps: [app(routes)] });
+    assert.deepEqual(problems(['open', 'bought']), []);
+    assert.deepEqual(problems(undefined), []);
+    assert.match(problems('bought').join(), /routes must be a list/);
+    assert.match(problems(['Bought']).join(), /one lowercase segment/);
+    assert.match(problems(['a/b']).join(), /one lowercase segment/);
+    assert.match(problems(['callback']).join(), /reserved/);
+    assert.match(problems(['nul']).join(), /device name on Windows/);
+    assert.match(problems(['open', 'open']).join(), /listed twice/);
+  });
+
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
     const problems = validateApps({
       schemaVersion: 1,
@@ -215,6 +240,49 @@ describe('generated configuration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+  it('returns to the current route after sign-in and caches every route', async () => {
+    const routed = { ...app, routes: ['open', 'bought'] };
+    const files = generatedFiles(routed);
+    assert.match(
+      files['vite.sempods.generated.ts'],
+      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\(open\|bought\)\\\/\?\)\?\$\/\]/,
+    );
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
+    try {
+      const file = join(dir, 'sempods.generated.mts');
+      writeFileSync(file, files['src/sempods.generated.ts']);
+      const { app: generated, runtimeOptions } = await import(
+        pathToFileURL(file).href
+      );
+      assert.deepEqual(generated.routes, ['open', 'bought']);
+      const returnTo = (pathname) => {
+        globalThis.location = { pathname };
+        try {
+          return runtimeOptions.returnTo;
+        } finally {
+          delete globalThis.location;
+        }
+      };
+      assert.equal(returnTo('/demo/bought'), '/demo/bought');
+      assert.equal(returnTo('/demo/bought/'), '/demo/bought');
+      assert.equal(returnTo('/demo/'), '/demo/');
+      assert.equal(returnTo('/demo/callback'), '/demo/');
+      assert.equal(returnTo('/other/bought'), '/demo/');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('leaves the language to the app with "auto"', () => {
+    const files = generatedFiles({ ...app, language: 'auto' });
+    const runtime = files['src/sempods.generated.ts'];
+    assert.match(runtime, /^  language: "auto",$/m);
+    assert.match(runtime, /import type \{ BrowserRuntimeOptions \} from/);
+    assert.doesNotMatch(files['vite.sempods.generated.ts'], /lang:/);
+    assert.match(
+      generatedFiles(app)['vite.sempods.generated.ts'],
+      /lang: "en",/,
+    );
+  });
   it('has no PWA settings when the app opts out', () => {
     assert.match(
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
@@ -313,7 +381,16 @@ describe('new-app', () => {
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
     assert.match(html, /<html lang="de">/);
-    assert.match(html, /<title>Einkaufs&#60;liste&#62;<\/title>/);
+    // The title comes from apps.json through the generated Vite plugin.
+    assert.doesNotMatch(html, /<title/);
+    assert.match(
+      readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
+      /\{ tag: 'title', children: "Einkaufs&#60;liste&#62;", injectTo: 'head' \}/,
+    );
+    assert.match(
+      readFileSync(join(dir, 'vite.config.ts'), 'utf8'),
+      /plugins: \[react\(\), pageTitle,/,
+    );
     assert.deepEqual(staleGenerated(dir, app), []);
     assert.match(
       readFileSync(join(dir, 'NOTES.md'), 'utf8'),
@@ -333,7 +410,32 @@ describe('new-app', () => {
     assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
     assert.deepEqual(manifest.apps, [app]);
-    assert.equal(createApp(root, { id: 'second' }).devPort, 5175);
+    // By default an app follows the browser; its page starts in English.
+    const second = createApp(root, { id: 'second' });
+    assert.equal(second.devPort, 5175);
+    assert.equal(second.language, 'auto');
+    assert.match(
+      readFileSync(join(root, 'apps', 'second', 'index.html'), 'utf8'),
+      /<html lang="en">/,
+    );
+  });
+
+  it('draws a monogram of the title as the app icon', () => {
+    createApp(root, { id: 'konsum', title: 'Einkaufsliste' });
+    const pub = join(root, 'apps', 'konsum', 'public');
+    assert.match(
+      readFileSync(join(pub, 'favicon.svg'), 'utf8'),
+      /^<svg [^>]*viewBox="0 0 64 64">.*<path d="M/,
+    );
+    for (const size of [192, 512]) {
+      const png = readFileSync(join(pub, `icon-${size}.png`));
+      assert.equal(png.toString('latin1', 1, 4), 'PNG');
+      // IHDR: width and height, 8-bit RGBA.
+      assert.deepEqual(
+        [png.readUInt32BE(16), png.readUInt32BE(20), png[24], png[25]],
+        [size, size, 8, 6],
+      );
+    }
   });
 
   it('changes nothing for an existing or invalid ID', () => {
@@ -371,6 +473,34 @@ describe('new-app', () => {
   it('refuses a directory that exists without a manifest entry', () => {
     mkdirSync(join(root, 'apps', 'orphan'), { recursive: true });
     assert.throws(() => createApp(root, { id: 'orphan' }), /already exists/);
+  });
+});
+
+describe('app icon', () => {
+  it('takes the first letter of the title, without accents', () => {
+    assert.equal(monogramLetter('Einkaufsliste'), 'E');
+    assert.equal(monogramLetter(' ärzte'), 'A');
+    assert.equal(monogramLetter('2048'), undefined);
+    assert.equal(monogramLetter('Ωmega'), undefined);
+  });
+
+  it('draws the letter in white on graphite, with transparent corners', () => {
+    // RGBA of one pixel: the image data follows the 33 bytes of signature and
+    // header and precedes the checksum and the end chunk.
+    const pixel = (letter) => {
+      const png = monogramPng(letter, 64);
+      const rows = inflateSync(png.subarray(41, png.length - 16));
+      return (x, y) => {
+        const start = y * 257 + 1 + x * 4;
+        return [...rows.subarray(start, start + 4)];
+      };
+    };
+    const at = pixel('I');
+    assert.deepEqual(at(0, 0), [0x1f, 0x29, 0x33, 0]);
+    assert.deepEqual(at(10, 32), [0x1f, 0x29, 0x33, 255]);
+    assert.deepEqual(at(32, 32), [255, 255, 255, 255]);
+    // Without a letter, the square stays plain.
+    assert.deepEqual(pixel(undefined)(32, 32), [0x1f, 0x29, 0x33, 255]);
   });
 });
 
@@ -612,6 +742,92 @@ describe('check', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('page title', () => {
+  let root;
+  let dir;
+  const app = { id: 'demo', title: 'Demo & Co' };
+  const file = (name) => join(dir, name);
+  const page = () => readFileSync(file('index.html'), 'utf8');
+  // The skeleton's files of 0.7, which the migration moves.
+  const config07 = `import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { base, pwa, server } from './vite.sempods.generated.ts';
+
+// Base path, development port and PWA settings come from apps.json through the
+// generated file; add your own plugins and options here.
+export default defineConfig({
+  base,
+  server,
+  preview: server,
+  plugins: [react(), ...(pwa ? [VitePWA(pwa)] : [])],
+});
+`;
+  const page07 = (title) => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${title}</title>
+  </head>
+  <body>
+    <svg><title>Logo</title></svg>
+  </body>
+</html>
+`;
+  beforeEach(() => {
+    root = tempRepository('sempods-page-');
+    createApp(root, { id: 'demo', title: app.title });
+    dir = join(root, 'apps', 'demo');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('reports an own page title and a Vite config without the plugin', () => {
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    // An SVG title in the body is not the page's.
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace(/ {4}<title>x<\/title>\n/, ''),
+    );
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    writeFileSync(
+      file('index.html'),
+      page07('x').replace('<title>x</title>', '<TITLE id="t">x</TITLE>'),
+    );
+    writeFileSync(file('vite.config.ts'), config07);
+    const problems = pageProblems(dir, 'demo').join('\n');
+    assert.match(problems, /index\.html has its own <title>/);
+    assert.match(problems, /vite\.config\.ts does not add pageTitle/);
+    assert.match(staticProblems(root).join('\n'), /has its own <title>/);
+  });
+
+  it("moves an app with the skeleton's files to the generated title", () => {
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    assert.deepEqual(adoptPageTitle(dir, app), [
+      'apps/demo/vite.config.ts',
+      'apps/demo/index.html',
+    ]);
+    assert.deepEqual(pageProblems(dir, 'demo'), []);
+    assert.match(page(), /<svg><title>Logo<\/title><\/svg>/);
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+  });
+
+  it('leaves changed files to the owner', () => {
+    const custom = config07.replace('react()', 'react(), extra()');
+    writeFileSync(file('vite.config.ts'), custom);
+    writeFileSync(file('index.html'), page07('Demo &#38; Co'));
+    // Without the plugin the page keeps its title.
+    assert.deepEqual(adoptPageTitle(dir, app), []);
+    assert.equal(readFileSync(file('vite.config.ts'), 'utf8'), custom);
+    // With the plugin, a title other than the app's stays for the owner.
+    writeFileSync(file('vite.config.ts'), config07);
+    writeFileSync(file('index.html'), page07('Hand-made'));
+    assert.deepEqual(adoptPageTitle(dir, app), ['apps/demo/vite.config.ts']);
+    assert.match(page(), /<title>Hand-made<\/title>/);
+    assert.equal(pageProblems(dir, 'demo').length, 1);
   });
 });
 

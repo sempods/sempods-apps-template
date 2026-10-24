@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Creates apps/<id> from the skeleton with the root's SDK version and adds it
 // to apps.json.
-// Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]
+// Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -14,14 +15,16 @@ import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
+  APP_LANGUAGES,
+  AUTO,
   invalidId,
-  LANGUAGES,
   nextDevPort,
   readApps,
   writeApps,
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { escapeHtml } from './lib/html.mjs';
+import { monogramLetter, monogramPng, monogramSvg } from './lib/icon.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, SKELETON } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -45,9 +48,26 @@ function fillTokens(dir, app) {
     const filled = source
       .replaceAll('__APP_ID__', app.id)
       .replaceAll('__APP_TITLE__', title)
-      .replaceAll('__APP_LANGUAGE__', app.language);
+      // The page's language until the app sets the one it resolved.
+      .replaceAll(
+        '__APP_LANGUAGE__',
+        app.language === AUTO ? 'en' : app.language,
+      );
     if (filled !== source) writeFileSync(path, filled);
   }
+}
+
+/**
+ * The app's icons: a monogram of the title's first letter as the page icon
+ * and the PNG icons of the web app manifest. They are the owner's from then on.
+ */
+function writeIcons(dir, title) {
+  const letter = monogramLetter(title);
+  const pub = join(dir, 'public');
+  mkdirSync(pub, { recursive: true });
+  writeFileSync(join(pub, 'favicon.svg'), monogramSvg(letter));
+  for (const size of [192, 512])
+    writeFileSync(join(pub, `icon-${size}.png`), monogramPng(letter, size));
 }
 
 /**
@@ -74,12 +94,12 @@ function rootSdk(root) {
  */
 export function createApp(
   root,
-  { id, title = id, language = 'en', pwa = true },
+  { id, title = id, language = AUTO, pwa = true },
 ) {
   const reason = invalidId(id);
   if (reason) throw new Error(reason);
-  if (!LANGUAGES.includes(language))
-    throw new Error(`language must be one of ${LANGUAGES.join(', ')}`);
+  if (!APP_LANGUAGES.includes(language))
+    throw new Error(`language must be one of ${APP_LANGUAGES.join(', ')}`);
   if (typeof title !== 'string' || title.trim() === '')
     throw new Error('the title must not be empty');
   const manifest = readApps(root);
@@ -99,6 +119,7 @@ export function createApp(
   try {
     cpSync(SKELETON, appDir, { recursive: true, errorOnExist: true });
     fillTokens(appDir, app);
+    writeIcons(appDir, app.title);
     const pkgFile = join(appDir, 'package.json');
     const pkg = readJson(pkgFile);
     // Package managers keep dependency lists sorted.
@@ -130,7 +151,7 @@ function main() {
   });
   if (positionals.length !== 1) {
     console.error(
-      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <de|en>] [--no-pwa]',
+      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]',
     );
     process.exit(2);
   }

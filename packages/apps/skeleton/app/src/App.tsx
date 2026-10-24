@@ -8,14 +8,23 @@ import {
   useSdkLocale,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
+import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
-import { startMessage } from './start.ts';
+import { textsFor, uiLocale } from './texts.ts';
 
-// One runtime for the app's lifetime, created outside rendering.
-const runtime = createBrowserRuntime(runtimeOptions);
+// One runtime for the app's lifetime, created outside rendering. Its return
+// after a sign-in goes through the router, which then shows that route.
+const runtime = createBrowserRuntime({ ...runtimeOptions, replaceUrl });
+
+// One UI language for the app's texts, the SDK components and the page.
+const { locale, language } = uiLocale(app.language, navigator.languages);
+document.documentElement.lang = language;
 
 // Vite hot replacement ends this module's runtime lifetime.
 if (import.meta.hot) import.meta.hot.dispose(() => runtime.dispose());
+
+// The app icon (public/favicon.svg), decorative next to the app's name.
+const icon = <img src={`${app.basePath}favicon.svg`} alt="" />;
 
 export default function App({
   registration,
@@ -23,7 +32,7 @@ export default function App({
   readonly registration: Promise<ServiceWorkerRegistration | undefined>;
 }) {
   return (
-    <SempodsProvider runtime={runtime} language={app.language}>
+    <SempodsProvider runtime={runtime} language={language} locale={locale}>
       <NewVersionNotice registration={registration} />
       <Frame />
     </SempodsProvider>
@@ -42,7 +51,10 @@ function Frame() {
     <main>
       {header && (
         <header>
-          <h1>{app.title}</h1>
+          <h1>
+            {icon}
+            {app.title}
+          </h1>
           <button
             ref={focusTarget}
             aria-expanded={open}
@@ -55,6 +67,7 @@ function Frame() {
       {/* Below the header's h1, AppAccess uses h2. */}
       <AppAccess
         appName={app.title}
+        icon={icon}
         headingLevel={header ? 2 : 1}
         open={open}
         focusTarget={focusTarget}
@@ -68,6 +81,6 @@ function Frame() {
 
 // Replace this screen with your app. It renders once a Pod context is chosen.
 function Start() {
-  const { language } = useSdkLocale();
-  return <p>{startMessage(language)}</p>;
+  const t = textsFor(useSdkLocale().language);
+  return <p>{t.start}</p>;
 }
