@@ -35,7 +35,11 @@ Describe the screen and any data change briefly in the user's language, then
 build it. Do not require the user to choose SDK APIs or RDF terms. Start from
 the skeleton's layout:
 `AppAccess` beside `TargetScreen`, with a header that reopens data access, and
-the SDK's components. Ordinary visual customization is welcome. The SDK owns
+the SDK's components. Ordinary visual customization is welcome: change the
+`--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
+components together, and keep the app's own rules off SDK components
+(`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
+radio in its `<label>`: the label is its 44px touch target. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
 rebuilding those facilities. Existing apps on `AppShell` keep working; move them
 only when the owner wants the new layout.
@@ -62,9 +66,17 @@ restriction: use no write hooks or write operations, as the installed
 
 Keep the screen consistent with the SDK's UI:
 
+- Apps are international: by default (`"language": "auto"`) the UI follows
+  the browser, German or English, otherwise English, and the skeleton passes
+  that language and locale to the SDK and to `<html lang>`. Keep every text
+  of the app in `src/texts.ts`, in English and German, and read it with
+  `textsFor(useSdkLocale().language)`; TypeScript reports a text missing in
+  one language. Write the texts in the owner's words for their language and
+  translate the other. A fixed `--language de` or `en` at creation is for an
+  owner who wants one language only. Paths and route names stay English.
 - Format dates and numbers with the SDK locale, `useSdkLocale().format`
-  (`dateTime`, `dateOnly`, `number`), so they follow the app's language instead
-  of the browser default.
+  (`dateTime`, `dateOnly`, `number`), so they follow the app's language and
+  region instead of the browser default.
 - Ask for confirmation inside the page (for example a second "Löschen" and
   "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
   browsers and webviews may block them and silently answer "cancel".
@@ -78,14 +90,19 @@ Keep the screen consistent with the SDK's UI:
 For a new app, run the root command with the chosen values:
 
 ```sh
-pnpm run new-app konsum --title "Einkaufsliste" --language de
+pnpm run new-app konsum --title "Einkaufsliste"
 pnpm run dev konsum
 ```
 
-The interface also accepts `--no-pwa` at creation. Generation never overwrites
-an app: check `apps.json` and the folder before invoking it. The first app adds
-its dependency tree to `pnpm-lock.yaml` (several thousand lines); that is
-expected, so point the owner to the app's own files when they review the change.
+The interface also accepts `--language de` or `--language en` for one fixed UI
+language and `--no-pwa` at creation. The app's icon is a monogram of the
+title's first letter in `public/` (`favicon.svg`, shown in the header and on
+the sign-in screen, and `icon-192.png`, `icon-512.png` for the installed app);
+replace those files when the owner wants another icon. Generation never
+overwrites an app: check `apps.json` and the folder before invoking it. The
+first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
+lines); that is expected, so point the owner to the app's own files when they
+review the change.
 For an existing app, work in its existing folder and skip generation. Keep
 Node and pnpm consistent with the root setup; do not switch package managers.
 Use `pnpm install --frozen-lockfile` when restoring the committed dependency
@@ -97,8 +114,8 @@ needs it, ask the owner before approving it under `allowBuilds` in
 `pnpm-workspace.yaml`.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
-`title`, `language`, `path`, `devPort` and `pwa`. Read the app's assigned
-path/port. An optional `site` records where the apps are published; only
+`title`, `language`, `path`, `devPort` and `pwa`, and optionally `routes`. Read
+the app's assigned path/port. An optional `site` records where the apps are published; only
 `pnpm run configure-site` writes it, and it regenerates every app's
 configuration from it. Do not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
@@ -110,7 +127,12 @@ hold connections to it.
 
 Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,
-callback, base path and PWA configuration. `new-app` creates new apps only;
+callback, base path, page title and PWA configuration. The title in
+`apps.json` is the app's only title: `index.html` has no `<title>` of its own,
+and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
+app, change the title there and run `pnpm run regenerate`; the page, the
+sign-in screen, the installed app and the overview follow. The ID and path
+stay, and so does the icon's letter. `new-app` creates new apps only;
 rerunning it does not reconfigure an existing app. `configure-site` changes the
 published identities of all apps. If a requested configuration
 change needs a command not shipped yet, explain that limitation to the owner;
@@ -119,6 +141,24 @@ app or patch generated files as a workaround. The tooling package
 `@sempods/apps` under `node_modules` is not app customization space; after a
 tooling change to the generator, `pnpm run regenerate` rewrites the generated
 files.
+
+### Give views their own addresses
+
+An app used over time gets addressable views, so bookmarks, shared links and
+the back button work. The start page is the app's path and shows the first
+view; each further view is a route, one lowercase English segment in every UI
+language (`/<id>/bought`, never a translated word). List them in the app's
+`apps.json` entry, for example `"routes": ["bought"]`, and run
+`pnpm run regenerate`: the published site then answers `/<id>/bought` without
+a rewrite, the installed app opens it offline, and sign-in returns to the
+route it started from. In the app, call `useRoute()` from `src/routes.ts` once
+in the frame: it returns the current `route` (undefined for the start page)
+and `go(route)`, which switches under the SDK's leave policy, so an unsaved
+edit asks first; back and forward do too. Render views as links with
+`<a {...link(route)}>`: the link has the route's address, and a plain click
+switches through `go` instead of loading the page, while a modified click
+still opens a new tab. Do not add host rewrites or routes with parameters; a
+single item opens in a dialog or in place.
 
 ## Try it and recover deliberately
 
@@ -133,7 +173,7 @@ missing Pod still allows UI work, but not a claim of working login, reads or
 writes.
 
 Tests live next to the code they test, as `src/<module>.test.ts`; the
-skeleton's `src/start.test.ts` shows the pattern. Test the domain logic first,
+skeleton's `src/texts.test.ts` shows the pattern. Test the domain logic first,
 as pure functions. Vitest runs in Node: tests may use Node APIs
 (`tsconfig.test.json`) and import `src/sempods.generated.ts`, but not modules
 that create the runtime on import, such as `App.tsx`. A component test needs a
@@ -155,7 +195,7 @@ establish installation or offline support.
 
 Update the app's existing `NOTES.md`, preserving owner decisions and earlier
 useful evidence. Record the app purpose and vocabulary, whether it only reads
-and which contexts it needs, UI/content language,
+and which contexts it needs, UI languages and content language,
 installed SDK version, test target (no private data), exact local
 URL/run command, changed behavior, checks/results, unresolved outcomes and the
 next useful step. Do not mark an unrun check as complete.

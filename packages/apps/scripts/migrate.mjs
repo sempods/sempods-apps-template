@@ -32,6 +32,7 @@ import {
   replaceFile,
 } from './lib/files.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
+import { adoptPageTitle, PAGE, VITE_CONFIG } from './lib/page.mjs';
 import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -73,21 +74,23 @@ export function refuseUnfinishedSdkUpdate(root) {
     );
 }
 
+// A broken apps.json names no apps here; regenerating reports it later.
+function appsOf(root) {
+  try {
+    return readApps(root).apps;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Symbolic links where an update writes: the command's own files, the apps'
- * generated configuration and the given starter paths, each with its
- * ancestors, and anything inside the migration folder.
+ * generated configuration, page and Vite configuration and the given starter
+ * paths, each with its ancestors, and anything inside the migration folder.
  */
 export function linkedPaths(root, files = []) {
   const found = new Set();
-  // A broken apps.json names no apps here; regenerating reports it later.
-  const apps = (() => {
-    try {
-      return readApps(root).apps;
-    } catch {
-      return [];
-    }
-  })();
+  const apps = appsOf(root);
   for (const path of [
     'package.json',
     'pnpm-lock.yaml',
@@ -95,7 +98,9 @@ export function linkedPaths(root, files = []) {
     BASELINE_FILE,
     MIGRATION_DIR,
     ...apps.flatMap(({ id }) =>
-      GENERATED_FILES.map((file) => `apps/${id}/${file}`),
+      [...GENERATED_FILES, PAGE, VITE_CONFIG].map(
+        (file) => `apps/${id}/${file}`,
+      ),
     ),
     ...files,
   ]) {
@@ -372,6 +377,8 @@ export function migrate(
     if (baseline.revision === target.snapshot.revision) {
       // A leftover of a completed migration.
       rmSync(work, { recursive: true, force: true });
+      // The tooling may still have changed what it generates for apps.
+      updateApps(root, report);
       return { ...report, unchanged: true };
     }
   }
@@ -479,7 +486,7 @@ export function migrate(
     throw new Error(
       `${unresolved.map(({ file }) => file).join(', ')} still contain an unresolved suggestion; resolve them, then run pnpm run migrate --done again`,
     );
-  report.regenerated = regenerate(root);
+  updateApps(root, report);
   // A new starter can change the manifest or the workspace settings, so the
   // lockfile and node_modules follow before the migration counts as done.
   if (!install(root))
@@ -497,11 +504,27 @@ export function migrate(
   return report;
 }
 
+/**
+ * The apps' part of a migration: files a release moves where that is
+ * unambiguous, then the generated configuration.
+ */
+function updateApps(root, report) {
+  for (const app of appsOf(root)) {
+    const dir = join(root, 'apps', app.id);
+    if (existsSync(dir)) report.updated.push(...adoptPageTitle(dir, app));
+  }
+  report.regenerated = regenerate(root);
+}
+
 export function formatMigration(report) {
-  if (report.unchanged)
-    return `The shared files already match ${PACKAGE} ${report.to}; nothing to migrate.`;
   const list = (title, items) =>
     items.length ? [`${title}:`, ...items.map((item) => `  ${item}`)] : [];
+  if (report.unchanged)
+    return [
+      `The shared files already match ${PACKAGE} ${report.to}; nothing to migrate.`,
+      ...list('Updated', report.updated),
+      ...list('Regenerated', report.regenerated),
+    ].join('\n');
   const lines = [
     `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is open' : ' is complete'}.`,
     ...list('Updated', report.updated),

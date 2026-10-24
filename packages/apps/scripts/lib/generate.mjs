@@ -3,7 +3,8 @@
 // apps.json, so tooling updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SITE_PROFILES, siteIdentity } from './apps.mjs';
+import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
+import { escapeHtml } from './html.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
 // and run pnpm run regenerate.`;
@@ -33,10 +34,32 @@ const ${name}: BrowserRuntimeOptions = {
     clientId: ${json(clientId)},
     redirectUri: ${json(redirectUri)},
   },
-  returnTo: app.basePath,
+  ${RETURN_TO[Boolean(app.routes?.length)]},
 };
 `;
 }
+
+// With routes, sign-in returns to the route it started from: read when the
+// runtime is created, as the callback is, so tests can import the module.
+const RETURN_TO = {
+  false: 'returnTo: app.basePath',
+  true: `get returnTo() {
+    return returnPath();
+  }`,
+};
+
+const RETURN_PATH = `
+// The page sign-in returns to: the current route, otherwise the start page.
+function returnPath(): string {
+  const routes: readonly string[] = app.routes;
+  const route = location.pathname
+    .slice(app.basePath.length)
+    .replace(/\\/$/, '');
+  return location.pathname.startsWith(app.basePath) && routes.includes(route)
+    ? app.basePath + route
+    : app.basePath;
+}
+`;
 
 /**
  * Runtime settings per profile: local development with a dynamic identity on
@@ -47,17 +70,21 @@ export function runtimeSource(app, site) {
   const modes = SITE_PROFILES.map(
     (name) => `  ${json(PROFILE_MODES[name])}: ${json(name)},`,
   ).join('\n');
+  // "auto" stays a literal: the app resolves it from the browser.
+  const language =
+    app.language === AUTO ? json(AUTO) : `${json(app.language)} as Language`;
   return `${HEADER}
-import type { BrowserRuntimeOptions, Language } from '@sempods/app-sdk';
+import type { BrowserRuntimeOptions${app.language === AUTO ? '' : ', Language'} } from '@sempods/app-sdk';
 
 export const app = {
   id: ${json(app.id)},
   title: ${json(app.title)},
-  language: ${json(app.language)} as Language,
+  language: ${language},
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
+  routes: ${json(app.routes ?? [])},
 } as const;
-
+${app.routes?.length ? RETURN_PATH : ''}
 // Local development: a dynamic identity, local HTTP only.
 const local: BrowserRuntimeOptions = {
   identity: {
@@ -69,7 +96,7 @@ const local: BrowserRuntimeOptions = {
       return \`\${location.origin}${app.path}callback\`;
     },
   },
-  returnTo: app.basePath,
+  ${RETURN_TO[Boolean(app.routes?.length)]},
   development: 'loopback-http',
 };
 ${published.map((name) => publishedProfile(name, site[name], app)).join('')}
@@ -95,9 +122,14 @@ export const runtimeOptions: BrowserRuntimeOptions =
 `;
 }
 
-/** Vite base path, development server and PWA settings for this app's path. */
+/** Vite base path, development server, page title and PWA settings. */
 export function viteSource(app) {
   const p = app.path;
+  // The start page and every route, with or without a trailing slash, as the
+  // app's router accepts them; route names need no escaping.
+  const routes = app.routes?.length
+    ? `((${app.routes.join('|')})\\/?)?`
+    : '';
   const escaped = p.replaceAll('/', '\\/');
   const pwa = app.pwa
     ? `{
@@ -109,12 +141,12 @@ export function viteSource(app) {
       id: ${json(p)},
       name: ${json(app.title)},
       short_name: ${json(app.title)},
-      lang: ${json(app.language)},
-      start_url: ${json(p)},
+${app.language === AUTO ? '' : `      lang: ${json(app.language)},
+`}      start_url: ${json(p)},
       scope: ${json(p)},
       display: 'standalone',
-      background_color: '#f6faf9',
-      theme_color: '#176354',
+      background_color: '#ffffff',
+      theme_color: '#ffffff',
       icons: [
         { src: ${json(`${p}icon-192.png`)}, sizes: '192x192', type: 'image/png' },
         { src: ${json(`${p}icon-512.png`)}, sizes: '512x512', type: 'image/png' },
@@ -124,10 +156,10 @@ export function viteSource(app) {
       // Precache the built shell only; nothing is cached at runtime.
       globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
       runtimeCaching: [],
-      // Serve the cached shell only for this app's start route. The callback,
-      // Pod and login pages always go to the network.
+      // Serve the cached shell only for this app's start page and routes. The
+      // callback, Pod and login pages always go to the network.
       navigateFallback: ${json(`${p}index.html`)},
-      navigateFallbackAllowlist: [/^${escaped}$/],
+      navigateFallbackAllowlist: [/^${escaped}${routes}$/],
       skipWaiting: false,
       clientsClaim: false,
       cleanupOutdatedCaches: true,
@@ -135,9 +167,19 @@ export function viteSource(app) {
   }`
     : 'null';
   return `${HEADER}
+import type { Plugin } from 'vite';
 import type { VitePWAOptions } from 'vite-plugin-pwa';
 
 export const base = ${json(p)};
+
+// The page title from apps.json, added to the head of every page Vite serves
+// or builds; index.html has no <title> of its own.
+export const pageTitle: Plugin = {
+  name: 'sempods-page-title',
+  transformIndexHtml: () => [
+    { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
+  ],
+};
 
 export const server = {
   host: '127.0.0.1',

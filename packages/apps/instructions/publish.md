@@ -39,8 +39,9 @@ pnpm run build-site --profile preview  # the fixed preview address
 
 It builds every app into `site-dist/<id>/` with the published identity and
 writes the overview, `did.json` per app (`/<id>/did.json`, needed by some
-Pods), the SDK's licence notices, `<id>/callback.html` for each callback and a
-top-level `404.html` for unknown paths. The layout is the same for every host.
+Pods), the SDK's licence notices, `<id>/callback.html` for each callback,
+`<id>/<route>.html` for each route an app lists in `apps.json` and a top-level
+`404.html` for unknown paths. The layout is the same for every host.
 `site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.
@@ -60,9 +61,10 @@ Every host, whatever it is:
 
 - serves `site-dist/` as static files over HTTPS, with Node from
   `.node-version` and pnpm from `packageManager` when it builds;
-- answers `/<id>/` and `/<id>/callback?code=…&state=…` with a first response
-  of `200`, without a redirect (`Location` header), with path and query
-  unchanged. The SDK recognises the callback only at its exact path;
+- answers `/<id>/`, each route `/<id>/<route>` and
+  `/<id>/callback?code=…&state=…` with a first response of `200`, without a
+  redirect (`Location` header), with path and query unchanged. The SDK
+  recognises the callback only at its exact path;
 - answers `/<id>/did.json` with the JSON document, not with an app page;
 - does not rewrite every path to an `index.html`, which would also replace
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
@@ -73,7 +75,9 @@ Every host, whatever it is:
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
 Do not add rewrite rules for `/<id>/*`: the files already answer every path,
-and a rule can replace them.
+and a rule can replace them. The SDK's `deployment.md` shows such a rewrite
+for a single app on its own site; this layout replaces it with a file per
+route.
 
 ### Netlify (tested)
 
@@ -132,7 +136,9 @@ SDK's `deployment.md`.
    - `curl -s -o /dev/null -D - 'https://<host>/<id>/callback?code=x&state=y'`
      (a GET, as the browser sends it) returns `200` and no `Location`;
    - `curl -s 'https://<host>/<id>/did.json'` returns the JSON with
-     `"id": "did:web:<host>:<id>"`.
+     `"id": "did:web:<host>:<id>"`;
+   - each route, `curl -s -o /dev/null -D - 'https://<host>/<id>/<route>'`,
+     returns `200` and no `Location`.
 2. In a fresh browser profile, the owner signs in to each app on the
    published site, grants only the intended context, saves something and
    reloads. Never ask for credentials or tokens.
