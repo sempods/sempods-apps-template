@@ -1,10 +1,17 @@
 :root {
-  /* Follow the system's light or dark mode; the SDK components follow the page.
-     The colours match the SDK defaults, so AppAccess sits seamlessly on the page. */
+  /* Follow the system's light or dark mode. The --sempods-* tokens colour the
+     app and the SDK components alike: a calm, neutral palette with graphite as
+     the accent. Change them here to restyle both. */
   color-scheme: light dark;
+  --sempods-bg: light-dark(#fff, #111315);
+  --sempods-text: light-dark(#1f2933, #e5e7eb);
+  --sempods-muted: light-dark(#6b7280, #9ca3af);
+  --sempods-line: light-dark(#e5e7eb, #2d3138);
+  --sempods-accent: light-dark(#1f2933, #e5e7eb);
+  --sempods-on-accent: light-dark(#fff, #111315);
   font-family: system-ui, sans-serif;
-  color: light-dark(#202923, #e8eee9);
-  background: light-dark(#fff, #191b1a);
+  color: var(--sempods-text);
+  background: var(--sempods-bg);
 }
 body {
   margin: 0;
@@ -14,33 +21,96 @@ main {
   margin: auto;
   padding: 16px;
 }
-header {
+/* The app's own header; AppAccess brings its own. */
+main > header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
-header h1 {
-  margin: 0;
-  font-size: 1.4rem;
-}
 main > header h1 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin: 0;
+  font-size: 1.4rem;
 }
 main > header h1 img {
   width: 28px;
   height: 28px;
 }
-button,
-input,
-select {
+
+/* The rules below style the app's own markup only. SDK components
+   ([data-sempods-ui]) bring their own styles and are left alone. :where()
+   keeps these rules at zero specificity, so any class overrides them. */
+
+/* Actions read as text, like the SDK's secondary actions: accent colour, no
+   frame, a calm hover and a visible focus, with 44px touch targets. */
+:where(button):not(:where([data-sempods-ui] *, [data-sempods-button])) {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sempods-accent);
   font: inherit;
-  margin: 0.25rem;
-  padding: 0.4rem;
+  font-weight: 500;
+  cursor: pointer;
 }
-input[type='checkbox'] {
-  accent-color: light-dark(#226044, #8acda6);
+:where(button):not(:where([data-sempods-ui] *, [data-sempods-button])):where(
+    :hover:not(:disabled)
+  ) {
+  background: color-mix(in srgb, var(--sempods-accent) 8%, transparent);
+}
+:where(button):not(:where([data-sempods-ui] *, [data-sempods-button])):where(
+    :disabled
+  ) {
+  color: var(--sempods-muted);
+  cursor: default;
+}
+:where(input, select, textarea):not(
+    :where([data-sempods-ui] *, [type='checkbox'], [type='radio'])
+  ) {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--sempods-line);
+  border-radius: 6px;
+  background: var(--sempods-bg);
+  color: var(--sempods-text);
+  font: inherit;
+}
+/* A compact box; its wrapping <label> is the 44px touch target, as in the
+   SDK. Margins are not clickable, so wrap every checkbox in its label. */
+:where(input[type='checkbox'], input[type='radio']):not(
+    :where([data-sempods-ui] *)
+  ) {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  margin-inline-end: 10px;
+  accent-color: var(--sempods-accent);
+}
+:where(label:has(input[type='checkbox'], input[type='radio'])):not(
+    :where([data-sempods-ui] *)
+  ) {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+:where(button, input, select, textarea, a):not(
+    :where([data-sempods-ui] *, [data-sempods-button])
+  ):where(:focus-visible) {
+  outline: 2px solid var(--sempods-accent);
+  outline-offset: 2px;
+}
+/* Lists of items, without the browser's indentation and bullets. */
+:where(ul):not(:where([data-sempods-ui] *)) {
+  padding-inline-start: 0;
+  list-style: none;
 }

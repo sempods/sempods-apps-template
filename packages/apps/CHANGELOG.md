@@ -58,6 +58,17 @@ configuration choices and the SDK migration.
   does not start with a letter A–Z, accents aside, gets the plain square.
 - The skeleton shows the icon in its header next to the app's name and passes
   it to `AppAccess` for the sign-in screen.
+- The skeleton's `src/index.css` sets a calm, neutral palette through the
+  `--sempods-*` tokens (graphite accent, grey lines), which colour the app and
+  the SDK components alike. Its rules style only the app's own markup and
+  leave SDK components (`[data-sempods-ui]`) alone, so `AppAccess` keeps its
+  layout. App buttons read as text in the accent colour with a calm hover, a
+  visible focus and 44px touch targets. Inputs have 44px targets;
+  checkboxes and radios are a compact 24px box whose wrapping `<label>` is
+  the 44px target, as in the SDK. Lists lose the browser's indentation and
+  bullets.
+- The page's `theme-color` follows light and dark mode, and the generated web
+  app manifest uses a white background and theme colour instead of green.
 
 ### Upgrade notes
 
@@ -88,6 +99,13 @@ configuration choices and the SDK migration.
    do, pass an image of `public/favicon.svg` under the app's base path, with
    empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
    header, as the skeleton's `src/App.tsx` does.
+6. Finishing the migration regenerates every app's
+   `vite.sempods.generated.ts` with the new manifest colours.
+7. Existing apps keep their own `src/index.css` and `index.html`. Where an
+   app still has the skeleton's global `header`, `button`, `input` or `select`
+   rules, offer the owner the new skeleton rules: they stop shifting the
+   sign-in form and placing the `AppAccess` icon beside its title. Keep the
+   app's own colours unless the owner wants the neutral palette.
 
 ## 0.7.1
 
