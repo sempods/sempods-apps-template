@@ -95,10 +95,14 @@ pnpm run dev konsum
 ```
 
 The interface also accepts `--language de` or `--language en` for one fixed UI
-language and `--no-pwa` at creation. Generation never overwrites
-an app: check `apps.json` and the folder before invoking it. The first app adds
-its dependency tree to `pnpm-lock.yaml` (several thousand lines); that is
-expected, so point the owner to the app's own files when they review the change.
+language and `--no-pwa` at creation. The app's icon is a monogram of the
+title's first letter in `public/` (`favicon.svg`, shown in the header and on
+the sign-in screen, and `icon-192.png`, `icon-512.png` for the installed app);
+replace those files when the owner wants another icon. Generation never
+overwrites an app: check `apps.json` and the folder before invoking it. The
+first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
+lines); that is expected, so point the owner to the app's own files when they
+review the change.
 For an existing app, work in its existing folder and skip generation. Keep
 Node and pnpm consistent with the root setup; do not switch package managers.
 Use `pnpm install --frozen-lockfile` when restoring the committed dependency
