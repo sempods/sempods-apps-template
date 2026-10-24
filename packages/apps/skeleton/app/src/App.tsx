@@ -1,16 +1,22 @@
 import { useRef, useState } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
 import {
+  AccessNotice,
   AppAccess,
   SempodsProvider,
   TargetScreen,
+  useApp,
   useAppState,
   useSdkLocale,
+  useWorkflowAccess,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
 import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
 import { textsFor, uiLocale } from './texts.ts';
+import { ContextSwitch } from './ui/ContextSwitch.tsx';
+import { MenuIcon } from './ui/icons.tsx';
+import { Menu } from './ui/Menu.tsx';
 
 // One runtime for the app's lifetime, created outside rendering. Its return
 // after a sign-in goes through the router, which then shows that route.
@@ -39,40 +45,77 @@ export default function App({
   );
 }
 
-// The app owns its layout. AppAccess shows sign-in and recovery beside the
-// content and hides once a context is readable; the button reopens it.
+// The app owns its layout: a header with the app or the context switch, the
+// app's icon actions and a menu; AppAccess beside the content for sign-in,
+// recovery and, from the menu, managing Pods and sharing.
 function Frame() {
-  const [open, setOpen] = useState(false);
-  const focusTarget = useRef<HTMLButtonElement>(null);
+  const [managing, setManaging] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const { connections } = useAppState();
-  const { messages } = useSdkLocale();
+  const { connection } = useWorkflowAccess();
+  const { disconnect } = useApp();
+  const t = textsFor(useSdkLocale().language);
   const header = connections.length > 0;
+  const close = () => {
+    setManaging(false);
+    menuButton.current?.focus();
+  };
   return (
     <main>
       {header && (
         <header>
-          <h1>
-            {icon}
-            {app.title}
-          </h1>
-          <button
-            ref={focusTarget}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {messages.controls.dataAccess}
-          </button>
+          <h1 className="visually-hidden">{app.title}</h1>
+          <ContextSwitch
+            icon={icon}
+            label={t.context}
+            texts={t}
+            fallback={
+              <span className="app-name" aria-hidden="true">
+                {icon}
+                {app.title}
+              </span>
+            }
+          />
+          <div className="header-actions">
+            {/* The app's own icon actions go here, for example a reload. */}
+            <Menu
+              label={t.menu}
+              trigger={<MenuIcon />}
+              button={menuButton}
+              items={[
+                { label: t.podsAndSharing, onSelect: () => setManaging(true) },
+                ...(connection
+                  ? [
+                      {
+                        label: t.signOut,
+                        hint: t.signOutHint,
+                        onSelect: () => void disconnect(connection.id),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </div>
         </header>
+      )}
+      {/* Managing Pods and sharing stays in the page: with SDK 0.5.0 a modal
+          dialog would hide its leave confirmation. */}
+      {managing && (
+        <button className="managing-close" onClick={close}>
+          {t.close}
+        </button>
       )}
       {/* Below the header's h1, AppAccess uses h2. */}
       <AppAccess
         appName={app.title}
         icon={icon}
         headingLevel={header ? 2 : 1}
-        open={open}
-        focusTarget={focusTarget}
+        open={managing}
+        focusTarget={menuButton}
       />
       <TargetScreen>
+        {/* Says so when the person shared the context read-only. */}
+        <AccessNotice />
         <Start />
       </TargetScreen>
     </main>

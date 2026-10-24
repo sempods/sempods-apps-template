@@ -19,6 +19,15 @@ const en = {
   start: 'Connected. Tell your assistant what this app should do.',
   newVersion:
     'A new version is ready. It is used once every window of this app has been closed.',
+  menu: 'Menu',
+  podsAndSharing: 'Pods & sharing',
+  signOut: 'Sign out',
+  signOutHint: 'On this device only',
+  close: 'Close',
+  context: 'Context',
+  canChange: 'read and change',
+  readOnly: 'read only',
+  shareMore: 'Share more …',
 };
 
 export type Texts = typeof en;
@@ -27,6 +36,15 @@ const de: Texts = {
   start: 'Verbunden. Beschreibe deinem Assistenten, was diese App tun soll.',
   newVersion:
     'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.',
+  menu: 'Menü',
+  podsAndSharing: 'Pods & Freigaben',
+  signOut: 'Abmelden',
+  signOutHint: 'Nur auf diesem Gerät',
+  close: 'Schließen',
+  context: 'Kontext',
+  canChange: 'lesen und ändern',
+  readOnly: 'nur lesen',
+  shareMore: 'Weitere freigeben …',
 };
 
 const catalogues: Readonly<Record<Language, Texts>> = { en, de };
