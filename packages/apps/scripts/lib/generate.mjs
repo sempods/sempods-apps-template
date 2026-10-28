@@ -39,13 +39,11 @@ const ${name}: BrowserRuntimeOptions = {
 `;
 }
 
-// With routes, sign-in returns to the route it started from: read when the
-// runtime is created, as the callback is, so tests can import the module.
+// With routes, sign-in returns to the route it started from: the runtime
+// calls returnPath when each sign-in starts.
 const RETURN_TO = {
   false: 'returnTo: app.basePath',
-  true: `get returnTo() {
-    return returnPath();
-  }`,
+  true: 'returnTo: returnPath',
 };
 
 const RETURN_PATH = `

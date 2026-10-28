@@ -147,7 +147,7 @@ describe('migrate', () => {
     assert.equal(manifest.scripts.mine, 'echo mine');
     assert.equal(manifest.devDependencies['left-pad'], '1.3.0');
     assert.equal(manifest.devDependencies['@sempods/apps'], '3.0.0');
-    assert.equal(manifest.devDependencies['@sempods/app-sdk'], '0.5.0');
+    assert.equal(manifest.devDependencies['@sempods/app-sdk'], '0.6.0');
     assert.equal(read(repo, 'apps/demo/src/App.tsx'), appBefore);
     assert.equal(read(repo, 'apps/demo/NOTES.md'), notesBefore);
     assert.deepEqual(readBaseline(repo), {
