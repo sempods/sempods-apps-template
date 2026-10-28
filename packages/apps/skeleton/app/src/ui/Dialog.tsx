@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CloseIcon } from './icons.tsx';
 
 /**
@@ -21,12 +21,25 @@ export function Dialog({
   readonly children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  // What had focus before the dialog opened, for example the item it shows.
+  const [opener] = useState(() => document.activeElement);
   // Open as a modal once mounted; unmounting removes it. (Closing it in an
   // effect cleanup would fire `close` under React's StrictMode re-run.)
+  // Removing an open dialog does not restore focus as close() would, so the
+  // cleanup returns it to the opener unless it has moved on elsewhere.
   useEffect(() => {
     const element = dialog.current;
     if (element && !element.open) element.showModal();
-  }, []);
+    return () => {
+      const focused = document.activeElement;
+      if (
+        opener instanceof HTMLElement &&
+        opener.isConnected &&
+        (!focused || focused === document.body || element?.contains(focused))
+      )
+        opener.focus();
+    };
+  }, [opener]);
   // Ask the owner; if it keeps the dialog, make sure it is open again.
   const request = async () => {
     await onClose();
