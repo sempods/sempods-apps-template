@@ -86,13 +86,13 @@ configuration choices and the SDK migration.
   above the home indicator and, where browsers support it, the on-screen
   keyboard), `Dialog` (modal, a bottom sheet on phones, for example around a
   `ResourceEditor`) and line icons.
-- The skeleton's header shows the app's icon and name, or the context switch
-  once a context is chosen, room for the app's icon actions and a menu (⋮)
-  with "Pods & sharing", which opens `AppAccess` management as its dialog
-  (`onClose`), and "Sign out", on this device only. It replaces the "Data
-  access" button. `AccessNotice` says when a context is shared read-only,
-  and the viewport adds `viewport-fit=cover` and
-  `interactive-widget=resizes-content`.
+- The skeleton's header shows the app's icon and name, room for the app's
+  icon actions and a menu (⋮) whose "Pods & sharing" opens `AppAccess`
+  management as its dialog (`onClose`), with signing out inside. It replaces
+  the "Data access" button. `<AccessNotice only="write" />` beside `AppAccess`
+  says when a context is shared read-only, and the viewport adds
+  `viewport-fit=cover` and `interactive-widget=resizes-content`. An app that
+  switches between contexts puts `ContextSwitch` in place of the name.
 - The app workflow describes the kit and the reference layout of a list app.
 
 ### Upgrade notes

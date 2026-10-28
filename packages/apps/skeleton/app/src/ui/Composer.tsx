@@ -6,6 +6,8 @@ import type { ReactNode } from 'react';
  * it sits above the home indicator, and with the skeleton's viewport setting
  * (interactive-widget=resizes-content) it stays above the on-screen keyboard
  * in browsers that support that. iOS Safari overlays the keyboard instead.
+ * Render it in the frame, outside views that tabs switch: switching views
+ * does not ask about an unsent creation draft, and unmounting loses it.
  */
 export function Composer({ children }: { readonly children: ReactNode }) {
   return (

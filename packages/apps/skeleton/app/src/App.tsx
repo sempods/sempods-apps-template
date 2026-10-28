@@ -5,16 +5,13 @@ import {
   AppAccess,
   SempodsProvider,
   TargetScreen,
-  useApp,
   useAppState,
   useSdkLocale,
-  useWorkflowAccess,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
 import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
 import { textsFor, uiLocale } from './texts.ts';
-import { ContextSwitch } from './ui/ContextSwitch.tsx';
 import { MenuIcon } from './ui/icons.tsx';
 import { Menu } from './ui/Menu.tsx';
 
@@ -45,56 +42,44 @@ export default function App({
   );
 }
 
-// The app owns its layout: a header with the app or the context switch, the
-// app's icon actions and a menu; AppAccess beside the content for sign-in and
-// recovery, and as a dialog for managing Pods and sharing from the menu.
+// The app owns its layout: a header with the app's icon and name, its icon
+// actions and a menu; AppAccess beside the content for sign-in and recovery,
+// and as a dialog for managing Pods and sharing from the menu. An app that
+// switches between contexts (lists) puts ui/ContextSwitch in place of the
+// name.
 function Frame() {
   const [managing, setManaging] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const { connections } = useAppState();
-  const { connection } = useWorkflowAccess();
-  const { disconnect } = useApp();
-  const t = textsFor(useSdkLocale().language);
+  const { language, messages } = useSdkLocale();
+  const t = textsFor(language);
   const header = connections.length > 0;
   return (
     <main>
       {header && (
         <header>
-          <h1 className="visually-hidden">{app.title}</h1>
-          <ContextSwitch
-            icon={icon}
-            label={t.context}
-            texts={t}
-            fallback={
-              <span className="app-name" aria-hidden="true">
-                {icon}
-                {app.title}
-              </span>
-            }
-          />
+          <h1>
+            {icon}
+            {app.title}
+          </h1>
           <div className="header-actions">
-            {/* The app's own icon actions go here, for example a reload. */}
+            {/* The app's own icon actions go here. */}
             <Menu
               label={t.menu}
               trigger={<MenuIcon />}
               button={menuButton}
               items={[
-                { label: t.podsAndSharing, onSelect: () => setManaging(true) },
-                ...(connection
-                  ? [
-                      {
-                        label: t.signOut,
-                        hint: t.signOutHint,
-                        onSelect: () => void disconnect(connection.id),
-                      },
-                    ]
-                  : []),
+                {
+                  label: messages.controls.dataAccess,
+                  onSelect: () => setManaging(true),
+                },
               ]}
             />
           </div>
         </header>
       )}
-      {/* Below the header's h1, AppAccess uses h2. */}
+      {/* Below the header's h1, AppAccess uses h2. It explains sign-in and
+          lost access; AccessNotice adds only that a context is read-only. */}
       <AppAccess
         appName={app.title}
         icon={icon}
@@ -103,9 +88,8 @@ function Frame() {
         onClose={() => setManaging(false)}
         focusTarget={menuButton}
       />
+      <AccessNotice only="write" />
       <TargetScreen>
-        {/* Says so when the person shared the context read-only. */}
-        <AccessNotice />
         <Start />
       </TargetScreen>
     </main>

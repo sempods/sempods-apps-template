@@ -17,20 +17,6 @@ main > header {
   color: var(--sempods-text);
 }
 
-/* The app's icon and name, until the context switch can show a context. */
-.app-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 1.15rem;
-  font-weight: 500;
-}
-.app-name img {
-  flex: none;
-  width: 28px;
-  height: 28px;
-}
 /* Keeps a heading for screen readers without showing it. */
 .visually-hidden {
   position: absolute;
@@ -88,7 +74,11 @@ main > header {
   border-top: 1px solid var(--sempods-line);
 }
 
-/* Context switch: app icon and the current context, as the header's title. */
+/* Context switch: app icon and the current context, as the header's title;
+   a failed request to share more shows below it. */
+.context-switch-wrap {
+  min-width: 0;
+}
 .context-switch > button {
   display: flex;
   align-items: center;
@@ -107,6 +97,11 @@ main > header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.context-switch-problem {
+  margin: 0;
+  color: var(--sempods-muted);
+  font-size: 0.875rem;
 }
 
 /* Tabs: the views as links on one line; the current one is underlined on

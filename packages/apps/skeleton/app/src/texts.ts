@@ -20,12 +20,6 @@ const en = {
   newVersion:
     'A new version is ready. It is used once every window of this app has been closed.',
   menu: 'Menu',
-  podsAndSharing: 'Pods & sharing',
-  signOut: 'Sign out',
-  signOutHint: 'On this device only',
-  close: 'Close',
-  context: 'Context',
-  shareMore: 'Share more …',
 };
 
 export type Texts = typeof en;
@@ -35,12 +29,6 @@ const de: Texts = {
   newVersion:
     'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.',
   menu: 'Menü',
-  podsAndSharing: 'Pods & Freigaben',
-  signOut: 'Abmelden',
-  signOutHint: 'Nur auf diesem Gerät',
-  close: 'Schließen',
-  context: 'Kontext',
-  shareMore: 'Weitere freigeben …',
 };
 
 const catalogues: Readonly<Record<Language, Texts>> = { en, de };
