@@ -240,7 +240,7 @@ describe('generated configuration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  it('returns to the current route after sign-in and caches every route', async () => {
+  it('returns to the route a sign-in starts from and caches every route', async () => {
     const routed = { ...app, routes: ['open', 'bought'] };
     const files = generatedFiles(routed);
     assert.match(
@@ -258,7 +258,7 @@ describe('generated configuration', () => {
       const returnTo = (pathname) => {
         globalThis.location = { pathname };
         try {
-          return runtimeOptions.returnTo;
+          return runtimeOptions.returnTo();
         } finally {
           delete globalThis.location;
         }

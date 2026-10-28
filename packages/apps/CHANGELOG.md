@@ -8,6 +8,15 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+- New repositories use SDK 0.6.0 (`@sempods/app-sdk` and
+  `@sempods/client-sdk`), and `@sempods/apps` supports `^0.6.0`. The 0.6.0
+  release notes and migration guide name what changes for apps: among others,
+  `AppShell` and `ConnectionControls` are gone, row commands move to
+  `mutate.for(item)`, SDK texts follow the browser language, lists keep their
+  rows while reloading, a cancelled re-authorization keeps the session, and
+  the leave confirmation shows above app dialogs. For apps with routes, the
+  generated `returnTo` is a function the runtime calls when each sign-in
+  starts, so sign-in returns to the route the person is on.
 - Apps are international by default. `language` in `apps.json` accepts
   `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
   language. The skeleton resolves the UI language and locale from the
@@ -28,8 +37,7 @@ configuration choices and the SDK migration.
   `build-site` writes `<id>/<route>.html`, so the published site answers each
   route without a rewrite and unknown paths still show the not-found page. The
   service worker serves the cached app for the start page and every route, and
-  sign-in returns to the route the page was opened at instead of the start
-  page.
+  sign-in returns to the route it started from instead of the start page.
 - The skeleton's `src/routes.ts` provides `useRoute()`: the current route,
   `link(route)` for an `<a>` to it and `go(route)`, which switches views
   under the SDK's leave policy
@@ -87,36 +95,46 @@ configuration choices and the SDK migration.
 
 ### Upgrade notes
 
-1. Existing apps keep their fixed language; nothing changes for them. To make
+1. Move the repository to SDK 0.6.0 after the tooling update, on its own
+   branch: `pnpm run sdk-update 0.6.0`. Until then `check` reports the SDK as
+   outside the supported range, and apps created by `new-app` would use the
+   old SDK with a skeleton written for 0.6.0. Then follow the SDK's migration
+   checklist (`node_modules/@sempods/app-sdk/docs/migration.md`, "From 0.5.0
+   to 0.6.0") for each app: replace `AppShell`/`ConnectionControls` with the
+   skeleton's layout, move row commands to `mutate.for(item)`, handle
+   `not-sent` results, and check texts and dialogs that tests match. Run
+   `pnpm run check --standalone all` and list for the owner what to try on the
+   Pod: sign-in, reload, editing, guarded navigation and recovery.
+2. Existing apps keep their fixed language; nothing changes for them. To make
    one follow the browser, set its `language` to `"auto"` in `apps.json`, run
    `pnpm run regenerate`, and adopt the skeleton's language resolution in
    `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
    `locale`, and `document.documentElement.lang`), because `app.language`
    is then `"auto"`, not a language. Move the app's texts into a catalogue
    with both languages, as the skeleton's `src/texts.ts` does.
-2. Finishing the migration regenerates every app: `app.routes` is new (empty
+3. Finishing the migration regenerates every app: `app.routes` is new (empty
    unless the owner lists routes), and so is the service worker's allowlist
    for apps with routes.
-3. Existing apps keep their code. For an app that switches views by itself,
+4. Existing apps keep their code. For an app that switches views by itself,
    offer routes: copy `src/routes.ts` and `src/routes.test.ts` from the
    skeleton (`node_modules/@sempods/apps/skeleton/app/src/`), pass
    `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
    list the routes in `apps.json` and run `pnpm run regenerate`. An app that
    rewrote its address itself after a sign-in can drop that code.
-4. The migration lists the apps it moved to the generated page title under
+5. The migration lists the apps it moved to the generated page title under
    "Updated". For any other app, `check` names what is left: add `pageTitle`
    from `./vite.sempods.generated.ts` to the plugins in its `vite.config.ts`,
    as the skeleton does, and remove the `<title>` from its `index.html`. A
    page title other than the one in `apps.json` was chosen by hand: ask the
    owner whether it should be the app's title, put it into `apps.json` and
    run `pnpm run regenerate`.
-5. Existing apps keep their icons and code. To show the icon like new apps
+6. Existing apps keep their icons and code. To show the icon like new apps
    do, pass an image of `public/favicon.svg` under the app's base path, with
    empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
    header, as the skeleton's `src/App.tsx` does.
-6. Finishing the migration regenerates every app's
+7. Finishing the migration regenerates every app's
    `vite.sempods.generated.ts` with the new manifest colours.
-7. Existing apps keep their own `src/index.css` and `index.html`. Where an
+8. Existing apps keep their own `src/index.css` and `index.html`. Where an
    app still has the skeleton's global `header`, `button`, `input` or `select`
    rules, offer the owner the new skeleton rules: they stop shifting the
    sign-in form and placing the `AppAccess` icon beside its title. Keep the

@@ -51,8 +51,9 @@ components together, and keep the app's own rules off SDK components
 (`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
 radio in its `<label>`: the label is its 44px touch target. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
-rebuilding those facilities. Existing apps on `AppShell` keep working; move them
-only when the owner wants the new layout.
+rebuilding those facilities. SDK 0.6.0 removed `AppShell` and
+`ConnectionControls`: an app that still uses them moves to the skeleton's
+layout with the SDK's migration guide (`migration.md`) when it updates.
 
 Choose the data vocabulary from the installed reference, existing data and the
 app's purpose before writing data. Ask about an unclear meaning in everyday
