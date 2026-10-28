@@ -58,8 +58,9 @@ manifest or choose another ID silently to make setup pass. A failed command
 leaves setup in progress; diagnose it before proceeding.
 
 Continue with the [app workflow](app-workflow.md) for the first useful
-interaction. Once the owner can try the screen, ask once whether they have a
-test Pod for trying it with data, unless the setup record answers that. If so,
+interaction. Once the app starts, ask once whether they have a test Pod for
+trying it with data, unless the setup record answers that: without one, only
+the sign-in screen can be seen. If so,
 let the user sign in in the browser and select their test contexts; otherwise
 record Pod testing as pending. Run `pnpm run check` in another terminal and
 report its result.
@@ -103,8 +104,9 @@ a token; never ask for one.
 ## Finish setup
 
 Run `pnpm run check` again. Mark setup **done** only when the chosen app starts
-at its assigned URL, its first useful interaction is available and local checks
-pass. Deferred review identity or version PRs do not block completion;
+at its assigned URL, its first useful interaction is available, local checks
+pass and the owner has seen the screen and given a verdict (or, without a test
+Pod, the sign-in screen, with the rest recorded as pending). Deferred review identity or version PRs do not block completion;
 keep their status visible in the setup record. Record command results and
 remaining gaps separately: no Pod, incomplete login or untested installed-PWA
 behavior are not successful interoperability evidence. If setup is already
