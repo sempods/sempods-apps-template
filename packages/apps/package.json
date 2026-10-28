@@ -1,6 +1,6 @@
 {
   "name": "@sempods/apps",
-  "version": "0.8.0-dev.1",
+  "version": "0.8.0",
   "description": "Tooling for a sempods apps repository: create, check, update and publish several sempods apps with one shared SDK version.",
   "keywords": [
     "sempods",
