@@ -34,7 +34,11 @@ import {
 } from '../scripts/lib/themes.mjs';
 import { SKELETON } from '../scripts/lib/paths.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
-import { adoptPageTitle, pageProblems } from '../scripts/lib/page.mjs';
+import {
+  adoptPageHead,
+  adoptPageTitle,
+  pageProblems,
+} from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
@@ -836,6 +840,38 @@ export default defineConfig({
     assert.deepEqual(adoptPageTitle(dir, app), ['apps/demo/vite.config.ts']);
     assert.match(page(), /<title>Hand-made<\/title>/);
     assert.equal(pageProblems(dir, 'demo').length, 1);
+  });
+
+  it("updates the skeleton's 0.7 head lines an app kept", () => {
+    const viewport07 =
+      '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n';
+    const theme07 = '    <meta name="theme-color" content="#176354" />\n';
+    const head07 = page07('x').replace(
+      '    <meta charset="UTF-8" />\n',
+      `    <meta charset="UTF-8" />\n${viewport07}${theme07}`,
+    );
+    writeFileSync(file('index.html'), head07);
+    assert.deepEqual(adoptPageHead(dir, app), ['apps/demo/index.html']);
+    const skeleton = readFileSync(
+      join(SKELETON, 'index.html'),
+      'utf8',
+    );
+    assert.match(page(), /interactive-widget=resizes-content/);
+    assert.match(page(), /prefers-color-scheme: dark\)" content="#111315"/);
+    assert.doesNotMatch(page(), /#176354/);
+    for (const line of page().split('\n').filter((l) => l.includes('<meta')))
+      assert.ok(skeleton.includes(line), line);
+    assert.deepEqual(adoptPageHead(dir, app), []);
+    // A changed colour is the owner's.
+    writeFileSync(file('index.html'), head07.replace('#176354', '#123456'));
+    assert.deepEqual(adoptPageHead(dir, app), ['apps/demo/index.html']);
+    assert.match(page(), /content="#123456"/);
+    assert.match(page(), /interactive-widget/);
+    // A page with Windows line endings keeps them.
+    writeFileSync(file('index.html'), head07.replaceAll('\n', '\r\n'));
+    assert.deepEqual(adoptPageHead(dir, app), ['apps/demo/index.html']);
+    assert.doesNotMatch(page(), /#176354|initial-scale=1\.0" \/>/);
+    assert.doesNotMatch(page(), /[^\r]\n/);
   });
 });
 

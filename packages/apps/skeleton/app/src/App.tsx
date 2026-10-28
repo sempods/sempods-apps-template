@@ -47,7 +47,7 @@ export default function App({
 // actions and a menu; AppAccess beside the content for sign-in and recovery,
 // and as a dialog for managing Pods and sharing from the menu. An app that
 // switches between contexts (lists) puts ui/ContextSwitch in place of the
-// name.
+// h1.
 function Frame() {
   const [managing, setManaging] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);

@@ -16,6 +16,7 @@ import {
   useMessages,
   useResourceEditor,
   useSelection,
+  useWorkflowAccess,
 } from '@sempods/app-sdk/react';
 import { fields, flag, text } from '@sempods/client-sdk/edit';
 import { Composer } from '../ui/Composer.tsx';
@@ -25,7 +26,7 @@ import { AddIcon } from '../ui/icons.tsx';
 const schema = 'https://schema.org/';
 
 /** What one row is: a name and whether it is done. */
-export const item = fields(
+const item = fields(
   {
     name: text(`${schema}name`, { language: null, trim: true }),
     done: flag(`${schema}actionStatus`, {
@@ -39,6 +40,7 @@ export const item = fields(
 // In an app these belong in src/texts.ts.
 const en = {
   empty: 'Nothing here yet. Add the first item below.',
+  emptyReadOnly: 'Nothing in this list.',
   done: (name: string) => `Done: ${name}`,
   remove: (name: string) => `Delete: ${name}`,
   edit: 'Edit item',
@@ -51,6 +53,7 @@ const listTexts: { readonly en: typeof en; readonly de: typeof en } = {
   en,
   de: {
     empty: 'Noch nichts hier. Füge unten den ersten Eintrag hinzu.',
+    emptyReadOnly: 'Nichts in dieser Liste.',
     done: (name) => `Erledigt: ${name}`,
     remove: (name) => `Löschen: ${name}`,
     edit: 'Eintrag bearbeiten',
@@ -63,6 +66,8 @@ const listTexts: { readonly en: typeof en; readonly de: typeof en } = {
 
 export function ListScreen() {
   const t = useMessages(listTexts);
+  // A list that can only be read gets no input and no invitation to add.
+  const { write } = useWorkflowAccess();
   const list = useList(item);
   const items = list.data?.items;
   // One hook for the list; each row gets its part with `mutate.for(row)`.
@@ -80,7 +85,9 @@ export function ListScreen() {
       <LoadNotice {...list} />
       {(list.state.kind === 'ready' || list.state.kind === 'loading') &&
         items?.length === 0 &&
-        list.data?.skipped === 0 && <p className="empty">{t.empty}</p>}
+        list.data?.skipped === 0 && (
+          <p className="empty">{write ? t.empty : t.emptyReadOnly}</p>
+        )}
       <ul className="rows">
         {items?.map((entry) => {
           const row = mutate.for(entry);
@@ -139,29 +146,31 @@ export function ListScreen() {
         </Dialog>
       )}
       <UpdateNotice {...creation.notice} quiet />
-      <Composer>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void creation.create();
-          }}
-        >
-          <input
-            aria-label={t.newItem}
-            placeholder={t.newItem}
-            value={creation.draft.name}
-            disabled={!creation.canEdit}
-            onChange={(event) => creation.change({ name: event.target.value })}
-          />
-          <button
-            aria-label={t.add}
-            title={t.add}
-            disabled={!creation.canCreate}
+      {write && (
+        <Composer>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void creation.create();
+            }}
           >
-            <AddIcon />
-          </button>
-        </form>
-      </Composer>
+            <input
+              aria-label={t.newItem}
+              placeholder={t.newItem}
+              value={creation.draft.name}
+              disabled={!creation.canEdit}
+              onChange={(event) => creation.change({ name: event.target.value })}
+            />
+            <button
+              aria-label={t.add}
+              title={t.add}
+              disabled={!creation.canCreate}
+            >
+              <AddIcon />
+            </button>
+          </form>
+        </Composer>
+      )}
     </>
   );
 }
