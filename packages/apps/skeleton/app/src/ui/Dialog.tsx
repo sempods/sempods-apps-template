@@ -104,14 +104,17 @@ export function Dialog({
 
 // The SDK keeps the page inert for a moment while a guarded change settles,
 // for example clearing the selection that closed the dialog. Focus waits for
-// it a few frames, unless it has moved on meanwhile.
+// it a few frames; each frame gives up once focus has moved on meanwhile.
 function restoreFocus(opener: HTMLElement, frames = 10) {
   if (!opener.isConnected) return;
   if (!opener.closest('[inert]')) {
     opener.focus();
     return;
   }
-  const focused = document.activeElement;
-  if (frames > 0 && (!focused || focused === document.body))
-    requestAnimationFrame(() => restoreFocus(opener, frames - 1));
+  if (frames > 0)
+    requestAnimationFrame(() => {
+      const focused = document.activeElement;
+      if (!focused || focused === document.body)
+        restoreFocus(opener, frames - 1);
+    });
 }
