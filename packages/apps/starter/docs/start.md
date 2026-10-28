@@ -29,7 +29,12 @@ Your existing apps stay in the same repository.
 Use a test context with made-up data in your Pod. Sign in on the Pod's page,
 then choose that context in the app. Ask your assistant to check a save and a
 reload, and to tell you what it has not tested. Never paste passwords or tokens
-into chat. Without a Pod, you can still try the screen.
+into chat. Without a Pod you only see the sign-in screen; the app's own
+screens need a test context.
+
+Before your assistant hands over a screen, it shows you a screenshot from a
+phone-sized window and asks what you think. Say what you like and what feels
+off; that is how the app gets its look.
 
 ## Keep apps up to date
 

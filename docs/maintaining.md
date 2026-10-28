@@ -27,7 +27,8 @@ or change repository settings.
 
 The owner's assistant starts at the starter's `AGENTS.md` and `INIT.md`, which
 route into the installed package: `instructions/app-workflow.md`,
-`instructions/setup.md`, `instructions/publish.md` and the skills. The skill
+`instructions/setup.md`, `instructions/publish.md`,
+`instructions/visual-check.md` and the skills. The skill
 adapters in the starter only point there. When changing a command or path,
 check the starter's README, AGENTS.md, INIT.md, `docs/start.md`, the adapters
 and the packaged instructions together. Verify skill frontmatter and links as

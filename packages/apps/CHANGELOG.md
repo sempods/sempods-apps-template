@@ -111,6 +111,13 @@ configuration choices and the SDK migration.
   mood as a theme, name and icon), asked as choices with "choose for me", and
   records it under Design in the app's `NOTES.md`; later wishes change the
   recorded choice instead of adding one-off styles.
+- A visual check before handover (`instructions/visual-check.md`): the
+  assistant takes screenshots at 375px and desktop width, light and dark, with
+  real states (empty, a few items, an open item, a notice), checks them
+  against a short checklist, fixes what fails and shows the owner the 375px
+  screenshot for a verdict. The app workflow and setup require it; visual
+  checks are their own kind of evidence in `NOTES.md`. The docs no longer say
+  the screen can be tried without a Pod: only the sign-in screen can.
 - The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
   quickstart screen built with the kit (loading and failed reads, an empty
   state, rows with a labelled checkbox, the item's `ResourceEditor` in a
