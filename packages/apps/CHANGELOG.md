@@ -67,8 +67,8 @@ Look:
   quickstart screen built with the kit (loading and failed reads, an empty
   state, rows with a labelled checkbox, the item's `ResourceEditor` in a
   `Dialog`, `RemoveButton`, open outcomes and a `Composer`, which a list the
-  person can only read does not show). It compiles with
-  every app, so it stays valid against the SDK.
+  person can only read does not show). It compiles with every app, so it
+  stays valid against the SDK.
 
 Content and configuration:
 
@@ -158,10 +158,9 @@ Instructions:
    for routes), moves apps to the generated page title where that is
    unambiguous and replaces the viewport and green `theme-color` lines an
    app's `index.html` kept from the 0.7 skeleton, listed under "Updated". For
-   any other app, `check` names what
-   is left: add `pageTitle` from `./vite.sempods.generated.ts` to the plugins
-   in its `vite.config.ts`, as the skeleton does, and remove the `<title>`
-   from its `index.html`. A page title other than the one in `apps.json` was
+   any other app, `check` names what is left: add `pageTitle` from
+   `./vite.sempods.generated.ts` to the plugins in its `vite.config.ts`, as
+   the skeleton does, and remove the `<title>` from its `index.html`. A page title other than the one in `apps.json` was
    chosen by hand: ask the owner whether it should be the app's title, put it
    into `apps.json` and run `pnpm run regenerate`. Settle these cases before
    the SDK move: `sdk-update` ends with `check` and stops on them.
