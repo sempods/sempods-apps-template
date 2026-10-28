@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { app } from './sempods.generated.ts';
-import { textsFor, uiLocale } from './texts.ts';
+import { texts, uiLocale } from './texts.ts';
 
 describe('texts', () => {
   it('has every text in every language', () => {
-    const keys = Object.keys(textsFor('en'));
-    for (const language of ['en', 'de'] as const) {
-      const texts = textsFor(language);
-      expect(Object.keys(texts)).toEqual(keys);
-      for (const text of Object.values(texts)) expect(text).not.toBe('');
+    const keys = Object.keys(texts.en);
+    for (const catalogue of [texts.en, texts.de]) {
+      expect(Object.keys(catalogue)).toEqual(keys);
+      for (const text of Object.values(catalogue)) expect(text).not.toBe('');
     }
   });
 

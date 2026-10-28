@@ -104,6 +104,30 @@ main > header {
   font-size: 0.875rem;
 }
 
+/* Lists of items: a row with its checkbox, its name (opens the item) and its
+   actions; the empty state is a quiet line. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--sempods-line);
+}
+.row-name {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+  color: var(--sempods-text);
+  font-weight: 400;
+}
+/* A row's notice (a problem or an open outcome) takes its own line. */
+.row > [data-sempods-ui='notice'] {
+  flex-basis: 100%;
+}
+.empty {
+  color: var(--sempods-muted);
+}
+
 /* Tabs: the views as links on one line; the current one is underlined on
    the row's only line. */
 .tabs {
@@ -147,6 +171,12 @@ main > header {
   gap: 8px;
   max-width: 728px;
   margin-inline: auto;
+}
+.composer-content > form {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
 }
 .composer-content input {
   flex: 1;

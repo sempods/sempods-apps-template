@@ -26,7 +26,7 @@ configuration choices and the SDK migration.
   configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
   and the overview announces no language for the app.
 - The skeleton keeps the app's own texts in `src/texts.ts`, one typed
-  catalogue per language (`textsFor(language)`), tested in
+  catalogue per language, read with the SDK's `useMessages(texts)`, tested in
   `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
   new-version notice reads its text from the catalogue.
 - The setup and app workflow ask for texts in English and German and keep
@@ -94,6 +94,14 @@ configuration choices and the SDK migration.
   `viewport-fit=cover` and `interactive-widget=resizes-content`. An app that
   switches between contexts puts `ContextSwitch` in place of the name.
 - The app workflow describes the kit and the reference layout of a list app.
+- The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
+  quickstart screen built with the kit (loading and failed reads, an empty
+  state, rows with a labelled checkbox, the item's `ResourceEditor` in a
+  `Dialog`, `RemoveButton`, open outcomes and a `Composer`). It compiles with
+  every app, so it stays valid against the SDK. The app workflow starts a list
+  from it and keeps the SDK examples' runtime, provider and styles out; rows
+  are deleted with `RemoveButton`, and lists rely on the SDK's refresh when
+  the page becomes visible again.
 - The app workflow settles how an app uses contexts before its first screen:
   one context, several one at a time, read all and write in one, or write
   into several. It infers the shape or asks once in everyday words and starts

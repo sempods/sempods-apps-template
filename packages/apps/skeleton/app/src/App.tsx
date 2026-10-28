@@ -6,12 +6,13 @@ import {
   SempodsProvider,
   TargetScreen,
   useAppState,
+  useMessages,
   useSdkLocale,
 } from '@sempods/app-sdk/react';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
 import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
-import { textsFor, uiLocale } from './texts.ts';
+import { texts, uiLocale } from './texts.ts';
 import { MenuIcon } from './ui/icons.tsx';
 import { Menu } from './ui/Menu.tsx';
 
@@ -51,8 +52,8 @@ function Frame() {
   const [managing, setManaging] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const { connections } = useAppState();
-  const { language, messages } = useSdkLocale();
-  const t = textsFor(language);
+  const { messages } = useSdkLocale();
+  const t = useMessages(texts);
   const header = connections.length > 0;
   return (
     <main>
@@ -98,6 +99,6 @@ function Frame() {
 
 // Replace this screen with your app. It renders once a Pod context is chosen.
 function Start() {
-  const t = textsFor(useSdkLocale().language);
+  const t = useMessages(texts);
   return <p>{t.start}</p>;
 }
