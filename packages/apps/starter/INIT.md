@@ -49,7 +49,7 @@ it. Keep it free of credentials and private data.
 - Owner and review identity: not recorded
 - UI language: not selected
 - First app ID and idea: not selected
-- Test Pod/context: not selected (optional; synthetic data only)
+- Test Pod and contexts: not selected (optional; synthetic data only)
 - sempods version PRs (Dependabot): not chosen
 - Local URL and check result: not checked
 - Pod exercise and remaining gaps: not tested

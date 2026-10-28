@@ -94,6 +94,14 @@ configuration choices and the SDK migration.
   `viewport-fit=cover` and `interactive-widget=resizes-content`. An app that
   switches between contexts puts `ContextSwitch` in place of the name.
 - The app workflow describes the kit and the reference layout of a list app.
+- The app workflow settles how an app uses contexts before its first screen:
+  one context, several one at a time, read all and write in one, or write
+  into several. It infers the shape or asks once in everyday words and starts
+  from the SDK's path for it (`AppAccess` or a preset, `useContexts` with
+  `ContextSwitch`, the Pod overview with `useCreation`, one `useCreation` per
+  context). The skeleton's `NOTES.md` has a Data section for the shape and
+  its contexts, and setup asks for one test context per context the shape
+  uses; the setup record says "Test Pod and contexts".
 
 ### Upgrade notes
 
@@ -145,6 +153,9 @@ configuration choices and the SDK migration.
    the skeleton's header and `src/ui/` (from
    `node_modules/@sempods/apps/skeleton/app/src/`) with their texts in
    `src/texts.ts`, once the repository is on SDK 0.6.0.
+10. Existing apps keep their `NOTES.md`. When working on an app next, settle
+   its context shape as the app workflow describes and add a Data section to
+   its notes.
 
 ## 0.7.1
 
