@@ -1,7 +1,8 @@
 // The page title comes from apps.json: the generated Vite plugin pageTitle
 // adds it to the head, so an app's index.html has no <title> of its own and its
 // vite.config.ts uses the plugin. check reports what stands in the way; the
-// migration moves apps that still have the skeleton's files.
+// migration moves apps that still have the skeleton's files, and updates the
+// skeleton's head lines an app has kept.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { escapeHtml } from './html.mjs';
@@ -87,3 +88,48 @@ export function adoptPageTitle(appDir, app) {
 }
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Head lines of the skeleton's index.html from 0.7.0 that the current
+// skeleton replaced: the viewport, which now reaches the screen's edges and
+// resizes with the on-screen keyboard, and the green theme colour, now one per
+// colour scheme.
+const HEAD_0_7 = {
+  viewport:
+    '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n',
+  themeColor: '    <meta name="theme-color" content="#176354" />\n',
+};
+
+/** The skeleton's current lines for each entry of HEAD_0_7. */
+function currentHead() {
+  const html = readFileSync(join(SKELETON, PAGE), 'utf8');
+  const lines = (pattern) => {
+    const match = html.match(pattern);
+    if (!match) throw new Error(`skeleton ${PAGE} lacks ${pattern}`);
+    return match[0];
+  };
+  return {
+    viewport: lines(
+      /^[ \t]*<!-- The layout resizes[^\n]*\n[ \t]*<meta\s+name="viewport"[^>]*\/>\n/m,
+    ),
+    themeColor: lines(/^(?:[ \t]*<meta name="theme-color"[^\n]*\n)+/m),
+  };
+}
+
+/**
+ * Replaces the skeleton's 0.7 head lines that one app's index.html still has
+ * unchanged with the current ones. Returns the changed file as
+ * apps/<id>/index.html; changed lines stay as the owner left them.
+ */
+export function adoptPageHead(appDir, app) {
+  const pageFile = join(appDir, PAGE);
+  const html = ifPresent(() => readFileSync(pageFile, 'utf8'));
+  if (html === undefined) return [];
+  const current = currentHead();
+  let next = html;
+  for (const [key, old] of Object.entries(HEAD_0_7))
+    if (head(next).split(old).length === 2)
+      next = next.replace(old, current[key]);
+  if (next === html) return [];
+  writeFileSync(pageFile, next);
+  return [`apps/${app.id}/${PAGE}`];
+}

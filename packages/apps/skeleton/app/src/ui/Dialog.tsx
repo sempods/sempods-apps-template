@@ -44,7 +44,7 @@ export function Dialog({
         opener.isConnected &&
         (!focused || focused === document.body || element?.contains(focused))
       )
-        opener.focus();
+        restoreFocus(opener);
     };
   }, [opener]);
   // A press on the backdrop targets the dialog element outside its box. Both
@@ -100,4 +100,18 @@ export function Dialog({
       <div className="dialog-body">{children}</div>
     </dialog>
   );
+}
+
+// The SDK keeps the page inert for a moment while a guarded change settles,
+// for example clearing the selection that closed the dialog. Focus waits for
+// it a few frames, unless it has moved on meanwhile.
+function restoreFocus(opener: HTMLElement, frames = 10) {
+  if (!opener.isConnected) return;
+  if (!opener.closest('[inert]')) {
+    opener.focus();
+    return;
+  }
+  const focused = document.activeElement;
+  if (frames > 0 && (!focused || focused === document.body))
+    requestAnimationFrame(() => restoreFocus(opener, frames - 1));
 }

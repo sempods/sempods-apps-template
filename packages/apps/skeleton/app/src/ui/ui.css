@@ -32,7 +32,8 @@ main > header h1 {
   white-space: nowrap;
 }
 
-/* Menu: a button and a short list below it. */
+/* Menu: a button and a short list below it in body text, as wide as its
+   longest item up to the screen's width. */
 .menu {
   position: relative;
   min-width: 0;
@@ -42,8 +43,12 @@ main > header h1 {
   top: 100%;
   z-index: 10;
   display: grid;
+  width: max-content;
   min-width: 14rem;
-  max-width: calc(100vw - 32px);
+  max-width: min(24rem, calc(100vw - 32px));
+  font-size: 1rem;
+  font-weight: 400;
+  overflow-wrap: break-word;
   padding: 4px;
   border: 1px solid var(--sempods-line);
   border-radius: 8px;

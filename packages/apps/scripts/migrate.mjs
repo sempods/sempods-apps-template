@@ -32,7 +32,12 @@ import {
   replaceFile,
 } from './lib/files.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
-import { adoptPageTitle, PAGE, VITE_CONFIG } from './lib/page.mjs';
+import {
+  adoptPageHead,
+  adoptPageTitle,
+  PAGE,
+  VITE_CONFIG,
+} from './lib/page.mjs';
 import { formatJson, ifPresent, readJson, replaceJson } from './lib/json.mjs';
 import { mergeManifest, mergeText, withSection } from './lib/merge.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -511,7 +516,9 @@ export function migrate(
 function updateApps(root, report) {
   for (const app of appsOf(root)) {
     const dir = join(root, 'apps', app.id);
-    if (existsSync(dir)) report.updated.push(...adoptPageTitle(dir, app));
+    if (!existsSync(dir)) continue;
+    const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
+    report.updated.push(...new Set(changed));
   }
   report.regenerated = regenerate(root);
 }

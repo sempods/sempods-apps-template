@@ -88,7 +88,7 @@ SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
   the context once. A fixed context comes from `preset.contextIri` in the
   runtime options.
 - **Several contexts, one at a time** (lists to switch between): `useContexts`
-  with the kit's `ContextSwitch` in place of the app's name in the header.
+  with the kit's `ContextSwitch` in place of the header's `<h1>`.
 - **Read all, write in one** (an overview): `contextSelection="on-demand"` on
   the provider, the SDK's Pod overview (`usePodList`) and `useCreation` for
   the context it writes to.
@@ -138,7 +138,8 @@ Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
 SDK's quickstart screen built with the kit, with loading and failed reads
 (`LoadNotice`), an empty state, rows with a checkbox in its label, the name
 opening a `ResourceEditor` in a `Dialog`, `RemoveButton`, open outcomes
-(`UpdateNotice`, `UnresolvedNotices`) and new items in a `Composer`. Copy it
+(`UpdateNotice`, `UnresolvedNotices`) and new items in a `Composer`, which a
+list the person can only read does not show. Copy it
 next to `App.tsx`, render it in place of `Start`, and rename the type, fields,
 collection and texts to the app's own. Keep `App.tsx`'s runtime from
 `sempods.generated.ts`, its provider and its frame: take behaviour from the
@@ -150,7 +151,7 @@ Build further parts from the small kit in `src/ui/` (`Menu`, `Tabs`,
 `Composer`, `Dialog`, `ContextSwitch` and the icons) instead of adding a UI
 library; an owner who wants one keeps the tokens and drops `src/ui/`. Actions
 read as text, the main ones as icons in the header. Add parts only when the
-app needs them: `ContextSwitch` in place of the name for an app that works in
+app needs them: `ContextSwitch` in place of the `<h1>` for an app that works in
 one of several contexts at a time, labelled in the person's words ("List",
 "Share more lists …"); tabs for an app with several views; an item opening in
 a `Dialog` (a bottom sheet on phones); a `Composer` in the frame, outside the

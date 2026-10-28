@@ -58,7 +58,7 @@ Look:
   `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
   Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
   switch between the contexts shared with the app over the SDK's
-  `useContexts`, in place of the app's name), `Tabs` (views as links with
+  `useContexts`, in place of the header's `<h1>`), `Tabs` (views as links with
   their routes), `Composer` (an input bar fixed at the bottom, above the home
   indicator and, where browsers support it, the on-screen keyboard), `Dialog`
   (modal, a bottom sheet on phones, for example around a `ResourceEditor`)
@@ -66,7 +66,8 @@ Look:
 - The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
   quickstart screen built with the kit (loading and failed reads, an empty
   state, rows with a labelled checkbox, the item's `ResourceEditor` in a
-  `Dialog`, `RemoveButton`, open outcomes and a `Composer`). It compiles with
+  `Dialog`, `RemoveButton`, open outcomes and a `Composer`, which a list the
+  person can only read does not show). It compiles with
   every app, so it stays valid against the SDK.
 
 Content and configuration:
@@ -150,8 +151,10 @@ Instructions:
 1. The migration does by itself: it adds the root script `icon`, regenerates
    every app (`app.routes`, `app.description` as `null` until set, the
    manifest colours, the `pageTitle` plugin, the service worker's allowlist
-   for routes) and moves apps to the generated page title where that is
-   unambiguous, listed under "Updated". For any other app, `check` names what
+   for routes), moves apps to the generated page title where that is
+   unambiguous and replaces the viewport and green `theme-color` lines an
+   app's `index.html` kept from the 0.7 skeleton, listed under "Updated". For
+   any other app, `check` names what
    is left: add `pageTitle` from `./vite.sempods.generated.ts` to the plugins
    in its `vite.config.ts`, as the skeleton does, and remove the `<title>`
    from its `index.html`. A page title other than the one in `apps.json` was
