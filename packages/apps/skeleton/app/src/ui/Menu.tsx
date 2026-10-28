@@ -20,7 +20,8 @@ export type MenuItem = {
 
 /**
  * A button that opens a short list of actions or choices. It closes on a
- * choice, Escape or a press outside, and Escape returns focus to the button.
+ * choice, Escape or a press outside; a choice and Escape return focus to the
+ * button.
  * `null` in `items` draws a separator.
  */
 export function Menu({
@@ -90,6 +91,9 @@ export function Menu({
                 aria-checked={item.checked}
                 onClick={() => {
                   close();
+                  // Focus goes back to the button before the action, which
+                  // may move it on, for example into a dialog it opens.
+                  ref.current?.focus();
                   item.onSelect();
                 }}
               >
