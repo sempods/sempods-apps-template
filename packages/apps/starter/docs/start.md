@@ -14,10 +14,19 @@ to it by itself.
 [Open this repository in your assistant and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.
-It chooses the technical details and asks you a few short questions: what the
-app is for, which mood it should have, its name and icon.
+It chooses the technical details and proposes a fitting look. It asks a few
+short questions about what the app is for, whether people use their own data
+or work on the same data, and where new entries and changes should go. You can
+describe these choices as lists or shared areas; no technical terms are needed.
 Review rules and automatic updates can wait until you have tried the first
 version.
+
+Already have data for this app? If you want, connect your Pod to the assistant
+through MCP, its connection to external tools and data. Agree which data it
+may inspect so it can make the app fit your existing tasks, contacts or events.
+This optional look only reads; it does not change your records. You can also
+provide a made-up example or start without it. You still sign in to the app
+separately when trying it.
 
 ## Change
 

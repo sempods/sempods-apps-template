@@ -117,25 +117,29 @@ Content and configuration:
 
 Instructions:
 
-- The app workflow starts a new app with a short design conversation
-  (purpose, mood as a theme, name and icon), asked as choices with "choose for
-  me", and records it under Design in the app's `NOTES.md`; later wishes
-  change the recorded choice instead of adding one-off styles. It says which
-  parts of the look are shared (layout, kit) and which are chosen per app
-  (theme, name, icon).
-- The app workflow settles how an app uses contexts before its first screen:
-  one context, several one at a time, read all and write in one, or write
-  into several. It infers the shape or asks once in everyday words and starts
-  from the SDK's path for it (`AppAccess` or a preset, `useContexts` with
-  `ContextSwitch`, the Pod overview with `useCreation`, one `useCreation` per
-  context). The skeleton's `NOTES.md` has Design and Data sections, and setup
-  asks for one test context per context the shape uses.
+- App planning settles purpose, personal versus shared data and context
+  access limits before generation, with at most three short questions at a
+  time. The assistant proposes layout, theme, name and icon; a vague request
+  need not wait for visual choices. Decisions go into the app's `NOTES.md`.
+- The workflow chooses reusable data mappings from existing data and
+  established vocabularies, preserving identities and fields other apps use.
+  If the owner wants, optional read-only inspection through a connected MCP
+  Pod informs this choice within an agreed scope. Setup and the user guide
+  explain that MCP is optional and separate from signing in to the app;
+  app trials still use synthetic data in dedicated test contexts.
+- Before generation, the workflow settles what the app reads, where new
+  records go and where existing records are edited: one context, several one
+  at a time, read all and write in one, edit overview rows in their source
+  contexts, or write into several. It starts from the installed SDK's path
+  for that shape. The skeleton's notes record Data and Vocabulary decisions,
+  including observed mappings and assumptions still to verify. Setup asks
+  for one test context per context the shape uses.
 - The app workflow starts a list from the list example, takes only behaviour
   from the SDK's examples, deletes rows with `RemoveButton`, relies on the
   SDK's list refresh when the page becomes visible again, adds kit parts only
   when the app needs them, and describes routes, renaming and themes. It is
-  reordered: design conversation and `new-app`, context shape, vocabulary,
-  screen, views, configuration.
+  reordered: planning, optional data inspection, context shape, vocabulary,
+  `new-app`, screen, views, configuration.
 - A visual check before handover (`instructions/visual-check.md`): the
   assistant takes screenshots at 375px and desktop width, light and dark, with
   real states (empty, a few items, an open item, a notice), checks them
@@ -194,8 +198,12 @@ Instructions:
      `document.documentElement.lang`), because `app.language` is then
      `"auto"`; read the app's texts from a catalogue with both languages
      through `useMessages`;
-   - Design and Data sections in `NOTES.md`, settling the context shape as the
-     app workflow describes.
+   - Design, Data and Vocabulary sections in `NOTES.md`, following the app
+     workflow. Check personal/shared access assumptions, reuse of existing
+     data and the separate destinations of new records and edits. Offer MCP
+     inspection only when existing data is relevant and the owner wants it;
+     record unverified assumptions when it is skipped. These instructions
+     do not migrate existing Pod data.
 
 ## 0.7.1
 
