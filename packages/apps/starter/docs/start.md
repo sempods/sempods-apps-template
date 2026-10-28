@@ -14,7 +14,8 @@ to it by itself.
 [Open this repository in your assistant and paste the starter prompt](../README.md#start-with-your-idea).
 Describe one thing you want to do: “Add something to my shopping list.” Your
 assistant sets up the app and gives you a local link to open.
-It chooses the technical details and asks you about what the app should do.
+It chooses the technical details and asks you a few short questions: what the
+app is for, which mood it should have, its name and icon.
 Review rules and automatic updates can wait until you have tried the first
 version.
 

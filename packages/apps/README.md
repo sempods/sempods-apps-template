@@ -34,9 +34,10 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 
 Contents:
 
-- `instructions/`: the setup procedure, the app workflow and the publish
-  guide; `skills/` holds the skill entries that route to them.
-- `skeleton/app/`: what a new app starts from. Files named `*.generated.ts` in
+- `instructions/`: the setup procedure, the app workflow, the visual check and
+  the publish guide; `skills/` holds the skill entries that route to them.
+- `skeleton/app/`: what a new app starts from, with its themes, UI kit and
+  list example. Files named `*.generated.ts` in
   an app are written from `apps.json`; do not edit them. `check` reports any
   difference, and `regenerate` rewrites them.
 - `shared/`: the starter of this release, its files stored by content hash in

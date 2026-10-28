@@ -20,33 +20,37 @@ file or anything under `node_modules`.
 ## Choose the first interaction
 
 Use the request and recorded answers. Ask only for missing information needed
-for the first useful interaction. Apps follow the browser's language, German
-or English (otherwise English), and carry their texts in both; record the
-owner's language for writing them. Fix one language (`--language de` or `en`)
-only when the owner asks for it. If the owner's language is neither, the UI
-still shows English and German only: tell the owner.
-Choose a short app ID from the idea, such as `konsum`, and tell the owner; the
-generator validates allowed IDs and reserved names. Record choices and
-progress as they become known.
+for the first useful interaction: the app workflow's short design conversation
+(purpose, mood, name and icon) and the app's context shape. Apps follow the
+browser's language, German or English (otherwise English), and carry their
+texts in both; record the owner's language for writing them. Fix one language
+(`--language de` or `en`) only when the owner asks for it. If the owner's
+language is neither, the UI still shows English and German only: tell the
+owner. Choose a short app ID from the idea, such as `konsum`, and tell the
+owner; the generator validates allowed IDs and reserved names. Record choices
+and progress as they become known.
 
-A name, GitHub review identity and the version PR choice are not needed to
-try an app. Do not ask for them before the first local interaction. A missing
-Pod also allows UI work; record Pod testing as pending. Before accessing a Pod,
-use the owner's full test Pod URL and a dedicated context (one per context the
-app's shape uses), with synthetic data.
+The owner's name, a GitHub review identity and the version PR choice are not
+needed to try an app. Do not ask for them before the first local interaction.
+Without a Pod only the sign-in screen can be seen; record Pod testing as
+pending. Before accessing a Pod, use the owner's full test Pod URL and a
+dedicated context (one per context the app's shape uses), with synthetic
+data.
 
 ## Create the first app and open it
 
 From the repository root, after the bootstrap in `INIT.md`:
 
 ```sh
-pnpm run new-app konsum --title "Einkaufsliste"
+pnpm run new-app konsum --title "Einkaufsliste" \
+  --description "Was im Haushalt fehlt, für alle." --theme warm
 pnpm run dev konsum
 ```
 
-Replace the example ID and title with the recorded choices. PWA is on
-by default; `--no-pwa` is available if the owner chooses it when creating an
-app. The dev server is long-running: keep it in a separate terminal/session.
+Replace the example ID, title, description and theme with the recorded
+choices. PWA is on by default; `--no-pwa` is available if the owner chooses it
+when creating an app. The dev server is long-running: keep it in a separate
+terminal/session.
 Open the exact URL it reports; `apps.json` records the assigned `devPort` and
 `path`. Do not switch hostnames or ports during sign-in.
 
@@ -59,15 +63,14 @@ leaves setup in progress; diagnose it before proceeding.
 
 Continue with the [app workflow](app-workflow.md) for the first useful
 interaction. Once the app starts, ask once whether they have a test Pod for
-trying it with data, unless the setup record answers that: without one, only
-the sign-in screen can be seen. If so,
-let the user sign in in the browser and select their test contexts; otherwise
-record Pod testing as pending. Run `pnpm run check` in another terminal and
-report its result.
+trying it with data, unless the setup record answers that. If so, let the user
+sign in in the browser and select their test contexts; otherwise record Pod
+testing as pending. Run `pnpm run check` in another terminal and report its
+result.
 
 ## Choose repository preferences (optional)
 
-After the owner can try the first interaction, offer to set a GitHub review
+After the owner has seen the first interaction, offer to set a GitHub review
 owner and to enable version PRs for the SDK and the tooling. Use choices
 already given. If the owner has not chosen these preferences, leave them
 deferred; do not wait for an answer to finish local setup. If the owner wants
@@ -106,8 +109,9 @@ a token; never ask for one.
 Run `pnpm run check` again. Mark setup **done** only when the chosen app starts
 at its assigned URL, its first useful interaction is available, local checks
 pass and the owner has seen the screen and given a verdict (or, without a test
-Pod, the sign-in screen, with the rest recorded as pending). Deferred review identity or version PRs do not block completion;
-keep their status visible in the setup record. Record command results and
+Pod, the sign-in screen, with the rest recorded as pending). Deferred review
+identity or version PRs do not block completion; keep their status visible in
+the setup record. Record command results and
 remaining gaps separately: no Pod, incomplete login or untested installed-PWA
 behavior are not successful interoperability evidence. If setup is already
 done, reopen the recorded app and follow its notes; do not recreate it.

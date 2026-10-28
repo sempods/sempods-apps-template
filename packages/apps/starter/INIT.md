@@ -47,7 +47,7 @@ it. Keep it free of credentials and private data.
 - Created from (`.sempods-baseline.json`): not recorded
 - SDK version at setup (`@sempods/app-sdk` in the root `package.json`): not recorded
 - Owner and review identity: not recorded
-- UI language: not selected
+- Owner's language for the app texts: not recorded
 - First app ID and idea: not selected
 - Test Pod and contexts: not selected (optional; synthetic data only)
 - sempods version PRs (Dependabot): not chosen
