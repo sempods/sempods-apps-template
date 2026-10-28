@@ -3,9 +3,14 @@
    edge, no shadows. */
 
 /* Header: the app (or the context switch) at the start, icon actions and the
-   menu at the end, on one line at every width. */
+   menu at the end, on one line at every width. A long name shrinks and wraps
+   inside the title, so the menu stays on screen. */
 main > header {
   flex-wrap: nowrap;
+}
+main > header h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .header-actions {
   display: flex;
