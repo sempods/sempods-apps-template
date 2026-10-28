@@ -13,12 +13,20 @@ changes the owner asked for.
 
 ## Data
 
-How the app uses contexts (one, several one at a time, read all and write in
-one, or write into several) and which contexts it reads and writes.
+Who uses their own data or shared data; who reads, writes and deletes, and
+which limits the Pod can enforce. Which contexts are read, where new records
+go, and where edits to existing records go (the selected context or each
+row's source). What deletion means for other apps using the same records.
+If existing data was inspected, the agreed Pod, contexts and read scope;
+otherwise, what remains unknown. No credentials or private sample values.
 
 ## Vocabulary
 
-Types and properties (full IRIs) the app reads and writes.
+Existing data or standard vocabulary it follows, types and properties (full
+IRIs), text languages and status values. How subject identities and unknown
+fields survive other apps' edits; the reason for any custom extension.
+Which mappings were observed through optional MCP inspection or a supplied
+example, and which are assumptions still to verify.
 
 ## Decisions
 

@@ -20,8 +20,10 @@ file or anything under `node_modules`.
 ## Choose the first interaction
 
 Use the request and recorded answers. Ask only for missing information needed
-for the first useful interaction: the app workflow's short design conversation
-(purpose, mood, name and icon) and the app's context shape. Apps follow the
+for the first useful interaction. Before generating the app, follow the
+[planning steps](app-workflow.md#start-a-new-app-with-a-short-design-conversation):
+purpose, personal or shared data, existing records to reuse, and where reads,
+new records and edits belong. Propose fitting visual defaults. Apps follow the
 browser's language, German or English (otherwise English), and carry their
 texts in both; record the owner's language for writing them. Fix one language
 (`--language de` or `en`) only when the owner asks for it. If the owner's
@@ -32,10 +34,13 @@ and progress as they become known.
 
 The owner's name, a GitHub review identity and the version PR choice are not
 needed to try an app. Do not ask for them before the first local interaction.
-Without a Pod only the sign-in screen can be seen; record Pod testing as
-pending. Before accessing a Pod, use the owner's full test Pod URL and a
-dedicated context (one per context the app's shape uses), with synthetic
-data.
+If existing data matters, offer the workflow's
+[optional MCP inspection](app-workflow.md#optionally-inspect-existing-data-through-mcp)
+within the owner's agreed read scope. It is not a setup requirement or an
+app sign-in. Without an app connection to a Pod only the sign-in screen can
+be seen; record Pod testing as pending. For app trials, use the owner's full
+test Pod URL and dedicated contexts (one per context the app's shape uses),
+with synthetic data.
 
 ## Create the first app and open it
 

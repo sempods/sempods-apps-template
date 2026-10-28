@@ -8,6 +8,25 @@ tenth app as cheap as the first. Vibe-coding is the standard way to use it: a
 person describes what they need, the assistant builds a small slice, and they
 try it and decide what comes next. Users do not need to identify as developers.
 
+**Reusable data, replaceable apps.** An app is a view and an editor over
+personal or shared data, not the owner of a private data format. A task,
+contact or event should remain useful when another app reads or updates it.
+Start from existing data and established vocabularies, such as schema.org,
+and keep the subject identities, meanings, language choices and status values
+compatible. Add a documented extension only where an existing vocabulary
+cannot express the need. Preserve fields the app does not use. A different
+screen is not a reason to create a different kind of task or a duplicate
+contact: app-specific silos would defeat the purpose of keeping data in a Pod.
+
+**Shared data needs an explicit agreement.** Several people using the same
+frontend with their own Pods is different from several people changing the
+same context. Clarify that distinction and the allowed readers and writers
+before building. Context grants are the current data boundary; frontend
+validation and hidden buttons do not enforce per-app schemas or business
+roles against other clients. Do not promise such enforcement until the Pod
+supports it. Read sources, destinations for new records, and the context of
+edits to existing records are separate decisions that shape the screen.
+
 **Your own apps repository.** One person or team keeps all of their small
 sempods apps in one repository, created from the starter. The one-time work
 happens once: instructions for the coding assistant, tooling, checks, hosting

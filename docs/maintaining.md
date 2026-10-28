@@ -115,6 +115,29 @@ tooling and creates, checks, configures and builds an app there, then migrates
 it to a later packed version with a manual case; it needs the npm registry. CI
 runs both.
 
+## Try the app-building conversation
+
+When changing app-building instructions, try the packed release in a separate
+owner repository. Use an assistant session with only the owner's vague
+request, such as "Help me keep track of what I need to do", and the shipped
+instructions. Observe whether it proposes a coherent screen and asks about
+consequential choices before generating the app. Do not feed it the desired
+implementation or count a simulated owner as an independent user test.
+
+Cover personal versus shared data and explain what a writer can change;
+existing records with optional, scoped MCP inspection and with that step
+declined; and an overview whose edits go to the record's source context while
+new records have a chosen destination. Use at least two dedicated contexts
+for the last case. Check reuse through two views of the same synthetic
+records, including identity, language/status values and unknown properties.
+Remove only test records created for the trial within the owner's agreement.
+
+Follow the packaged visual check and collect the owner's verdict. Record the
+package/SDK versions, prompt and answers, inspected scope, observed behavior,
+checks and untested cases. Distinguish conversation evidence, browser tests
+and code checks; none alone proves the whole journey. Turn failures into
+instruction or SDK findings where they belong.
+
 ## Release
 
 A change that reaches owners belongs to a release, and one release can collect
