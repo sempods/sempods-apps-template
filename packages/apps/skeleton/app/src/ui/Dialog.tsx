@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { CloseIcon } from './icons.tsx';
 
 /**
  * A modal dialog, a bottom sheet on phones, for example around an item's
- * `ResourceEditor`. Escape and the × button ask the owner to close it; it
+ * `ResourceEditor`. Escape, the × button and a press beside the dialog (on
+ * its backdrop) ask the owner to close it; it
  * only goes away when the owner unmounts it, so a declined close (unsaved
  * changes) keeps it open. The SDK's leave confirmation shows above it.
  * "Pods & sharing" needs none: `AppAccess` with `onClose` brings its own.
@@ -40,6 +47,21 @@ export function Dialog({
         opener.focus();
     };
   }, [opener]);
+  // A press on the backdrop targets the dialog element outside its box. Both
+  // ends of the press count, so selecting text inside and releasing beside it
+  // does not close.
+  const beside = (event: MouseEvent) => {
+    const box = dialog.current?.getBoundingClientRect();
+    return (
+      event.target === dialog.current &&
+      !!box &&
+      (event.clientX < box.left ||
+        event.clientX > box.right ||
+        event.clientY < box.top ||
+        event.clientY > box.bottom)
+    );
+  };
+  const pressedBeside = useRef(false);
   // Ask the owner; if it keeps the dialog, make sure it is open again.
   const request = async () => {
     await onClose();
@@ -59,6 +81,13 @@ export function Dialog({
       // Browsers may still close it (a repeated Escape without a user
       // activation); then the owner decides as well.
       onClose={() => void request()}
+      onPointerDown={(event) => {
+        pressedBeside.current = beside(event);
+      }}
+      onClick={(event) => {
+        if (pressedBeside.current && beside(event)) void request();
+        pressedBeside.current = false;
+      }}
     >
       <button
         className="dialog-close"
