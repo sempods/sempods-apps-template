@@ -21,11 +21,7 @@ export function ContextSwitch({
   readonly fallback: ReactNode;
   /** What a context is in this app, for example "List". */
   readonly label: string;
-  readonly texts: {
-    readonly canChange: string;
-    readonly readOnly: string;
-    readonly shareMore: string;
-  };
+  readonly texts: { readonly shareMore: string };
 }) {
   const {
     contexts,
@@ -70,7 +66,10 @@ export function ContextSwitch({
       items={[
         ...contexts.map((context) => ({
           label: context.name,
-          hint: context.writable ? texts.canChange : texts.readOnly,
+          // The SDK's own words, as in its management dialog.
+          hint: context.writable
+            ? messages.controls.canChange
+            : messages.controls.canRead,
           checked: context.iri === selected.iri,
           onSelect: () => {
             if (context.iri !== selected.iri) void select(context.iri);

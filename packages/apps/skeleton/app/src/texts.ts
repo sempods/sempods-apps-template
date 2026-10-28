@@ -25,8 +25,6 @@ const en = {
   signOutHint: 'On this device only',
   close: 'Close',
   context: 'Context',
-  canChange: 'read and change',
-  readOnly: 'read only',
   shareMore: 'Share more …',
 };
 
@@ -42,8 +40,6 @@ const de: Texts = {
   signOutHint: 'Nur auf diesem Gerät',
   close: 'Schließen',
   context: 'Kontext',
-  canChange: 'lesen und ändern',
-  readOnly: 'nur lesen',
   shareMore: 'Weitere freigeben …',
 };
 
