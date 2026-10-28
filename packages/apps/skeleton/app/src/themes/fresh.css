@@ -1,0 +1,11 @@
+/* Fresh: clear teal and cool greys, light and open.
+   The --sempods-* tokens colour the app and the SDK components alike, in
+   light and dark mode; each pair keeps at least 4.5:1 contrast. */
+:root {
+  --sempods-bg: light-dark(#ffffff, #0e171d);
+  --sempods-text: light-dark(#11293a, #e1edf3);
+  --sempods-muted: light-dark(#58697a, #94a8b6);
+  --sempods-line: light-dark(#dce8ef, #22343f);
+  --sempods-accent: light-dark(#0a6680, #5ec6e4);
+  --sempods-on-accent: light-dark(#ffffff, #06212b);
+}

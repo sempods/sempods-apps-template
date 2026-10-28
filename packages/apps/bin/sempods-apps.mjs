@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const COMMANDS = {
   create: 'create a new apps repository from the starter',
   'new-app': 'create apps/<id> and add it to apps.json',
+  icon: "draw an app's monogram icon again in its theme's accent",
   dev: 'start the development server of one app',
   regenerate: "rewrite every app's generated configuration from apps.json",
   'configure-site': 'record where the apps are published',

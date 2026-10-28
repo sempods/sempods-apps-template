@@ -1,7 +1,9 @@
-// The default app icon: a monogram, the first letter of the app's title in
-// white on a graphite rounded square. new-app writes it as public/favicon.svg
-// and as the PNG icons of the web app manifest, all from the same strokes, so
-// no font or image tool is needed.
+// The default app icon: a monogram, the first letter of the app's title on a
+// rounded square in the theme's accent. new-app and icon write it as
+// public/favicon.svg and as the PNG icons of the web app manifest, all from
+// the same strokes, so no font or image tool is needed.
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 
 const VIEW = 64;
@@ -9,10 +11,12 @@ const RADIUS = 14;
 const STROKE = 5;
 // Letters are drawn in a box 28 units high from y = 18, centred horizontally.
 const TOP = 18;
-// The palette's accent and the page: inverted in dark mode, where only the
-// SVG can follow the page.
-const LIGHT = { background: '#1f2933', letter: '#ffffff' };
-const DARK = { background: '#e5e7eb', letter: '#111315' };
+// The calm theme's accent and the text on it, in light and dark mode; only
+// the SVG can follow the page's mode.
+export const CALM = {
+  light: { background: '#1f2933', letter: '#ffffff' },
+  dark: { background: '#e5e7eb', letter: '#111315' },
+};
 
 /** Points along an elliptical arc; angles in degrees, 0 = right, 90 = down. */
 function arc(cx, cy, rx, ry, from, to) {
@@ -79,10 +83,10 @@ const round = (n) => Math.round(n * 100) / 100;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
 /**
- * The SVG icon. In dark mode it inverts to a light square with a dark letter,
- * so it keeps its contrast on a dark page.
+ * The SVG icon. In dark mode it takes the theme's dark accent, so it keeps its
+ * contrast on a dark page.
  */
-export function monogramSvg(letter) {
+export function monogramSvg(letter, colours = CALM) {
   const d = strokes(letter)
     .map((stroke) =>
       stroke
@@ -95,7 +99,7 @@ export function monogramSvg(letter) {
     : '';
   const style = ({ background, letter }) =>
     `rect{fill:${background}}path{stroke:${letter}}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEW} ${VIEW}"><style>${style(LIGHT)}@media (prefers-color-scheme:dark){${style(DARK)}}</style><rect width="${VIEW}" height="${VIEW}" rx="${RADIUS}"/>${path}</svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEW} ${VIEW}"><style>${style(colours.light)}@media (prefers-color-scheme:dark){${style(colours.dark)}}</style><rect width="${VIEW}" height="${VIEW}" rx="${RADIUS}"/>${path}</svg>\n`;
 }
 
 function segmentDistance([px, py], [ax, ay], [bx, by]) {
@@ -130,12 +134,12 @@ function chunk(type, data) {
 }
 
 /** The PNG icon of `size` pixels, antialiased, with transparent corners. */
-export function monogramPng(letter, size) {
+export function monogramPng(letter, size, colours = CALM) {
   const segments = strokes(letter).flatMap((stroke) =>
     stroke.slice(1).map((point, i) => [stroke[i], point]),
   );
-  const square = rgb(LIGHT.background);
-  const mark = rgb(LIGHT.letter);
+  const square = rgb(colours.light.background);
+  const mark = rgb(colours.light.letter);
   const scale = size / VIEW;
   const coverage = (distance) =>
     Math.max(0, Math.min(1, 0.5 - distance * scale));
@@ -166,4 +170,23 @@ export function monogramPng(letter, size) {
     chunk('IDAT', deflateSync(rows)),
     chunk('IEND', Buffer.alloc(0)),
   ]);
+}
+
+/**
+ * Writes an app's icons: public/favicon.svg and the manifest's icon-192.png
+ * and icon-512.png. Returns them as paths inside the app.
+ */
+export function writeAppIcons(appDir, title, colours = CALM) {
+  const letter = monogramLetter(title);
+  const pub = join(appDir, 'public');
+  mkdirSync(pub, { recursive: true });
+  writeFileSync(join(pub, 'favicon.svg'), monogramSvg(letter, colours));
+  for (const size of [192, 512])
+    writeFileSync(
+      join(pub, `icon-${size}.png`),
+      monogramPng(letter, size, colours),
+    );
+  return ['favicon.svg', 'icon-192.png', 'icon-512.png'].map(
+    (file) => `public/${file}`,
+  );
 }

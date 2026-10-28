@@ -25,6 +25,14 @@ import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
+import { drawIcon } from '../scripts/icon.mjs';
+import {
+  iconColours,
+  themeCss,
+  themeNames,
+  tokenColours,
+} from '../scripts/lib/themes.mjs';
+import { SKELETON } from '../scripts/lib/paths.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
 import { adoptPageTitle, pageProblems } from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
@@ -828,6 +836,126 @@ export default defineConfig({
     assert.deepEqual(adoptPageTitle(dir, app), ['apps/demo/vite.config.ts']);
     assert.match(page(), /<title>Hand-made<\/title>/);
     assert.equal(pageProblems(dir, 'demo').length, 1);
+  });
+});
+
+describe('themes', () => {
+  // WCAG 2 relative luminance and contrast ratio of two #rrggbb colours.
+  const luminance = (hex) =>
+    [1, 3, 5]
+      .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+      .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const contrast = (a, b) => {
+    const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (high + 0.05) / (low + 0.05);
+  };
+
+  it('ships calm as the default and three more', () => {
+    assert.deepEqual(themeNames(), ['calm', 'fresh', 'playful', 'warm']);
+  });
+
+  it('keeps text, muted text and actions readable in light and dark mode', () => {
+    for (const name of themeNames()) {
+      const css = themeCss(SKELETON, name);
+      const token = (t) => tokenColours(css, t);
+      for (const mode of ['light', 'dark']) {
+        const bg = token('bg')[mode];
+        for (const [fg, on] of [
+          ['text', bg],
+          ['muted', bg],
+          ['accent', bg],
+          ['on-accent', token('accent')[mode]],
+        ]) {
+          const ratio = contrast(token(fg)[mode], on);
+          assert.ok(ratio >= 4.5, `${name} ${mode} ${fg}: ${ratio.toFixed(2)}`);
+        }
+      }
+    }
+  });
+});
+
+describe('app theme and icon', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-theme-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  const file = (...path) => readFileSync(join(root, 'apps', ...path), 'utf8');
+
+  it('imports the chosen theme and draws the icon in its accent', () => {
+    createApp(root, { id: 'demo', title: 'Demo', theme: 'warm' });
+    assert.match(
+      file('demo', 'src', 'main.tsx'),
+      /^import '\.\/themes\/warm\.css';$/m,
+    );
+    const warm = iconColours(themeCss(SKELETON, 'warm'));
+    assert.match(
+      file('demo', 'public', 'favicon.svg'),
+      new RegExp(`fill:${warm.light.background}`),
+    );
+    createApp(root, { id: 'plain', title: 'Plain' });
+    assert.match(file('plain', 'src', 'main.tsx'), /themes\/calm\.css/);
+    assert.throws(
+      () => createApp(root, { id: 'odd', theme: 'neon' }),
+      /theme must be one of calm, fresh, playful, warm/,
+    );
+  });
+
+  it('draws the icon again after a theme change', () => {
+    createApp(root, { id: 'demo', title: 'Demo' });
+    const main = join(root, 'apps', 'demo', 'src', 'main.tsx');
+    writeFileSync(
+      main,
+      file('demo', 'src', 'main.tsx').replace('calm', 'fresh'),
+    );
+    assert.deepEqual(drawIcon(root, 'demo'), [
+      'apps/demo/public/favicon.svg',
+      'apps/demo/public/icon-192.png',
+      'apps/demo/public/icon-512.png',
+    ]);
+    const fresh = iconColours(themeCss(SKELETON, 'fresh'));
+    assert.match(
+      file('demo', 'public', 'favicon.svg'),
+      new RegExp(`fill:${fresh.light.background}`),
+    );
+    writeFileSync(main, "import './index.css';\n");
+    assert.throws(() => drawIcon(root, 'demo'), /imports no theme/);
+    assert.throws(() => drawIcon(root, 'none'), /lists no app "none"/);
+  });
+
+  it('carries a description to the sign-in screen, manifest and overview', () => {
+    const app = createApp(root, {
+      id: 'demo',
+      title: 'Demo',
+      description: ' Shopping made easy. ',
+    });
+    assert.equal(app.description, 'Shopping made easy.');
+    assert.match(
+      file('demo', 'src', 'sempods.generated.ts'),
+      /description: "Shopping made easy\.",/,
+    );
+    assert.match(
+      file('demo', 'vite.sempods.generated.ts'),
+      /description: "Shopping made easy\.",/,
+    );
+    assert.match(
+      file('demo', 'src', 'App.tsx'),
+      /description=\{app\.description\}/,
+    );
+    createApp(root, { id: 'bare' });
+    assert.match(
+      file('bare', 'src', 'sempods.generated.ts'),
+      /description: null,/,
+    );
+    assert.doesNotMatch(
+      file('bare', 'vite.sempods.generated.ts'),
+      /description:/,
+    );
+    assert.throws(
+      () => createApp(root, { id: 'long', description: 'x'.repeat(121) }),
+      /at most 120 characters/,
+    );
   });
 });
 

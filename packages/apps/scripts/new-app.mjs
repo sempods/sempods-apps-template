@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Creates apps/<id> from the skeleton with the root's SDK version and adds it
 // to apps.json.
-// Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]
+// Usage: pnpm run new-app <id> [--title "<title>"] [--description "<text>"]
+//        [--language <auto|de|en>] [--theme <name>] [--no-pwa]
 import {
   cpSync,
   existsSync,
@@ -17,6 +18,7 @@ import { parseArgs } from 'node:util';
 import {
   APP_LANGUAGES,
   AUTO,
+  invalidDescription,
   invalidId,
   nextDevPort,
   readApps,
@@ -24,7 +26,13 @@ import {
 } from './lib/apps.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { escapeHtml } from './lib/html.mjs';
-import { monogramLetter, monogramPng, monogramSvg } from './lib/icon.mjs';
+import { writeAppIcons } from './lib/icon.mjs';
+import {
+  DEFAULT_THEME,
+  iconColours,
+  themeCss,
+  themeNames,
+} from './lib/themes.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, SKELETON } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -32,14 +40,14 @@ import { EXACT_VERSION, SDK } from './lib/sdk.mjs';
 
 const TEXT = new Set(['.json', '.html', '.md', '.ts', '.tsx', '.css']);
 
-function fillTokens(dir, app) {
+function fillTokens(dir, app, theme) {
   // Directory entries carry their type, so no separate stat precedes the read
   // and write of the same path.
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const { name } = entry;
     const path = join(dir, name);
     if (entry.isDirectory()) {
-      fillTokens(path, app);
+      fillTokens(path, app, theme);
       continue;
     }
     if (!TEXT.has(extname(name))) continue;
@@ -47,6 +55,7 @@ function fillTokens(dir, app) {
     const source = readFileSync(path, 'utf8');
     const filled = source
       .replaceAll('__APP_ID__', app.id)
+      .replaceAll('__APP_THEME__', theme)
       .replaceAll('__APP_TITLE__', title)
       // The page's language until the app sets the one it resolved.
       .replaceAll(
@@ -55,19 +64,6 @@ function fillTokens(dir, app) {
       );
     if (filled !== source) writeFileSync(path, filled);
   }
-}
-
-/**
- * The app's icons: a monogram of the title's first letter as the page icon
- * and the PNG icons of the web app manifest. They are the owner's from then on.
- */
-function writeIcons(dir, title) {
-  const letter = monogramLetter(title);
-  const pub = join(dir, 'public');
-  mkdirSync(pub, { recursive: true });
-  writeFileSync(join(pub, 'favicon.svg'), monogramSvg(letter));
-  for (const size of [192, 512])
-    writeFileSync(join(pub, `icon-${size}.png`), monogramPng(letter, size));
 }
 
 /**
@@ -94,10 +90,21 @@ function rootSdk(root) {
  */
 export function createApp(
   root,
-  { id, title = id, language = AUTO, pwa = true },
+  {
+    id,
+    title = id,
+    description,
+    language = AUTO,
+    theme = DEFAULT_THEME,
+    pwa = true,
+  },
 ) {
   const reason = invalidId(id);
   if (reason) throw new Error(reason);
+  if (!themeNames().includes(theme))
+    throw new Error(`theme must be one of ${themeNames().join(', ')}`);
+  const problem = invalidDescription(description);
+  if (problem) throw new Error(problem);
   if (!APP_LANGUAGES.includes(language))
     throw new Error(`language must be one of ${APP_LANGUAGES.join(', ')}`);
   if (typeof title !== 'string' || title.trim() === '')
@@ -111,6 +118,7 @@ export function createApp(
   const app = {
     id,
     title: title.trim(),
+    ...(description === undefined ? {} : { description: description.trim() }),
     language,
     path: `/${id}/`,
     devPort: nextDevPort(manifest),
@@ -118,8 +126,8 @@ export function createApp(
   };
   try {
     cpSync(SKELETON, appDir, { recursive: true, errorOnExist: true });
-    fillTokens(appDir, app);
-    writeIcons(appDir, app.title);
+    fillTokens(appDir, app, theme);
+    writeAppIcons(appDir, app.title, iconColours(themeCss(appDir, theme)));
     const pkgFile = join(appDir, 'package.json');
     const pkg = readJson(pkgFile);
     // Package managers keep dependency lists sorted.
@@ -144,14 +152,16 @@ function main() {
     allowPositionals: true,
     options: {
       title: { type: 'string' },
+      description: { type: 'string' },
       language: { type: 'string' },
+      theme: { type: 'string' },
       'no-pwa': { type: 'boolean' },
       'skip-install': { type: 'boolean' },
     },
   });
   if (positionals.length !== 1) {
     console.error(
-      'Usage: pnpm run new-app <id> [--title "<title>"] [--language <auto|de|en>] [--no-pwa]',
+      'Usage: pnpm run new-app <id> [--title "<title>"] [--description "<text>"] [--language <auto|de|en>] [--theme <name>] [--no-pwa]',
     );
     process.exit(2);
   }
@@ -161,6 +171,8 @@ function main() {
     app = createApp(root, {
       id: positionals[0],
       title: values.title,
+      description: values.description,
+      theme: values.theme,
       language: values.language,
       pwa: !values['no-pwa'],
     });

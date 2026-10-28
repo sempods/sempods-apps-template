@@ -94,6 +94,23 @@ configuration choices and the SDK migration.
   `viewport-fit=cover` and `interactive-widget=resizes-content`. An app that
   switches between contexts puts `ContextSwitch` in place of the name.
 - The app workflow describes the kit and the reference layout of a list app.
+- Four themes in the skeleton's `src/themes/`: calm (the default, graphite on
+  white), fresh (teal), warm (terracotta on cream) and playful (violet). Each
+  sets the six `--sempods-*` colour tokens in light and dark mode with at
+  least 4.5:1 contrast, which a test checks; the SDK components read the same
+  tokens, so a theme restyles the whole app. Fonts and corner radii stay the
+  SDK's. An app imports one theme in `src/main.tsx`; `new-app --theme <name>`
+  chooses it, and the monogram icon takes the theme's accent.
+- `pnpm run icon <id>` (new) draws an app's monogram again from its title and
+  its theme, for example after a rename or a theme change.
+- `apps.json` accepts an optional `description` (one short sentence), set by
+  `new-app --description`. It becomes the generated `app.description`, which
+  the skeleton passes to `AppAccess` for the sign-in screen, the manifest's
+  `description` and the overview card's line.
+- The app workflow starts a new app with a short design conversation (purpose,
+  mood as a theme, name and icon), asked as choices with "choose for me", and
+  records it under Design in the app's `NOTES.md`; later wishes change the
+  recorded choice instead of adding one-off styles.
 - The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
   quickstart screen built with the kit (loading and failed reads, an empty
   state, rows with a labelled checkbox, the item's `ResourceEditor` in a
@@ -164,6 +181,13 @@ configuration choices and the SDK migration.
 10. Existing apps keep their `NOTES.md`. When working on an app next, settle
    its context shape as the app workflow describes and add a Data section to
    its notes.
+11. The root `package.json` gains the script `icon` with the migration.
+   Existing apps keep their colours in their own `src/index.css`; finishing
+   the migration regenerates them with `app.description` (null until set). To
+   give an app a theme, copy `src/themes/` from the skeleton
+   (`node_modules/@sempods/apps/skeleton/app/src/themes/`), import the chosen
+   one in `src/main.tsx` before `index.css` as the skeleton does, remove the
+   token block from its `index.css`, and run `pnpm run icon <id>`.
 
 ## 0.7.1
 

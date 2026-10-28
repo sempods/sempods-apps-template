@@ -6,6 +6,11 @@ Your assistant keeps these notes up to date so the next session can continue.
 
 What the app is for and its first useful interaction.
 
+## Design
+
+Purpose and who uses it, the theme and how the icon was chosen, with later
+changes the owner asked for.
+
 ## Data
 
 How the app uses contexts (one, several one at a time, read all and write in

@@ -58,6 +58,20 @@ const ROUTE_RESERVED = new Set([
   'licenses',
 ]);
 
+/**
+ * Returns a reason when `description` cannot describe an app, otherwise
+ * undefined. It is optional: one short sentence for the sign-in screen, the
+ * installed app and the overview.
+ */
+export function invalidDescription(description) {
+  if (description === undefined) return undefined;
+  if (typeof description !== 'string' || description.trim() === '')
+    return 'description must be text';
+  if (description.trim().length > 120)
+    return 'description must be one short sentence, at most 120 characters';
+  return undefined;
+}
+
 /** Returns a reason when `route` cannot name a route, otherwise undefined. */
 export function invalidRoute(route) {
   if (
@@ -162,6 +176,8 @@ export function validateApps(manifest) {
     ids.add(app.id);
     if (typeof app.title !== 'string' || app.title.trim() === '')
       problems.push(`${app.id}: title must be text`);
+    const description = invalidDescription(app.description);
+    if (description) problems.push(`${app.id}: ${description}`);
     if (!APP_LANGUAGES.includes(app.language))
       problems.push(
         `${app.id}: language must be one of ${APP_LANGUAGES.join(', ')}`,
