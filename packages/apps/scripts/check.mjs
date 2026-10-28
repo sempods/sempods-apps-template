@@ -158,7 +158,7 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       !semver.satisfies(version, range, { includePrerelease: true })
     )
       problems.push(
-        `${sdk} ${version} is outside the range ${toolingManifest.name} ${toolingManifest.version} supports (${range}); update ${toolingManifest.name} or use a supported SDK version`,
+        `${sdk} ${version} is outside the range ${toolingManifest.name} ${toolingManifest.version} supports (${range}); move the SDK with pnpm run sdk-update <version> in that range, or update ${toolingManifest.name}`,
       );
   }
   // The app-author reference ships inside the installed SDK.

@@ -147,17 +147,7 @@ Instructions:
 
 ### Upgrade notes
 
-1. Move the repository to SDK 0.6.0 after the tooling update, on its own
-   branch: `pnpm run sdk-update 0.6.0`. Until then `check` reports the SDK as
-   outside the supported range, and apps created by `new-app` would use the
-   old SDK with a skeleton written for 0.6.0. Then follow the SDK's migration
-   checklist (`node_modules/@sempods/app-sdk/docs/migration.md`, "From 0.5.0
-   to 0.6.0") for each app: replace `AppShell`/`ConnectionControls` with the
-   skeleton's layout, move row commands to `mutate.for(item)`, handle
-   `not-sent` results, and check texts and dialogs that tests match. Run
-   `pnpm run check --standalone all` and list for the owner what to try on the
-   Pod: sign-in, reload, editing, guarded navigation and recovery.
-2. The migration does by itself: it adds the root script `icon`, regenerates
+1. The migration does by itself: it adds the root script `icon`, regenerates
    every app (`app.routes`, `app.description` as `null` until set, the
    manifest colours, the `pageTitle` plugin, the service worker's allowlist
    for routes) and moves apps to the generated page title where that is
@@ -166,7 +156,18 @@ Instructions:
    in its `vite.config.ts`, as the skeleton does, and remove the `<title>`
    from its `index.html`. A page title other than the one in `apps.json` was
    chosen by hand: ask the owner whether it should be the app's title, put it
-   into `apps.json` and run `pnpm run regenerate`.
+   into `apps.json` and run `pnpm run regenerate`. Settle these cases before
+   the SDK move: `sdk-update` ends with `check` and stops on them.
+2. Then move the repository to SDK 0.6.0, on its own branch:
+   `pnpm run sdk-update 0.6.0`. Until then `check` reports the SDK as outside
+   the supported range, and apps created by `new-app` would use the old SDK
+   with a skeleton written for 0.6.0. Then follow the SDK's migration
+   checklist (`node_modules/@sempods/app-sdk/docs/migration.md`, "From 0.5.0
+   to 0.6.0") for each app: replace `AppShell`/`ConnectionControls` with the
+   skeleton's layout, move row commands to `mutate.for(item)`, handle
+   `not-sent` results, and check texts and dialogs that tests match. Run
+   `pnpm run check --standalone all` and list for the owner what to try on the
+   Pod: sign-in, reload, editing, guarded navigation and recovery.
 3. Existing apps keep their code, look and notes. When working on an app next,
    offer what the owner wants of the new skeleton, from
    `node_modules/@sempods/apps/skeleton/app/`, once the repository is on SDK
