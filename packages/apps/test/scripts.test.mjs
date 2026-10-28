@@ -867,6 +867,11 @@ export default defineConfig({
     assert.deepEqual(adoptPageHead(dir, app), ['apps/demo/index.html']);
     assert.match(page(), /content="#123456"/);
     assert.match(page(), /interactive-widget/);
+    // A page with Windows line endings keeps them.
+    writeFileSync(file('index.html'), head07.replaceAll('\n', '\r\n'));
+    assert.deepEqual(adoptPageHead(dir, app), ['apps/demo/index.html']);
+    assert.doesNotMatch(page(), /#176354|initial-scale=1\.0" \/>/);
+    assert.doesNotMatch(page(), /[^\r]\n/);
   });
 });
 

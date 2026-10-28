@@ -92,11 +92,11 @@ const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Head lines of the skeleton's index.html from 0.7.0 that the current
 // skeleton replaced: the viewport, which now reaches the screen's edges and
 // resizes with the on-screen keyboard, and the green theme colour, now one per
-// colour scheme.
+// colour scheme. Each matches with either line ending.
 const HEAD_0_7 = {
   viewport:
-    '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n',
-  themeColor: '    <meta name="theme-color" content="#176354" />\n',
+    /^ {4}<meta name="viewport" content="width=device-width, initial-scale=1\.0" \/>(\r?\n)/gm,
+  themeColor: /^ {4}<meta name="theme-color" content="#176354" \/>(\r?\n)/gm,
 };
 
 /** The skeleton's current lines for each entry of HEAD_0_7. */
@@ -127,8 +127,10 @@ export function adoptPageHead(appDir, app) {
   const current = currentHead();
   let next = html;
   for (const [key, old] of Object.entries(HEAD_0_7))
-    if (head(next).split(old).length === 2)
-      next = next.replace(old, current[key]);
+    if (head(next).match(old)?.length === 1)
+      next = next.replace(old, (_, eol) =>
+        current[key].replaceAll('\n', eol),
+      );
   if (next === html) return [];
   writeFileSync(pageFile, next);
   return [`apps/${app.id}/${PAGE}`];

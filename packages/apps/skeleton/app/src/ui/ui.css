@@ -48,7 +48,8 @@ main > header h1 {
   max-width: min(24rem, calc(100vw - 32px));
   font-size: 1rem;
   font-weight: 400;
-  overflow-wrap: break-word;
+  /* A long name without spaces wraps inside the menu. */
+  overflow-wrap: anywhere;
   padding: 4px;
   border: 1px solid var(--sempods-line);
   border-radius: 8px;
@@ -67,6 +68,9 @@ main > header h1 {
   text-align: start;
   color: var(--sempods-text);
   font-weight: 400;
+}
+.menu-items button > span {
+  min-width: 0;
 }
 .menu-items small {
   display: block;
