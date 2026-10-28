@@ -1,10 +1,10 @@
-// Adapted from the sempods TypeScript SDK v0.2.0 recipe
+// Adapted from the sempods TypeScript SDK v0.6.0 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
 // the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the
 // registration function moved to pwa.ts; the text comes from texts.ts.
 import { useEffect, useState } from 'react';
-import { useSdkLocale } from '@sempods/app-sdk/react';
-import { textsFor } from './texts.ts';
+import { useMessages } from '@sempods/app-sdk/react';
+import { texts } from './texts.ts';
 
 /**
  * Render beneath the app's actual locale provider so notices follow its language.
@@ -19,7 +19,7 @@ export function NewVersionNotice({
   readonly registration: Promise<ServiceWorkerRegistration | undefined>;
 }) {
   const [ready, setReady] = useState(false);
-  const { language } = useSdkLocale();
+  const t = useMessages(texts);
   useEffect(() => {
     let active = true;
     let stop = () => {};
@@ -54,5 +54,5 @@ export function NewVersionNotice({
     };
   }, [registration]);
   if (!ready) return null;
-  return <p role="status">{textsFor(language).newVersion}</p>;
+  return <p role="status">{t.newVersion}</p>;
 }

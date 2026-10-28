@@ -12,9 +12,11 @@ export function uiLocale(
   return resolveLocale(configured === 'auto' ? undefined : configured, browser);
 }
 
-// The app's own texts, one catalogue per UI language; SDK components bring
-// their own. Every catalogue has every key, so TypeScript reports a missing
-// translation. Add the app's texts here, never inline in components.
+// The app's own texts in English and German, read in components with the
+// SDK's useMessages(texts); SDK components bring their own, and SDK texts are
+// reused where they fit (useSdkLocale().messages.controls). Both languages
+// have every key, so TypeScript reports a missing translation. Add the app's
+// texts here, never inline in components.
 const en = {
   start: 'Connected. Tell your assistant what this app should do.',
   newVersion:
@@ -22,18 +24,12 @@ const en = {
   menu: 'Menu',
 };
 
-export type Texts = typeof en;
-
-const de: Texts = {
-  start: 'Verbunden. Beschreibe deinem Assistenten, was diese App tun soll.',
-  newVersion:
-    'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.',
-  menu: 'Menü',
+export const texts: { readonly en: typeof en; readonly de: typeof en } = {
+  en,
+  de: {
+    start: 'Verbunden. Beschreibe deinem Assistenten, was diese App tun soll.',
+    newVersion:
+      'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.',
+    menu: 'Menü',
+  },
 };
-
-const catalogues: Readonly<Record<Language, Texts>> = { en, de };
-
-/** The app's texts in `language`; pass `useSdkLocale().language`. */
-export function textsFor(language: Language): Texts {
-  return catalogues[language];
-}

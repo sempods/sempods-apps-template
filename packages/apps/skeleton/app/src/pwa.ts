@@ -1,4 +1,4 @@
-// Adapted from the sempods TypeScript SDK v0.2.0 recipe
+// Adapted from the sempods TypeScript SDK v0.6.0 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
 // the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the notice
 // component moved to NewVersionNotice.tsx.

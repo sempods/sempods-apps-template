@@ -108,23 +108,39 @@ Keep the screen consistent with the SDK's UI:
 - Apps are international: by default (`"language": "auto"`) the UI follows
   the browser, German or English, otherwise English, and the skeleton passes
   that language and locale to the SDK and to `<html lang>`. Keep every text
-  of the app in `src/texts.ts`, in English and German, and read it with
-  `textsFor(useSdkLocale().language)`; TypeScript reports a text missing in
-  one language. Write the texts in the owner's words for their language and
+  of the app in `src/texts.ts`, in English and German, and read it with the
+  SDK's `useMessages(texts)`; TypeScript reports a text missing in one
+  language. Reuse the SDK's own texts where they fit
+  (`useSdkLocale().messages.controls`). Write the texts in the owner's words for their language and
   translate the other. A fixed `--language de` or `en` at creation is for an
   owner who wants one language only. Paths and route names stay English.
 - Format dates and numbers with the SDK locale, `useSdkLocale().format`
   (`dateTime`, `dateOnly`, `number`), so they follow the app's language and
   region instead of the browser default.
-- Ask for confirmation inside the page (for example a second "Löschen" and
-  "Abbrechen" button). Do not use `confirm()`, `alert()` or `prompt()`: embedded
-  browsers and webviews may block them and silently answer "cancel".
-- Give app controls labels that differ from the SDK's own. A list reload next
-  to the access controls ("Zugriff prüfen", "Erneut prüfen") needs another
-  label, for example "Liste neu laden". A `useList` view refreshes by itself
-  only after confirmed creation, row mutation or bound-editor writes on that
-  exact view; keep an explicit reload for anything else, such as other
-  clients, another view, raw client calls or another Pod.
+- Delete a row with the SDK's `RemoveButton`, which asks in its own dialog;
+  `ResourceEditor`'s Delete asks by itself. Ask for other confirmations inside
+  the page. Do not use `confirm()`, `alert()` or `prompt()`: embedded browsers
+  and webviews may block them and silently answer "cancel".
+- A `useList` view refreshes by itself after its own confirmed writes and
+  when the page becomes visible again, and keeps its rows while it reloads.
+  Add an explicit reload only for changes it cannot see while the page stays
+  open (another client at the same time, `useLoad`/`usePodLoad` reads, raw
+  client calls), with a label that differs from the SDK's, for example
+  "Liste neu laden".
+
+### Start a list from the example
+
+Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
+SDK's quickstart screen built with the kit, with loading and failed reads
+(`LoadNotice`), an empty state, rows with a checkbox in its label, the name
+opening a `ResourceEditor` in a `Dialog`, `RemoveButton`, open outcomes
+(`UpdateNotice`, `UnresolvedNotices`) and new items in a `Composer`. Copy it
+next to `App.tsx`, render it in place of `Start`, and rename the type, fields,
+collection and texts to the app's own. Keep `App.tsx`'s runtime from
+`sempods.generated.ts`, its provider and its frame: take behaviour from the
+SDK's quickstart and examples, never their runtime, provider, `TodoApp` or
+styles, which would add a second runtime, a wrong callback or clashing
+classes.
 
 For a new app, run the root command with the chosen values:
 
