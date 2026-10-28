@@ -57,6 +57,31 @@ rebuilding those facilities. SDK 0.6.0 removed `AppShell` and
 `ConnectionControls`: an app that still uses them moves to the skeleton's
 layout with the SDK's migration guide (`migration.md`) when it updates.
 
+### Settle how the app uses contexts
+
+Before the first screen, settle which contexts the app reads and writes: it
+decides the app's whole structure. Infer it when the request makes it clear;
+otherwise ask once, in everyday words, for example: "Does the app work with one
+list, with several lists to switch between, does it show everything and save
+in one place, or does it spread data over several places?" Then start from the
+SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
+
+- **One context** (most apps): the skeleton as it is; `AppAccess` asks for
+  the context once. A fixed context comes from `preset.contextIri` in the
+  runtime options.
+- **Several contexts, one at a time** (lists to switch between): `useContexts`
+  with the kit's `ContextSwitch` in place of the app's name in the header.
+- **Read all, write in one** (an overview): `contextSelection="on-demand"` on
+  the provider, the SDK's Pod overview (`usePodList`) and `useCreation` for
+  the context it writes to.
+- **Write into several contexts** (a shared item with a private note): one
+  `useCreation` per context with `context`, as the SDK's task-with-note recipe
+  does; each part reports its own outcome.
+
+Record the shape and the contexts it uses under Data in `NOTES.md`. An app
+that reads all contexts or writes into several needs more than one test
+context; ask the owner for each, with synthetic data.
+
 Choose the data vocabulary from the installed reference, existing data and the
 app's purpose before writing data. Ask about an unclear meaning in everyday
 terms (for example, whether a shopping item records a planned purchase or a
@@ -72,7 +97,8 @@ Record the vocabulary in `NOTES.md`.
 
 An app that only reads, such as a data explorer, takes its vocabulary from how
 the data is already stored; there is nothing to choose for writing. Record under
-Decisions in `NOTES.md` that it only reads and which contexts it needs. A Pod
+Decisions in `NOTES.md` that it only reads, and under Data which contexts it
+needs. A Pod
 cannot be asked for read access only, so keeping the app read-only is its own
 restriction: use no write hooks or write operations, as the installed
 `local-testing.md` describes.
@@ -180,7 +206,8 @@ change. Use the
 local-testing guide (`local-testing.md` in the installed SDK's `docs/`) for the
 actual Pod exercise, its section on apps that only read for such an app, and
 recovery (`migration.md`) when something fails.
-Use a dedicated test context and synthetic data; the user signs in themselves.
+Use dedicated test contexts (one, or one per context the app's shape uses) and
+synthetic data; the user signs in themselves.
 Never request credentials, export browser storage or put tokens in notes/logs. A
 missing Pod still allows UI work, but not a claim of working login, reads or
 writes.

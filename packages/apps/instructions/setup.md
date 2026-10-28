@@ -32,7 +32,8 @@ progress as they become known.
 A name, GitHub review identity and the version PR choice are not needed to
 try an app. Do not ask for them before the first local interaction. A missing
 Pod also allows UI work; record Pod testing as pending. Before accessing a Pod,
-use the owner's full test Pod URL and a dedicated context, with synthetic data.
+use the owner's full test Pod URL and a dedicated context (one per context the
+app's shape uses), with synthetic data.
 
 ## Create the first app and open it
 
@@ -59,7 +60,7 @@ leaves setup in progress; diagnose it before proceeding.
 Continue with the [app workflow](app-workflow.md) for the first useful
 interaction. Once the owner can try the screen, ask once whether they have a
 test Pod for trying it with data, unless the setup record answers that. If so,
-let the user sign in in the browser and select their test context; otherwise
+let the user sign in in the browser and select their test contexts; otherwise
 record Pod testing as pending. Run `pnpm run check` in another terminal and
 report its result.
 
