@@ -80,6 +80,7 @@ function overviewEntry(app, outDir) {
   const entry = {
     id: app.id,
     title: app.title,
+    ...(app.description ? { description: app.description } : {}),
     // An app that follows the browser has no one language to announce.
     ...(app.language === AUTO ? {} : { language: app.language }),
     href: app.path,

@@ -12,6 +12,8 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 `package.json` runs the other commands through `sempods-apps <command>`:
 
 - `pnpm run new-app <id>` creates `apps/<id>` with the root's SDK version.
+- `pnpm run icon <id>` draws an app's monogram icon again in its theme's
+  accent.
 - `pnpm run dev <id>` starts that app.
 - `pnpm run regenerate` rewrites every app's generated configuration from
   `apps.json`, for example after a tooling update.

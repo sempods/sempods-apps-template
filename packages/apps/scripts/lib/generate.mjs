@@ -77,6 +77,7 @@ import type { BrowserRuntimeOptions${app.language === AUTO ? '' : ', Language'} 
 export const app = {
   id: ${json(app.id)},
   title: ${json(app.title)},
+  description: ${json(app.description ?? null)},
   language: ${language},
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
@@ -139,7 +140,7 @@ export function viteSource(app) {
       id: ${json(p)},
       name: ${json(app.title)},
       short_name: ${json(app.title)},
-${app.language === AUTO ? '' : `      lang: ${json(app.language)},
+${app.description ? `      description: ${json(app.description)},\n` : ''}${app.language === AUTO ? '' : `      lang: ${json(app.language)},
 `}      start_url: ${json(p)},
       scope: ${json(p)},
       display: 'standalone',

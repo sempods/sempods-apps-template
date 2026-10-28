@@ -47,15 +47,41 @@ when the app needs them: `ContextSwitch` in place of the name for an app that
 works in one of several contexts at a time, labelled in the person's words
 ("List", "Share more lists …"); tabs for an app with several views; an item
 opening in a `Dialog`; a `Composer` in the frame, outside the views tabs
-switch, since switching does not ask about an unsent creation draft. Ordinary visual customization is welcome: change the
-`--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
-components together, and keep the app's own rules off SDK components
+switch, since switching does not ask about an unsent creation draft.
+
+Ordinary visual customization is welcome. The app's colours come from its
+theme, `src/themes/<name>.css`, imported in `src/main.tsx`; its
+`--sempods-*` tokens colour the app and the SDK components together. Restyle
+by switching the theme or adjusting its tokens with the same contrast, not with
+one-off colours, and keep the app's own rules off SDK components
 (`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
 radio in its `<label>`: the label is its 44px touch target. The SDK owns
 connection, editing and recovery behavior; use the reference rather than
 rebuilding those facilities. SDK 0.6.0 removed `AppShell` and
 `ConnectionControls`: an app that still uses them moves to the skeleton's
 layout with the SDK's migration guide (`migration.md`) when it updates.
+
+### Start a new app with a short design conversation
+
+Before creating a new app, settle its purpose, mood, name and icon in a short
+conversation, the one exception to inferring routine choices. Ask at most
+three questions, as choices rather than open questions, and offer "choose for
+me" (the calm theme, a name and the monogram):
+
+1. What is it for, and who uses it? One sentence; it becomes the app's
+   description on the sign-in screen and decides the layout and the empty
+   state's text.
+2. Which mood? One of the themes, each with its line: calm (graphite on white,
+   quiet; the default), fresh (clear teal, light and open), warm (terracotta on
+   cream, cosy) or playful (violet, lively).
+3. Name and icon: propose a short name; the icon is a monogram of its first
+   letter in the theme's accent.
+
+Skip a question the request already answers; a developer may state all three
+up front. Create the app with the answers (`--title`, `--description`,
+`--theme`) and record them under Design in its `NOTES.md`. Later wishes such
+as "make it greener" change the recorded choice (another theme, its tokens, a
+new title), not one-off styles.
 
 ### Settle how the app uses contexts
 
@@ -149,11 +175,14 @@ pnpm run new-app konsum --title "Einkaufsliste"
 pnpm run dev konsum
 ```
 
-The interface also accepts `--language de` or `--language en` for one fixed UI
+The interface also accepts `--description "<one sentence>"`, `--theme
+<calm|fresh|warm|playful>`, `--language de` or `--language en` for one fixed UI
 language and `--no-pwa` at creation. The app's icon is a monogram of the
-title's first letter in `public/` (`favicon.svg`, shown in the header and on
-the sign-in screen, and `icon-192.png`, `icon-512.png` for the installed app);
-replace those files when the owner wants another icon. Generation never
+title's first letter in the theme's accent, in `public/` (`favicon.svg`, shown
+in the header and on the sign-in screen, and `icon-192.png`, `icon-512.png` for
+the installed app). After a rename or a theme change, `pnpm run icon <id>`
+draws it again; replace those files instead when the owner wants an icon of
+their own. Generation never
 overwrites an app: check `apps.json` and the folder before invoking it. The
 first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
 lines); that is expected, so point the owner to the app's own files when they
@@ -169,8 +198,9 @@ needs it, ask the owner before approving it under `allowBuilds` in
 `pnpm-workspace.yaml`.
 
 `apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
-`title`, `language`, `path`, `devPort` and `pwa`, and optionally `routes`. Read
-the app's assigned path/port. An optional `site` records where the apps are published; only
+`title`, `language`, `path`, `devPort` and `pwa`, and optionally `description`
+and `routes`. Read the app's assigned path/port. An optional `site` records
+where the apps are published; only
 `pnpm run configure-site` writes it, and it regenerates every app's
 configuration from it. Do not add other deployment fields.
 Keep the exact local origin throughout login and callback. A busy port is a
@@ -186,8 +216,9 @@ callback, base path, page title and PWA configuration. The title in
 `apps.json` is the app's only title: `index.html` has no `<title>` of its own,
 and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
 app, change the title there and run `pnpm run regenerate`; the page, the
-sign-in screen, the installed app and the overview follow. The ID and path
-stay, and so does the icon's letter. `new-app` creates new apps only;
+sign-in screen, the installed app and the overview follow, and so does the
+`description` the same way. The ID and path stay; `pnpm run icon <id>` draws
+the icon's new letter. `new-app` creates new apps only;
 rerunning it does not reconfigure an existing app. `configure-site` changes the
 published identities of all apps. If a requested configuration
 change needs a command not shipped yet, explain that limitation to the owner;

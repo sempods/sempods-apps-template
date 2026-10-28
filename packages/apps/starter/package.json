@@ -8,6 +8,7 @@
   },
   "scripts": {
     "new-app": "sempods-apps new-app",
+    "icon": "sempods-apps icon",
     "dev": "sempods-apps dev",
     "regenerate": "sempods-apps regenerate",
     "configure-site": "sempods-apps configure-site",

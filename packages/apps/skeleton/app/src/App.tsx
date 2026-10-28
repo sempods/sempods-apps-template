@@ -83,6 +83,7 @@ function Frame() {
           lost access; AccessNotice adds only that a context is read-only. */}
       <AppAccess
         appName={app.title}
+        description={app.description}
         icon={icon}
         headingLevel={header ? 2 : 1}
         open={managing}

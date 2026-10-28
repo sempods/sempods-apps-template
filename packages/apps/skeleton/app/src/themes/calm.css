@@ -1,0 +1,11 @@
+/* Calm: graphite on white, quiet and neutral; the default.
+   The --sempods-* tokens colour the app and the SDK components alike, in
+   light and dark mode; each pair keeps at least 4.5:1 contrast. */
+:root {
+  --sempods-bg: light-dark(#ffffff, #111315);
+  --sempods-text: light-dark(#1f2933, #e5e7eb);
+  --sempods-muted: light-dark(#6b7280, #9ca3af);
+  --sempods-line: light-dark(#e5e7eb, #2d3138);
+  --sempods-accent: light-dark(#1f2933, #e5e7eb);
+  --sempods-on-accent: light-dark(#ffffff, #111315);
+}
