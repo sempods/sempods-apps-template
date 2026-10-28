@@ -72,5 +72,7 @@ instead.
    request's branch, or open a pull request "Update the tooling to <version>",
    with the migration report, each manual case and how it was decided, and
    what to try. Tell the owner what changed in plain words and
-   what they should try. App code, app notes and the owner's entries in
-   `package.json` are never rewritten by the migration.
+   what they should try. App notes and the owner's entries in `package.json`
+   are never rewritten by the migration; of the apps' files it only
+   regenerates the generated configuration and moves files still unchanged
+   from the skeleton where a release's upgrade notes say so.

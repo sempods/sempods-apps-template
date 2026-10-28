@@ -8,109 +8,133 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+SDK:
+
 - New repositories use SDK 0.6.0 (`@sempods/app-sdk` and
   `@sempods/client-sdk`), and `@sempods/apps` supports `^0.6.0`. The 0.6.0
   release notes and migration guide name what changes for apps: among others,
   `AppShell` and `ConnectionControls` are gone, row commands move to
   `mutate.for(item)`, SDK texts follow the browser language, lists keep their
   rows while reloading, a cancelled re-authorization keeps the session, and
-  the leave confirmation shows above app dialogs. For apps with routes, the
-  generated `returnTo` is a function the runtime calls when each sign-in
-  starts, so sign-in returns to the route the person is on.
-- Apps are international by default. `language` in `apps.json` accepts
-  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
-  language. The skeleton resolves the UI language and locale from the
-  browser with the SDK's `resolveLocale` (German or English, otherwise
-  English, with the browser's region for formats), passes both to
-  `SempodsProvider` and sets `<html lang>`. For `"auto"` the generated
-  configuration keeps `app.language` as `"auto"`, the manifest has no `lang`
-  and the overview announces no language for the app.
-- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
-  catalogue per language, read with the SDK's `useMessages(texts)`, tested in
-  `src/texts.test.ts`; `src/start.ts` and its test are gone, and the
-  new-version notice reads its text from the catalogue.
-- The setup and app workflow ask for texts in English and German and keep
-  paths and route names English.
-- Apps can give their views addresses: `routes` in an app's `apps.json` entry
-  lists lowercase English segments, for example `"routes": ["bought"]` for
-  `/<id>/bought`. The generated `app.routes` lists them, and
-  `build-site` writes `<id>/<route>.html`, so the published site answers each
-  route without a rewrite and unknown paths still show the not-found page. The
-  service worker serves the cached app for the start page and every route, and
-  sign-in returns to the route it started from instead of the start page.
-- The skeleton's `src/routes.ts` provides `useRoute()`: the current route,
-  `link(route)` for an `<a>` to it and `go(route)`, which switches views
-  under the SDK's leave policy
-  (`useApp().navigate`); back and forward are guarded the same way, and
-  staying keeps the view and its address. It shows unknown paths as the start
-  page and drops a trailing slash. The runtime's `replaceUrl` goes through it,
-  so the return after a sign-in shows the right view.
-- The app workflow and the publish guide describe routes and the deployment
-  check for them.
-- The app title has one source, `apps.json`. The generated
-  `vite.sempods.generated.ts` exports the Vite plugin `pageTitle`, which adds
-  the title to the head of the served and built page; the skeleton's
-  `vite.config.ts` uses it and its `index.html` has no `<title>` of its own.
-  `check` reports a page with its own title and a `vite.config.ts` without
-  the plugin. The app workflow says how to rename an app.
-- `migrate` moves existing apps where that is unambiguous: a `vite.config.ts`
-  unchanged from the skeleton gets the plugin, and a page whose only title is
-  the app's title from `apps.json` loses it. It does so, and regenerates the
-  apps, also for a release whose starter is unchanged. A page or
-  `vite.config.ts` that is a symbolic link stops `update` and `migrate`
-  before they change anything.
-- `new-app` draws the app icon as a monogram, the title's first letter in
-  white on a graphite rounded square, instead of a plain green square:
-  `public/favicon.svg` (inverted in dark mode) and the manifest icons
-  `icon-192.png` and `icon-512.png`, all from the same strokes. A title that
-  does not start with a letter A–Z, accents aside, gets the plain square.
-- The skeleton shows the icon in its header next to the app's name and passes
-  it to `AppAccess` for the sign-in screen.
-- The skeleton's `src/index.css` sets a calm, neutral palette through the
-  `--sempods-*` tokens (graphite accent, grey lines), which colour the app and
-  the SDK components alike. Its rules style only the app's own markup and
-  leave SDK components (`[data-sempods-ui]`) alone, so `AppAccess` keeps its
-  layout. App buttons read as text in the accent colour with a calm hover, a
-  visible focus and 44px touch targets. Inputs have 44px targets;
-  checkboxes and radios are a compact 24px box whose wrapping `<label>` is
-  the 44px target, as in the SDK. Lists lose the browser's indentation and
-  bullets.
-- The page's `theme-color` follows light and dark mode, and the generated web
-  app manifest uses a white background and theme colour instead of green.
-- The skeleton has a small UI kit in `src/ui/`, styled by `ui.css` on the
-  `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
-  Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
-  switch between the contexts shared with the app over the SDK's
-  `useContexts`, with their access and "Share more …"), `Tabs` (views as
-  links with their routes), `Composer` (an input bar fixed at the bottom,
-  above the home indicator and, where browsers support it, the on-screen
-  keyboard), `Dialog` (modal, a bottom sheet on phones, for example around a
-  `ResourceEditor`) and line icons.
-- The skeleton's header shows the app's icon and name, room for the app's
-  icon actions and a menu (⋮) whose "Pods & sharing" opens `AppAccess`
-  management as its dialog (`onClose`), with signing out inside. It replaces
-  the "Data access" button. `<AccessNotice only="write" />` beside `AppAccess`
-  says when a context is shared read-only, and the viewport adds
-  `viewport-fit=cover` and `interactive-widget=resizes-content`. An app that
-  switches between contexts puts `ContextSwitch` in place of the name.
-- The app workflow describes the kit and the reference layout of a list app.
+  the leave confirmation shows above app dialogs.
+- After an SDK update, `sdk-update` and the app workflow point to the
+  installed release notes and migration guide
+  (`node_modules/@sempods/app-sdk/docs/releases/<version>.md`, `migration.md`)
+  instead of GitHub, and the workflow skips a section on adopting the release
+  in the apps template.
+
+Look:
+
 - Four themes in the skeleton's `src/themes/`: calm (the default, graphite on
   white), fresh (teal), warm (terracotta on cream) and playful (violet). Each
   sets the six `--sempods-*` colour tokens in light and dark mode with at
   least 4.5:1 contrast, which a test checks; the SDK components read the same
   tokens, so a theme restyles the whole app. Fonts and corner radii stay the
   SDK's. An app imports one theme in `src/main.tsx`; `new-app --theme <name>`
-  chooses it, and the monogram icon takes the theme's accent.
-- `pnpm run icon <id>` (new) draws an app's monogram again from its title and
-  its theme, for example after a rename or a theme change.
+  chooses it.
+- The skeleton's `src/index.css` styles only the app's own markup and leaves
+  SDK components (`[data-sempods-ui]`) alone, so `AppAccess` keeps its
+  layout. App buttons read as text in the accent colour with a calm hover, a
+  visible focus and 44px touch targets. Inputs have 44px targets; checkboxes
+  and radios are a compact 24px box whose wrapping `<label>` is the 44px
+  target, as in the SDK. Lists lose the browser's indentation and bullets.
+- The page's `theme-color` follows light and dark mode, and the generated web
+  app manifest uses a white background and theme colour instead of green.
+- `new-app` draws the app icon as a monogram, the title's first letter on a
+  rounded square in the theme's accent, instead of a plain green square:
+  `public/favicon.svg` (in the theme's dark accent in dark mode) and the
+  manifest icons `icon-192.png` and `icon-512.png`, all from the same strokes.
+  A title that does not start with a letter A–Z, accents aside, gets the plain
+  square. `pnpm run icon <id>` (new) draws it again after a rename or a theme
+  change.
+- The skeleton's header shows the app's icon and name, room for the app's
+  icon actions and a menu (⋮) whose "Pods & sharing" opens `AppAccess`
+  management as its dialog (`onClose`), with signing out inside. It replaces
+  the "Data access" button. `AppAccess` shows the icon and the app's
+  description on the sign-in screen, `<AccessNotice only="write" />` beside it
+  says when a context is shared read-only, and the viewport adds
+  `viewport-fit=cover` and `interactive-widget=resizes-content`.
+- The skeleton has a small UI kit in `src/ui/`, styled by `ui.css` on the
+  `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
+  Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
+  switch between the contexts shared with the app over the SDK's
+  `useContexts`, in place of the app's name), `Tabs` (views as links with
+  their routes), `Composer` (an input bar fixed at the bottom, above the home
+  indicator and, where browsers support it, the on-screen keyboard), `Dialog`
+  (modal, a bottom sheet on phones, for example around a `ResourceEditor`)
+  and line icons.
+- The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
+  quickstart screen built with the kit (loading and failed reads, an empty
+  state, rows with a labelled checkbox, the item's `ResourceEditor` in a
+  `Dialog`, `RemoveButton`, open outcomes and a `Composer`). It compiles with
+  every app, so it stays valid against the SDK.
+
+Content and configuration:
+
+- Apps are international by default. `language` in `apps.json` accepts
+  `"auto"`, and `new-app` uses it unless `--language de` or `en` fixes one
+  language. The skeleton resolves the UI language and locale from the browser
+  with the SDK's `resolveLocale` (German or English, otherwise English, with
+  the browser's region for formats), passes both to `SempodsProvider` and
+  sets `<html lang>`. For `"auto"` the generated configuration keeps
+  `app.language` as `"auto"`, the manifest has no `lang` and the overview
+  announces no language for the app.
+- The skeleton keeps the app's own texts in `src/texts.ts`, one typed
+  catalogue per language, read with the SDK's `useMessages(texts)` and tested
+  in `src/texts.test.ts`; `src/start.ts` and its test are gone.
+- The app title has one source, `apps.json`. The generated
+  `vite.sempods.generated.ts` exports the Vite plugin `pageTitle`, which adds
+  the title to the head of the served and built page; the skeleton's
+  `vite.config.ts` uses it and its `index.html` has no `<title>` of its own.
+  `check` reports a page with its own title and a `vite.config.ts` without
+  the plugin.
 - `apps.json` accepts an optional `description` (one short sentence), set by
   `new-app --description`. It becomes the generated `app.description`, which
-  the skeleton passes to `AppAccess` for the sign-in screen, the manifest's
-  `description` and the overview card's line.
-- The app workflow starts a new app with a short design conversation (purpose,
-  mood as a theme, name and icon), asked as choices with "choose for me", and
-  records it under Design in the app's `NOTES.md`; later wishes change the
-  recorded choice instead of adding one-off styles.
+  the skeleton passes to `AppAccess`, the manifest's `description` and the
+  overview card's line.
+- Apps can give their views addresses: `routes` in an app's `apps.json` entry
+  lists lowercase English segments, for example `"routes": ["bought"]` for
+  `/<id>/bought`. The generated `app.routes` lists them, and `build-site`
+  writes `<id>/<route>.html`, so the published site answers each route
+  without a rewrite and unknown paths still show the not-found page. The
+  service worker serves the cached app for the start page and every route,
+  and the generated `returnTo` is a function the runtime calls when each
+  sign-in starts, so sign-in returns to the route the person is on.
+- The skeleton's `src/routes.ts` provides `useRoute()`: the current route,
+  `link(route)` for an `<a>` to it and `go(route)`, which switches views under
+  the SDK's leave policy (`useApp().navigate`); back and forward are guarded
+  the same way, and staying keeps the view and its address. It shows unknown
+  paths as the start page and drops a trailing slash. The runtime's
+  `replaceUrl` goes through it, so the return after a sign-in shows the right
+  view.
+- `migrate` moves existing apps where that is unambiguous: a `vite.config.ts`
+  unchanged from the skeleton gets the `pageTitle` plugin, and a page whose
+  only title is the app's title from `apps.json` loses it. It does so, and
+  regenerates the apps, also for a release whose starter is unchanged. A page
+  or `vite.config.ts` that is a symbolic link stops `update` and `migrate`
+  before they change anything.
+
+Instructions:
+
+- The app workflow starts a new app with a short design conversation
+  (purpose, mood as a theme, name and icon), asked as choices with "choose for
+  me", and records it under Design in the app's `NOTES.md`; later wishes
+  change the recorded choice instead of adding one-off styles. It says which
+  parts of the look are shared (layout, kit) and which are chosen per app
+  (theme, name, icon).
+- The app workflow settles how an app uses contexts before its first screen:
+  one context, several one at a time, read all and write in one, or write
+  into several. It infers the shape or asks once in everyday words and starts
+  from the SDK's path for it (`AppAccess` or a preset, `useContexts` with
+  `ContextSwitch`, the Pod overview with `useCreation`, one `useCreation` per
+  context). The skeleton's `NOTES.md` has Design and Data sections, and setup
+  asks for one test context per context the shape uses.
+- The app workflow starts a list from the list example, takes only behaviour
+  from the SDK's examples, deletes rows with `RemoveButton`, relies on the
+  SDK's list refresh when the page becomes visible again, adds kit parts only
+  when the app needs them, and describes routes, renaming and themes. It is
+  reordered: design conversation and `new-app`, context shape, vocabulary,
+  screen, views, configuration.
 - A visual check before handover (`instructions/visual-check.md`): the
   assistant takes screenshots at 375px and desktop width, light and dark, with
   real states (empty, a few items, an open item, a notice), checks them
@@ -118,22 +142,8 @@ configuration choices and the SDK migration.
   screenshot for a verdict. The app workflow and setup require it; visual
   checks are their own kind of evidence in `NOTES.md`. The docs no longer say
   the screen can be tried without a Pod: only the sign-in screen can.
-- The skeleton ships `src/examples/ListScreen.tsx`, not mounted: the SDK's
-  quickstart screen built with the kit (loading and failed reads, an empty
-  state, rows with a labelled checkbox, the item's `ResourceEditor` in a
-  `Dialog`, `RemoveButton`, open outcomes and a `Composer`). It compiles with
-  every app, so it stays valid against the SDK. The app workflow starts a list
-  from it and keeps the SDK examples' runtime, provider and styles out; rows
-  are deleted with `RemoveButton`, and lists rely on the SDK's refresh when
-  the page becomes visible again.
-- The app workflow settles how an app uses contexts before its first screen:
-  one context, several one at a time, read all and write in one, or write
-  into several. It infers the shape or asks once in everyday words and starts
-  from the SDK's path for it (`AppAccess` or a preset, `useContexts` with
-  `ContextSwitch`, the Pod overview with `useCreation`, one `useCreation` per
-  context). The skeleton's `NOTES.md` has a Data section for the shape and
-  its contexts, and setup asks for one test context per context the shape
-  uses; the setup record says "Test Pod and contexts".
+- The setup record of new repositories names "Test Pod and contexts" and the
+  owner's language for the app texts.
 
 ### Upgrade notes
 
@@ -147,54 +157,41 @@ configuration choices and the SDK migration.
    `not-sent` results, and check texts and dialogs that tests match. Run
    `pnpm run check --standalone all` and list for the owner what to try on the
    Pod: sign-in, reload, editing, guarded navigation and recovery.
-2. Existing apps keep their fixed language; nothing changes for them. To make
-   one follow the browser, set its `language` to `"auto"` in `apps.json`, run
-   `pnpm run regenerate`, and adopt the skeleton's language resolution in
-   `src/App.tsx` (`uiLocale` from `src/texts.ts`, passed as `language` and
-   `locale`, and `document.documentElement.lang`), because `app.language`
-   is then `"auto"`, not a language. Move the app's texts into a catalogue
-   with both languages, as the skeleton's `src/texts.ts` does.
-3. Finishing the migration regenerates every app: `app.routes` is new (empty
-   unless the owner lists routes), and so is the service worker's allowlist
-   for apps with routes.
-4. Existing apps keep their code. For an app that switches views by itself,
-   offer routes: copy `src/routes.ts` and `src/routes.test.ts` from the
-   skeleton (`node_modules/@sempods/apps/skeleton/app/src/`), pass
-   `replaceUrl` to `createBrowserRuntime` as the skeleton's `App.tsx` does,
-   list the routes in `apps.json` and run `pnpm run regenerate`. An app that
-   rewrote its address itself after a sign-in can drop that code.
-5. The migration lists the apps it moved to the generated page title under
-   "Updated". For any other app, `check` names what is left: add `pageTitle`
-   from `./vite.sempods.generated.ts` to the plugins in its `vite.config.ts`,
-   as the skeleton does, and remove the `<title>` from its `index.html`. A
-   page title other than the one in `apps.json` was chosen by hand: ask the
-   owner whether it should be the app's title, put it into `apps.json` and
-   run `pnpm run regenerate`.
-6. Existing apps keep their icons and code. To show the icon like new apps
-   do, pass an image of `public/favicon.svg` under the app's base path, with
-   empty `alt`, as `icon` to `AppAccess`, and put the same image in the app's
-   header, as the skeleton's `src/App.tsx` does.
-7. Finishing the migration regenerates every app's
-   `vite.sempods.generated.ts` with the new manifest colours.
-8. Existing apps keep their own `src/index.css` and `index.html`. Where an
-   app still has the skeleton's global `header`, `button`, `input` or `select`
-   rules, offer the owner the new skeleton rules: they stop shifting the
-   sign-in form and placing the `AppAccess` icon beside its title. Keep the
-   app's own colours unless the owner wants the neutral palette.
-9. Existing apps keep their layout. To give one the standard look, offer
-   the skeleton's header and `src/ui/` (from
-   `node_modules/@sempods/apps/skeleton/app/src/`) with their texts in
-   `src/texts.ts`, once the repository is on SDK 0.6.0.
-10. Existing apps keep their `NOTES.md`. When working on an app next, settle
-   its context shape as the app workflow describes and add a Data section to
-   its notes.
-11. The root `package.json` gains the script `icon` with the migration.
-   Existing apps keep their colours in their own `src/index.css`; finishing
-   the migration regenerates them with `app.description` (null until set). To
-   give an app a theme, copy `src/themes/` from the skeleton
-   (`node_modules/@sempods/apps/skeleton/app/src/themes/`), import the chosen
-   one in `src/main.tsx` before `index.css` as the skeleton does, remove the
-   token block from its `index.css`, and run `pnpm run icon <id>`.
+2. The migration does by itself: it adds the root script `icon`, regenerates
+   every app (`app.routes`, `app.description` as `null` until set, the
+   manifest colours, the `pageTitle` plugin, the service worker's allowlist
+   for routes) and moves apps to the generated page title where that is
+   unambiguous, listed under "Updated". For any other app, `check` names what
+   is left: add `pageTitle` from `./vite.sempods.generated.ts` to the plugins
+   in its `vite.config.ts`, as the skeleton does, and remove the `<title>`
+   from its `index.html`. A page title other than the one in `apps.json` was
+   chosen by hand: ask the owner whether it should be the app's title, put it
+   into `apps.json` and run `pnpm run regenerate`.
+3. Existing apps keep their code, look and notes. When working on an app next,
+   offer what the owner wants of the new skeleton, from
+   `node_modules/@sempods/apps/skeleton/app/`, once the repository is on SDK
+   0.6.0:
+   - a theme: copy `src/themes/`, import the chosen one in `src/main.tsx`
+     before `index.css`, remove the token block from `index.css`, and run
+     `pnpm run icon <id>` for a monogram in its accent;
+   - the scoped CSS rules of `src/index.css`, where the app still has global
+     `header`, `button`, `input` or `select` rules: they stop shifting the
+     sign-in form and placing the `AppAccess` icon beside its title;
+   - the header with icon, name and menu, `src/ui/` and `AppAccess` with
+     `icon`, `description` and `onClose`, with their texts in `src/texts.ts`;
+   - routes, for an app that switches views by itself: copy `src/routes.ts`
+     and `src/routes.test.ts`, pass `replaceUrl` to `createBrowserRuntime` as
+     `src/App.tsx` does, list the routes in `apps.json` and run
+     `pnpm run regenerate`; an app that rewrote its address after a sign-in
+     can drop that code;
+   - the browser's language: set `language` to `"auto"` in `apps.json`, run
+     `pnpm run regenerate` and adopt `uiLocale` from `src/texts.ts` in
+     `src/App.tsx` (passed as `language` and `locale`, and
+     `document.documentElement.lang`), because `app.language` is then
+     `"auto"`; read the app's texts from a catalogue with both languages
+     through `useMessages`;
+   - Design and Data sections in `NOTES.md`, settling the context shape as the
+     app workflow describes.
 
 ## 0.7.1
 

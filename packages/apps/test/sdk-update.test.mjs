@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import {
   applyUpdate,
   planUpdate,
+  releaseDocs,
   installedStateComplete,
 } from '../scripts/sdk-update.mjs';
 import {
@@ -101,6 +102,21 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     ]);
     assert.match(plan.migration, /blob\/v0\.3\.0\/docs\/migration\.md$/);
     assert.match(plan.release, /releases\/tag\/v0\.3\.0$/);
+  });
+  it('points to the installed release notes when the SDK ships them', () => {
+    // Before 0.6.0 the SDK shipped none: the published ones.
+    assert.match(
+      releaseDocs(root, '0.3.0').release,
+      /releases\/tag\/v0\.3\.0$/,
+    );
+    const installed = join('node_modules', '@sempods', 'app-sdk', 'docs');
+    const docs = join(root, installed);
+    mkdirSync(join(docs, 'releases'), { recursive: true });
+    writeFileSync(join(docs, 'releases', '0.6.0.md'), '# SDK 0.6.0\n');
+    assert.deepEqual(releaseDocs(root, '0.6.0'), {
+      release: join(installed, 'releases', '0.6.0.md'),
+      migration: join(installed, 'migration.md'),
+    });
   });
   it('updates all SDK entries and preserves every non-SDK field and apps.json', () => {
     const originals = files.map(json);

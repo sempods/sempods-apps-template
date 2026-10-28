@@ -7,10 +7,10 @@ app, read `apps/<id>/NOTES.md` and its local instructions.
 
 ## Get the matching reference
 
-The installed SDK ships its app-author reference at its own version. After
-`pnpm install`, read `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`,
-then the guides it links in the same directory: `quickstart.md` and
-`react-authoring.md` for API questions, and the others as the task needs. Inspect the installed
+The installed SDK ships its app-author reference at its own version. After `pnpm
+install`, read `node_modules/@sempods/app-sdk/docs/ai-app-builder.md`, then the
+guides it links in the same directory: `quickstart.md` and `react-authoring.md`
+for API questions, and the others as the task needs. Inspect the installed
 public types when needed. The root and every app use one exact SDK version, and
 `pnpm run check` verifies it, so this reference applies to all apps. Assistants
 do not look into `node_modules` by themselves: open these files explicitly. Do
@@ -27,46 +27,20 @@ for adding to an app, `pnpm run <script> <args>` for `npm run <script> --
 ## Build one useful interaction
 
 Use the user's request and existing notes to choose the next interaction. Infer
-routine choices, including UI language, from that context. Ask only when a
-missing answer changes what the user can do or which data the app may read or
-change. For example, settle whether a data explorer only reads when the request
-leaves that open, and ask for a dedicated test target before accessing a Pod.
-Describe the screen and any data change briefly in the user's language, then
-build it. Do not require the user to choose SDK APIs or RDF terms. Start from
-the skeleton's layout, so apps look and behave alike unless the owner asks
-otherwise: `AppAccess` beside `TargetScreen`, the SDK's components, and a
-header with the app's icon and name, the app's icon actions and a menu (⋮)
-whose "Pods & sharing" opens `AppAccess` as a dialog (`open` with `onClose`);
-signing out is part of that dialog. Build further screens from the small kit
-in `src/ui/` (`Menu`, `Tabs` for views with routes, `Composer` for an input
-fixed at the bottom, `Dialog` for content such as an item's `ResourceEditor`,
-a bottom sheet on phones, `ContextSwitch` and the icons) instead of adding a
-UI library; an owner who wants one keeps the tokens and drops `src/ui/`.
-Actions read as text, the main ones as icons in the header. Add parts only
-when the app needs them: `ContextSwitch` in place of the name for an app that
-works in one of several contexts at a time, labelled in the person's words
-("List", "Share more lists …"); tabs for an app with several views; an item
-opening in a `Dialog`; a `Composer` in the frame, outside the views tabs
-switch, since switching does not ask about an unsent creation draft.
-
-Ordinary visual customization is welcome. The app's colours come from its
-theme, `src/themes/<name>.css`, imported in `src/main.tsx`; its
-`--sempods-*` tokens colour the app and the SDK components together. Restyle
-by switching the theme or adjusting its tokens with the same contrast, not with
-one-off colours, and keep the app's own rules off SDK components
-(`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
-radio in its `<label>`: the label is its 44px touch target. The SDK owns
-connection, editing and recovery behavior; use the reference rather than
-rebuilding those facilities. SDK 0.6.0 removed `AppShell` and
-`ConnectionControls`: an app that still uses them moves to the skeleton's
-layout with the SDK's migration guide (`migration.md`) when it updates.
+routine choices from that context. Ask only when a missing answer changes what
+the user can do, how the app looks or which data it may read or change: the
+design conversation and the app's context shape below, for example, or whether
+a data explorer only reads when the request leaves that open. Ask for a
+dedicated test target before accessing a Pod. Describe the screen and any data
+change briefly in the user's language, then build it. Do not require the user
+to choose SDK APIs or RDF terms.
 
 ### Start a new app with a short design conversation
 
 Before creating a new app, settle its purpose, mood, name and icon in a short
-conversation, the one exception to inferring routine choices. Ask at most
-three questions, as choices rather than open questions, and offer "choose for
-me" (the calm theme, a name and the monogram):
+conversation. Ask at most three questions, as choices rather than open
+questions, and offer "choose for me" (the calm theme, a name and the
+monogram):
 
 1. What is it for, and who uses it? One sentence; it becomes the app's
    description on the sign-in screen and decides the layout and the empty
@@ -78,10 +52,28 @@ me" (the calm theme, a name and the monogram):
    letter in the theme's accent.
 
 Skip a question the request already answers; a developer may state all three
-up front. Create the app with the answers (`--title`, `--description`,
-`--theme`) and record them under Design in its `NOTES.md`. Later wishes such
-as "make it greener" change the recorded choice (another theme, its tokens, a
-new title), not one-off styles.
+up front. Record the answers under Design in the app's `NOTES.md`. Later
+wishes such as "make it greener" change the recorded choice (another theme,
+its tokens, a new title), not one-off styles.
+
+Then create the app from the repository root with those answers:
+
+```sh
+pnpm run new-app konsum --title "Einkaufsliste" \
+  --description "Was im Haushalt fehlt, für alle." --theme warm
+pnpm run dev konsum
+```
+
+`new-app` also accepts `--language de` or `--language en` for one fixed UI
+language and `--no-pwa`. It never overwrites an app: check `apps.json` and the
+folder before invoking it; for an existing app, work in its folder and skip
+generation. The app's icon, in `public/`, is the monogram: `favicon.svg`
+(header and sign-in screen) and `icon-192.png`, `icon-512.png` (the installed
+app). After a rename or a theme change, `pnpm run icon <id>` draws it again;
+replace those files instead when the owner wants an icon of their own. The
+first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
+lines); that is expected, so point the owner to the app's own files when they
+review the change.
 
 ### Settle how the app uses contexts
 
@@ -108,38 +100,81 @@ Record the shape and the contexts it uses under Data in `NOTES.md`. An app
 that reads all contexts or writes into several needs more than one test
 context; ask the owner for each, with synthetic data.
 
-Choose the data vocabulary from the installed reference, existing data and the
+### Choose the data vocabulary
+
+Choose the vocabulary from the installed reference, existing data and the
 app's purpose before writing data. Ask about an unclear meaning in everyday
 terms (for example, whether a shopping item records a planned purchase or a
 purchased product), then select the technical mapping yourself. Prefer an
-existing, specific type and properties (for example `https://schema.org/BuyAction`
-for a shopping item rather than the generic `Action` of the task example), and
-keep different kinds of data on different types so apps sharing a context do
-not mix them.
-Write exact IRIs (`https://schema.org/`, not `http://`), choose a fixed text
-language or `language: null`, and the enum/flag values. If the test context
-already holds data the app should show, read how it is stored before deciding.
-Record the vocabulary in `NOTES.md`.
+existing, specific type and properties (for example
+`https://schema.org/BuyAction` for a shopping item rather than the generic
+`Action` of the task example), and keep different kinds of data on different
+types so apps sharing a context do not mix them. Write exact IRIs
+(`https://schema.org/`, not `http://`), choose a fixed text language or
+`language: null`, and the enum/flag values. If the test context already holds
+data the app should show, read how it is stored before deciding. Record the
+vocabulary in `NOTES.md`.
 
 An app that only reads, such as a data explorer, takes its vocabulary from how
-the data is already stored; there is nothing to choose for writing. Record under
-Decisions in `NOTES.md` that it only reads, and under Data which contexts it
-needs. A Pod
-cannot be asked for read access only, so keeping the app read-only is its own
-restriction: use no write hooks or write operations, as the installed
-`local-testing.md` describes.
+the data is already stored; there is nothing to choose for writing. Record
+under Decisions in `NOTES.md` that it only reads. A Pod cannot be asked for
+read access only, so keeping the app read-only is its own restriction: use no
+write hooks or write operations, as the installed `local-testing.md`
+describes.
+
+### Build the screen
+
+Start from the skeleton's layout, so apps look and behave alike unless the
+owner asks otherwise: `AppAccess` beside `TargetScreen`, the SDK's components,
+and a header with the app's icon and name, the app's icon actions and a menu
+(⋮) whose "Pods & sharing" opens `AppAccess` as a dialog (`open` with
+`onClose`); signing out is part of that dialog. The SDK owns connection,
+editing and recovery behavior; use the reference rather than rebuilding those
+facilities. The layout and the kit are the shared identity the SDK's
+`ai-app-builder.md` asks to keep; the visual direction, name and icon it asks
+to choose per app come from the design conversation.
+
+Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
+SDK's quickstart screen built with the kit, with loading and failed reads
+(`LoadNotice`), an empty state, rows with a checkbox in its label, the name
+opening a `ResourceEditor` in a `Dialog`, `RemoveButton`, open outcomes
+(`UpdateNotice`, `UnresolvedNotices`) and new items in a `Composer`. Copy it
+next to `App.tsx`, render it in place of `Start`, and rename the type, fields,
+collection and texts to the app's own. Keep `App.tsx`'s runtime from
+`sempods.generated.ts`, its provider and its frame: take behaviour from the
+SDK's quickstart and examples, never their runtime, provider, `TodoApp` or
+styles, which would add a second runtime, a wrong callback or clashing
+classes.
+
+Build further parts from the small kit in `src/ui/` (`Menu`, `Tabs`,
+`Composer`, `Dialog`, `ContextSwitch` and the icons) instead of adding a UI
+library; an owner who wants one keeps the tokens and drops `src/ui/`. Actions
+read as text, the main ones as icons in the header. Add parts only when the
+app needs them: `ContextSwitch` in place of the name for an app that works in
+one of several contexts at a time, labelled in the person's words ("List",
+"Share more lists …"); tabs for an app with several views; an item opening in
+a `Dialog` (a bottom sheet on phones); a `Composer` in the frame, outside the
+views tabs switch, since switching does not ask about an unsent creation
+draft.
 
 Keep the screen consistent with the SDK's UI:
 
+- The app's colours come from its theme, `src/themes/<name>.css`, imported in
+  `src/main.tsx`; its `--sempods-*` tokens colour the app and the SDK
+  components together. Restyle by switching the theme or adjusting its tokens
+  with the same contrast, not with one-off colours, and keep the app's own
+  rules off SDK components (`[data-sempods-ui]`), as the skeleton's rules do.
+- Wrap each checkbox or radio in its `<label>`: the label is its 44px touch
+  target.
 - Apps are international: by default (`"language": "auto"`) the UI follows
   the browser, German or English, otherwise English, and the skeleton passes
-  that language and locale to the SDK and to `<html lang>`. Keep every text
-  of the app in `src/texts.ts`, in English and German, and read it with the
-  SDK's `useMessages(texts)`; TypeScript reports a text missing in one
-  language. Reuse the SDK's own texts where they fit
-  (`useSdkLocale().messages.controls`). Write the texts in the owner's words for their language and
-  translate the other. A fixed `--language de` or `en` at creation is for an
-  owner who wants one language only. Paths and route names stay English.
+  that language and locale to the SDK and to `<html lang>`. Keep every text of
+  the app in `src/texts.ts`, in English and German, and read it with the SDK's
+  `useMessages(texts)`; TypeScript reports a text missing in one language.
+  Reuse the SDK's own texts where they fit
+  (`useSdkLocale().messages.controls`). Write the texts in the owner's words
+  for their language and translate the other. Paths and route names stay
+  English.
 - Format dates and numbers with the SDK locale, `useSdkLocale().format`
   (`dateTime`, `dateOnly`, `number`), so they follow the app's language and
   region instead of the browser default.
@@ -154,79 +189,8 @@ Keep the screen consistent with the SDK's UI:
   client calls), with a label that differs from the SDK's, for example
   "Liste neu laden".
 
-### Start a list from the example
-
-Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
-SDK's quickstart screen built with the kit, with loading and failed reads
-(`LoadNotice`), an empty state, rows with a checkbox in its label, the name
-opening a `ResourceEditor` in a `Dialog`, `RemoveButton`, open outcomes
-(`UpdateNotice`, `UnresolvedNotices`) and new items in a `Composer`. Copy it
-next to `App.tsx`, render it in place of `Start`, and rename the type, fields,
-collection and texts to the app's own. Keep `App.tsx`'s runtime from
-`sempods.generated.ts`, its provider and its frame: take behaviour from the
-SDK's quickstart and examples, never their runtime, provider, `TodoApp` or
-styles, which would add a second runtime, a wrong callback or clashing
-classes.
-
-For a new app, run the root command with the chosen values:
-
-```sh
-pnpm run new-app konsum --title "Einkaufsliste"
-pnpm run dev konsum
-```
-
-The interface also accepts `--description "<one sentence>"`, `--theme
-<calm|fresh|warm|playful>`, `--language de` or `--language en` for one fixed UI
-language and `--no-pwa` at creation. The app's icon is a monogram of the
-title's first letter in the theme's accent, in `public/` (`favicon.svg`, shown
-in the header and on the sign-in screen, and `icon-192.png`, `icon-512.png` for
-the installed app). After a rename or a theme change, `pnpm run icon <id>`
-draws it again; replace those files instead when the owner wants an icon of
-their own. Generation never
-overwrites an app: check `apps.json` and the folder before invoking it. The
-first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
-lines); that is expected, so point the owner to the app's own files when they
-review the change.
-For an existing app, work in its existing folder and skip generation. Keep
-Node and pnpm consistent with the root setup; do not switch package managers.
-Use `pnpm install --frozen-lockfile` when restoring the committed dependency
-tree. If a requested feature needs an additional dependency, add it to that
-app's own manifest (`pnpm add --dir apps/<id> <pkg>`), which also updates the
-root `pnpm-lock.yaml`; preserve exact SDK versions and do not install another
-SDK copy from a local checkout. Dependencies run no install scripts; if one
-needs it, ask the owner before approving it under `allowBuilds` in
-`pnpm-workspace.yaml`.
-
-`apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records `id`,
-`title`, `language`, `path`, `devPort` and `pwa`, and optionally `description`
-and `routes`. Read the app's assigned path/port. An optional `site` records
-where the apps are published; only
-`pnpm run configure-site` writes it, and it regenerates every app's
-configuration from it. Do not add other deployment fields.
-Keep the exact local origin throughout login and callback. A busy port is a
-reported setup issue, not permission to silently change the callback origin.
-Run the development server as its own process and stop only that process (its
-job, or Ctrl+C in its terminal). Never stop processes by port, for example with
-`lsof -ti tcp:<port>`: other programs, such as a browser pane showing the app,
-hold connections to it.
-
-Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
-`apps/<id>/vite.sempods.generated.ts`. Their owning generator controls identity,
-callback, base path, page title and PWA configuration. The title in
-`apps.json` is the app's only title: `index.html` has no `<title>` of its own,
-and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
-app, change the title there and run `pnpm run regenerate`; the page, the
-sign-in screen, the installed app and the overview follow, and so does the
-`description` the same way. The ID and path stay; `pnpm run icon <id>` draws
-the icon's new letter. `new-app` creates new apps only;
-rerunning it does not reconfigure an existing app. `configure-site` changes the
-published identities of all apps. If a requested configuration
-change needs a command not shipped yet, explain that limitation to the owner;
-they can request it from the sempods apps project. Do not delete/recreate the
-app or patch generated files as a workaround. The tooling package
-`@sempods/apps` under `node_modules` is not app customization space; after a
-tooling change to the generator, `pnpm run regenerate` rewrites the generated
-files.
+SDK 0.6.0 removed `AppShell` and `ConnectionControls`: an app that still uses
+them moves to the skeleton's layout with the SDK's `migration.md`.
 
 ### Give views their own addresses
 
@@ -245,6 +209,48 @@ edit asks first; back and forward do too. Render views as links with
 switches through `go` instead of loading the page, while a modified click
 still opens a new tab. Do not add host rewrites or routes with parameters; a
 single item opens in a dialog or in place.
+
+### Keep the configuration in apps.json
+
+`apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records
+`id`, `title`, `language`, `path`, `devPort` and `pwa`, and optionally
+`description` and `routes`. An optional `site` records where the apps are
+published; only `pnpm run configure-site` writes it, and it regenerates every
+app's configuration from it. Do not add other deployment fields.
+
+Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
+`apps/<id>/vite.sempods.generated.ts`. Their owning generator controls
+identity, callback, base path, page title and PWA configuration. The title in
+`apps.json` is the app's only title: `index.html` has no `<title>` of its own,
+and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
+app or change its description, change it there and run
+`pnpm run regenerate`; the page, the sign-in screen, the installed app and the
+overview follow. The ID and path stay; `pnpm run icon <id>` draws the icon's
+new letter. `new-app` creates new apps only; rerunning it does not reconfigure
+an existing app. `configure-site` changes the published identities of all
+apps. If a requested configuration change needs a command not shipped yet,
+explain that limitation to the owner; they can request it from the sempods
+apps project. Do not delete/recreate the app or patch generated files as a
+workaround. The tooling package `@sempods/apps` under `node_modules` is not
+app customization space; after a tooling change to the generator,
+`pnpm run regenerate` rewrites the generated files.
+
+Keep Node and pnpm consistent with the root setup; do not switch package
+managers. Use `pnpm install --frozen-lockfile` when restoring the committed
+dependency tree. If a requested feature needs an additional dependency, add
+it to that app's own manifest (`pnpm add --dir apps/<id> <pkg>`), which also
+updates the root `pnpm-lock.yaml`; preserve exact SDK versions and do not
+install another SDK copy from a local checkout. Dependencies run no install
+scripts; if one needs it, ask the owner before approving it under
+`allowBuilds` in `pnpm-workspace.yaml`.
+
+Read the app's assigned `path` and `devPort` and keep that exact local origin
+throughout login and callback. A busy port is a reported setup issue, not
+permission to silently change the callback origin. Run the development server
+as its own process and stop only that process (its job, or Ctrl+C in its
+terminal). Never stop processes by port, for example with
+`lsof -ti tcp:<port>`: other programs, such as a browser pane showing the app,
+hold connections to it.
 
 ## Try it and recover deliberately
 
@@ -286,17 +292,19 @@ establish installation or offline support.
 
 ## Leave a useful handoff
 
-Update the app's existing `NOTES.md`, preserving owner decisions and earlier
-useful evidence. Record the app purpose and vocabulary, whether it only reads
-and which contexts it needs, UI languages and content language,
-installed SDK version, test target (no private data), exact local
-URL/run command, changed behavior, checks/results, unresolved outcomes and the
-next useful step. Do not mark an unrun check as complete.
+Update the app's existing `NOTES.md` in its sections, preserving owner
+decisions and earlier useful evidence: Design (purpose, theme, icon), Data
+(context shape and contexts), Vocabulary, Decisions (for example that it only
+reads, its UI and content languages, the installed SDK version) and Tested
+(test target without private data, exact local URL/run command, checks and
+results, the visual check and the owner's verdict, unresolved outcomes, what
+is untested). End with the next useful step. Do not mark an unrun check as
+complete.
 
 Tell the user briefly what they can try, how to open it and what remains
-untested, with the screenshot they gave their verdict on. Keep implementation details in notes unless they help the user's next
-decision. Publish only when the owner asks, and never change real data beyond
-the user's authorized scope.
+untested, with the screenshot they gave their verdict on. Keep implementation
+details in notes unless they help the user's next decision. Publish only when
+the owner asks, and never change real data beyond the user's authorized scope.
 
 ## Update the SDK
 
@@ -324,17 +332,19 @@ and rerun the same command. It repeats installation and checks, even if
 manifests already name the release, and clears the checkpoint only after
 success.
 
-Read that version's release notes,
-`https://github.com/sempods/sempods-typescript/releases/tag/v<version>`, its
-migration guide,
-`https://github.com/sempods/sempods-typescript/blob/v<version>/docs/migration.md`
-(the local command prints both), and the newly installed reference. A patch
-update is merged when checks pass; automatic merging requires the owner's
-choice. Before 1.0 a minor update may break apps: follow the SDK migration
-guide, adapt the apps, run `pnpm run check --standalone all`, and list what the
-owner should try on the Pod before merging. Record changed behavior, checks
-and remaining Pod/device evidence in app notes and the PR. The owner controls
-merging.
+Read that version's release notes and migration guide as installed,
+`node_modules/@sempods/app-sdk/docs/releases/<version>.md` and
+`node_modules/@sempods/app-sdk/docs/migration.md` (the local command prints
+both; before 0.6.0 they are published only, under
+`https://github.com/sempods/sempods-typescript/releases/tag/v<version>`), and
+the newly installed reference. Skip a release notes section on adopting the
+release in the apps template: that is work on the template itself, which a
+tooling update brings. A patch update is merged when checks pass; automatic
+merging requires the owner's choice. Before 1.0 a minor update may break apps:
+follow the SDK migration guide, adapt the apps, run `pnpm run check --standalone
+all`, and list what the owner should try on the Pod before merging. Record
+changed behavior, checks and remaining Pod/device evidence in app notes and the
+PR. The owner controls merging.
 
 ## Publish
 
