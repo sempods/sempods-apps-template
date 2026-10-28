@@ -64,7 +64,8 @@ export function replaceUrl(url: string) {
  * The current route, `go` to switch it and `link(route)`, the props of an
  * `<a>` that switches to it. Switching, back and forward run
  * under the SDK's leave policy: an unsaved edit asks first, and staying keeps
- * the view, its address and the history. Call it once, in the app's frame, and pass the
+ * the view, its address and the history. An unsent creation draft is not
+ * asked about; keep such input (a Composer) outside the switched views. Call it once, in the app's frame, and pass the
  * route down.
  */
 export function useRoute() {

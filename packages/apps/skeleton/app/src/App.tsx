@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
 import {
+  AccessNotice,
   AppAccess,
   SempodsProvider,
   TargetScreen,
@@ -11,6 +12,8 @@ import { NewVersionNotice } from './NewVersionNotice.tsx';
 import { replaceUrl } from './routes.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
 import { textsFor, uiLocale } from './texts.ts';
+import { MenuIcon } from './ui/icons.tsx';
+import { Menu } from './ui/Menu.tsx';
 
 // One runtime for the app's lifetime, created outside rendering. Its return
 // after a sign-in goes through the router, which then shows that route.
@@ -39,13 +42,17 @@ export default function App({
   );
 }
 
-// The app owns its layout. AppAccess shows sign-in and recovery beside the
-// content and hides once a context is readable; the button reopens it.
+// The app owns its layout: a header with the app's icon and name, its icon
+// actions and a menu; AppAccess beside the content for sign-in and recovery,
+// and as a dialog for managing Pods and sharing from the menu. An app that
+// switches between contexts (lists) puts ui/ContextSwitch in place of the
+// name.
 function Frame() {
-  const [open, setOpen] = useState(false);
-  const focusTarget = useRef<HTMLButtonElement>(null);
+  const [managing, setManaging] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const { connections } = useAppState();
-  const { messages } = useSdkLocale();
+  const { language, messages } = useSdkLocale();
+  const t = textsFor(language);
   const header = connections.length > 0;
   return (
     <main>
@@ -55,23 +62,33 @@ function Frame() {
             {icon}
             {app.title}
           </h1>
-          <button
-            ref={focusTarget}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            {messages.controls.dataAccess}
-          </button>
+          <div className="header-actions">
+            {/* The app's own icon actions go here. */}
+            <Menu
+              label={t.menu}
+              trigger={<MenuIcon />}
+              button={menuButton}
+              items={[
+                {
+                  label: messages.controls.dataAccess,
+                  onSelect: () => setManaging(true),
+                },
+              ]}
+            />
+          </div>
         </header>
       )}
-      {/* Below the header's h1, AppAccess uses h2. */}
+      {/* Below the header's h1, AppAccess uses h2. It explains sign-in and
+          lost access; AccessNotice adds only that a context is read-only. */}
       <AppAccess
         appName={app.title}
         icon={icon}
         headingLevel={header ? 2 : 1}
-        open={open}
-        focusTarget={focusTarget}
+        open={managing}
+        onClose={() => setManaging(false)}
+        focusTarget={menuButton}
       />
+      <AccessNotice only="write" />
       <TargetScreen>
         <Start />
       </TargetScreen>

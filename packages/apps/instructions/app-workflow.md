@@ -33,9 +33,21 @@ change. For example, settle whether a data explorer only reads when the request
 leaves that open, and ask for a dedicated test target before accessing a Pod.
 Describe the screen and any data change briefly in the user's language, then
 build it. Do not require the user to choose SDK APIs or RDF terms. Start from
-the skeleton's layout:
-`AppAccess` beside `TargetScreen`, with a header that reopens data access, and
-the SDK's components. Ordinary visual customization is welcome: change the
+the skeleton's layout, so apps look and behave alike unless the owner asks
+otherwise: `AppAccess` beside `TargetScreen`, the SDK's components, and a
+header with the app's icon and name, the app's icon actions and a menu (⋮)
+whose "Pods & sharing" opens `AppAccess` as a dialog (`open` with `onClose`);
+signing out is part of that dialog. Build further screens from the small kit
+in `src/ui/` (`Menu`, `Tabs` for views with routes, `Composer` for an input
+fixed at the bottom, `Dialog` for content such as an item's `ResourceEditor`,
+a bottom sheet on phones, `ContextSwitch` and the icons) instead of adding a
+UI library; an owner who wants one keeps the tokens and drops `src/ui/`.
+Actions read as text, the main ones as icons in the header. Add parts only
+when the app needs them: `ContextSwitch` in place of the name for an app that
+works in one of several contexts at a time, labelled in the person's words
+("List", "Share more lists …"); tabs for an app with several views; an item
+opening in a `Dialog`; a `Composer` in the frame, outside the views tabs
+switch, since switching does not ask about an unsent creation draft. Ordinary visual customization is welcome: change the
 `--sempods-*` tokens in `src/index.css` to restyle the app and the SDK
 components together, and keep the app's own rules off SDK components
 (`[data-sempods-ui]`), as the skeleton's rules do. Wrap each checkbox or
