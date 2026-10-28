@@ -80,15 +80,15 @@ configuration choices and the SDK migration.
 - The skeleton has a small UI kit in `src/ui/`, styled by `ui.css` on the
   `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
   Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
-  switch between the contexts shared with the app, with their access and
-  "Share more …"), `Tabs` (views as links with their routes), `Composer` (an
+  switch between the contexts shared with the app over the SDK's
+  `useContexts`, with their access and "Share more …"), `Tabs` (views as links with their routes), `Composer` (an
   input bar fixed at the bottom, above the home indicator and, where browsers
   support it, the on-screen keyboard), `Dialog` (modal, a bottom sheet on
-  phones) and line icons.
+  phones, for example around a `ResourceEditor`) and line icons.
 - The skeleton's header shows the app's icon and name, or the context switch
   once a context is chosen, room for the app's icon actions and a menu (⋮)
-  with "Pods & sharing", which opens `AppAccess` management in the page, and
-  "Sign out", on this device only. It replaces the "Data access" button.
+  with "Pods & sharing", which opens `AppAccess` management as its dialog
+  (`onClose`), and "Sign out", on this device only. It replaces the "Data access" button.
   `AccessNotice` says when a context is shared read-only, and the viewport
   adds `viewport-fit=cover` and `interactive-widget=resizes-content`.
 - The app workflow describes the kit and the reference layout of a list app.
@@ -142,8 +142,7 @@ configuration choices and the SDK migration.
 8. Existing apps keep their layout. To give one the standard look, offer
    the skeleton's header and `src/ui/` (from
    `node_modules/@sempods/apps/skeleton/app/src/`) with their texts in
-   `src/texts.ts`; keep `AppAccess` management and `ResourceEditor` out of
-   `Dialog` until the SDK shows its leave confirmation above dialogs.
+   `src/texts.ts`, once the repository is on SDK 0.6.0.
 
 ## 0.7.1
 

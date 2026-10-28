@@ -2,14 +2,11 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { CloseIcon } from './icons.tsx';
 
 /**
- * A modal dialog, a bottom sheet on phones. Escape and the × button ask the
- * owner to close it; it only goes away when the owner unmounts it, so a
- * declined close (unsaved changes) keeps it open.
- *
- * Not yet for SDK screens that may ask before leaving (AppAccess management,
- * ResourceEditor): with SDK 0.5.0 their leave confirmation renders behind a
- * modal dialog. Use it for the app's own content until the SDK shows that
- * confirmation above dialogs.
+ * A modal dialog, a bottom sheet on phones, for example around an item's
+ * `ResourceEditor`. Escape and the × button ask the owner to close it; it
+ * only goes away when the owner unmounts it, so a declined close (unsaved
+ * changes) keeps it open. The SDK's leave confirmation shows above it.
+ * "Pods & sharing" needs none: `AppAccess` with `onClose` brings its own.
  */
 export function Dialog({
   label,

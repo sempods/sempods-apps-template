@@ -1,26 +1,15 @@
 import type { ReactNode } from 'react';
-import { useApp, useWorkflowAccess } from '@sempods/app-sdk/react';
+import { useContexts, useSdkLocale } from '@sempods/app-sdk/react';
 import { ChevronIcon } from './icons.tsx';
 import { Menu } from './Menu.tsx';
-
-/** A context's name: its label, else the last segment of its address. */
-export function contextName(
-  iri: string,
-  labels: Readonly<Record<string, string>> | undefined,
-): string {
-  const label = labels?.[iri]?.trim();
-  if (label) return label;
-  const segments = new URL(iri).pathname.split('/').filter(Boolean);
-  return decodeURIComponent(segments.at(-1) ?? iri);
-}
 
 /**
  * The everyday switch between the contexts (for example lists) the person
  * shared with the app: the app icon and the current context's name, opening
  * a menu with the readable contexts, their access and a way to share more.
- * Shows `fallback` until a context is chosen and the shared contexts are
- * known. AppAccess keeps its own chooser for the first choice and for
- * management.
+ * The SDK's `useContexts` loads the contexts, selects a sensible one and
+ * switches under the leave policy; this component only shows them. Shows
+ * `fallback` until a context is selected.
  */
 export function ContextSwitch({
   icon,
@@ -38,41 +27,56 @@ export function ContextSwitch({
     readonly shareMore: string;
   };
 }) {
-  const { connection } = useWorkflowAccess();
-  const { selectContext, authorize } = useApp();
-  const catalogue = connection?.catalogue;
-  const selected = connection?.selectedContext;
-  if (!connection || !selected || catalogue?.kind !== 'ready') return fallback;
-  const labels = catalogue.labels;
-  const current = contextName(selected, labels);
+  const {
+    contexts,
+    selected,
+    select,
+    failed,
+    retry,
+    canShare,
+    share,
+    shareProblem,
+  } = useContexts();
+  const { messages } = useSdkLocale();
+  if (!selected) return fallback;
+  // A failed reload keeps the known contexts and offers to try again; a
+  // failed request to share shows its reason under the action.
+  const actions = [
+    ...(failed
+      ? [{ label: messages.controls.retry, onSelect: () => void retry() }]
+      : []),
+    ...(canShare
+      ? [
+          {
+            label: texts.shareMore,
+            hint: shareProblem ?? undefined,
+            onSelect: () => void share(),
+          },
+        ]
+      : []),
+  ];
   return (
     <Menu
       className="context-switch"
       align="start"
-      label={`${label}: ${current}`}
+      label={`${label}: ${selected.name}`}
       trigger={
         <>
           {icon}
-          <span className="context-name">{current}</span>
+          <span className="context-name">{selected.name}</span>
           <ChevronIcon />
         </>
       }
       items={[
-        ...catalogue.contexts
-          .filter((context) => context.readable)
-          .map((context) => ({
-            label: contextName(context.iri, labels),
-            hint: context.writable ? texts.canChange : texts.readOnly,
-            checked: context.iri === selected,
-            onSelect: () => {
-              if (context.iri !== selected) void selectContext(context.iri);
-            },
-          })),
-        null,
-        {
-          label: texts.shareMore,
-          onSelect: () => void authorize(connection.id),
-        },
+        ...contexts.map((context) => ({
+          label: context.name,
+          hint: context.writable ? texts.canChange : texts.readOnly,
+          checked: context.iri === selected.iri,
+          onSelect: () => {
+            if (context.iri !== selected.iri) void select(context.iri);
+          },
+        })),
+        ...(actions.length > 0 ? [null, ...actions] : []),
       ]}
     />
   );

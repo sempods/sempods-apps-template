@@ -31,12 +31,6 @@ main > header {
   width: 28px;
   height: 28px;
 }
-/* Ends managing Pods and sharing, above the panel. */
-.managing-close {
-  display: block;
-  margin-inline-start: auto;
-}
-
 /* Keeps a heading for screen readers without showing it. */
 .visually-hidden {
   position: absolute;

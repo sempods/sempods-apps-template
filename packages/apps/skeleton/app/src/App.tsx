@@ -46,8 +46,8 @@ export default function App({
 }
 
 // The app owns its layout: a header with the app or the context switch, the
-// app's icon actions and a menu; AppAccess beside the content for sign-in,
-// recovery and, from the menu, managing Pods and sharing.
+// app's icon actions and a menu; AppAccess beside the content for sign-in and
+// recovery, and as a dialog for managing Pods and sharing from the menu.
 function Frame() {
   const [managing, setManaging] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -56,10 +56,6 @@ function Frame() {
   const { disconnect } = useApp();
   const t = textsFor(useSdkLocale().language);
   const header = connections.length > 0;
-  const close = () => {
-    setManaging(false);
-    menuButton.current?.focus();
-  };
   return (
     <main>
       {header && (
@@ -98,19 +94,13 @@ function Frame() {
           </div>
         </header>
       )}
-      {/* Managing Pods and sharing stays in the page: with SDK 0.5.0 a modal
-          dialog would hide its leave confirmation. */}
-      {managing && (
-        <button className="managing-close" onClick={close}>
-          {t.close}
-        </button>
-      )}
       {/* Below the header's h1, AppAccess uses h2. */}
       <AppAccess
         appName={app.title}
         icon={icon}
         headingLevel={header ? 2 : 1}
         open={managing}
+        onClose={() => setManaging(false)}
         focusTarget={menuButton}
       />
       <TargetScreen>
