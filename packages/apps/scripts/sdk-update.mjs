@@ -55,6 +55,20 @@ export function releaseLinks(version) {
   };
 }
 
+// Since 0.6.0 the SDK ships its release notes and migration guide; read the
+// installed ones, which match the installed code.
+const INSTALLED_DOCS = join('node_modules', '@sempods', 'app-sdk', 'docs');
+
+/**
+ * Where to read about `version` after it is installed: the installed notes
+ * and guide when the SDK ships them, otherwise the published ones.
+ */
+export function releaseDocs(root, version) {
+  const notes = join(INSTALLED_DOCS, 'releases', `${version}.md`);
+  if (!existsSync(join(root, notes))) return releaseLinks(version);
+  return { release: notes, migration: join(INSTALLED_DOCS, 'migration.md') };
+}
+
 /** Plan everything before writing. Registry injection keeps tests offline. */
 export function planUpdate(
   root,
@@ -202,8 +216,9 @@ function main() {
       ? `Updated SDK to ${plan.version}.`
       : `Already at SDK ${plan.version}; nothing changed.`,
   );
+  const docs = releaseDocs(root, plan.version);
   console.log(
-    `SDK release: ${plan.release}\nMigration guide: ${plan.migration}`,
+    `SDK release notes: ${docs.release}\nMigration guide: ${docs.migration}`,
   );
 }
 

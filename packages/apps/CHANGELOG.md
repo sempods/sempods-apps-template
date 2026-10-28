@@ -111,6 +111,12 @@ configuration choices and the SDK migration.
   mood as a theme, name and icon), asked as choices with "choose for me", and
   records it under Design in the app's `NOTES.md`; later wishes change the
   recorded choice instead of adding one-off styles.
+- After an SDK update, `sdk-update` and the app workflow point to the
+  installed release notes and migration guide
+  (`node_modules/@sempods/app-sdk/docs/releases/<version>.md`, `migration.md`)
+  instead of GitHub, and the workflow skips a section on adopting the release
+  in the apps template. The workflow says which parts of the look are shared
+  (layout, kit) and which are chosen per app (theme, name, icon).
 - A visual check before handover (`instructions/visual-check.md`): the
   assistant takes screenshots at 375px and desktop width, light and dark, with
   real states (empty, a few items, an open item, a notice), checks them

@@ -49,6 +49,11 @@ works in one of several contexts at a time, labelled in the person's words
 opening in a `Dialog`; a `Composer` in the frame, outside the views tabs
 switch, since switching does not ask about an unsent creation draft.
 
+The layout and the kit are the existing identity the SDK's
+`ai-app-builder.md` asks to keep; the visual direction, name and icon it asks
+to choose per app come from the design conversation as the theme, title,
+description and icon.
+
 Ordinary visual customization is welcome. The app's colours come from its
 theme, `src/themes/<name>.css`, imported in `src/main.tsx`; its
 `--sempods-*` tokens colour the app and the SDK components together. Restyle
@@ -324,11 +329,14 @@ and rerun the same command. It repeats installation and checks, even if
 manifests already name the release, and clears the checkpoint only after
 success.
 
-Read that version's release notes,
-`https://github.com/sempods/sempods-typescript/releases/tag/v<version>`, its
-migration guide,
-`https://github.com/sempods/sempods-typescript/blob/v<version>/docs/migration.md`
-(the local command prints both), and the newly installed reference. A patch
+Read that version's release notes and migration guide as installed,
+`node_modules/@sempods/app-sdk/docs/releases/<version>.md` and
+`node_modules/@sempods/app-sdk/docs/migration.md` (the local command prints
+both; before 0.6.0 they are published only, under
+`https://github.com/sempods/sempods-typescript/releases/tag/v<version>`), and
+the newly installed reference. Skip a release notes section on adopting the
+release in the apps template: that is work on the template itself, which a
+tooling update brings. A patch
 update is merged when checks pass; automatic merging requires the owner's
 choice. Before 1.0 a minor update may break apps: follow the SDK migration
 guide, adapt the apps, run `pnpm run check --standalone all`, and list what the
