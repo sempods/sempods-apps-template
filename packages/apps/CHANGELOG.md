@@ -81,16 +81,18 @@ configuration choices and the SDK migration.
   `--sempods-*` tokens: `Menu` (a button with a list of actions or choices;
   Escape, a press outside and the arrow keys), `ContextSwitch` (the everyday
   switch between the contexts shared with the app over the SDK's
-  `useContexts`, with their access and "Share more …"), `Tabs` (views as links with their routes), `Composer` (an
-  input bar fixed at the bottom, above the home indicator and, where browsers
-  support it, the on-screen keyboard), `Dialog` (modal, a bottom sheet on
-  phones, for example around a `ResourceEditor`) and line icons.
+  `useContexts`, with their access and "Share more …"), `Tabs` (views as
+  links with their routes), `Composer` (an input bar fixed at the bottom,
+  above the home indicator and, where browsers support it, the on-screen
+  keyboard), `Dialog` (modal, a bottom sheet on phones, for example around a
+  `ResourceEditor`) and line icons.
 - The skeleton's header shows the app's icon and name, or the context switch
   once a context is chosen, room for the app's icon actions and a menu (⋮)
   with "Pods & sharing", which opens `AppAccess` management as its dialog
-  (`onClose`), and "Sign out", on this device only. It replaces the "Data access" button.
-  `AccessNotice` says when a context is shared read-only, and the viewport
-  adds `viewport-fit=cover` and `interactive-widget=resizes-content`.
+  (`onClose`), and "Sign out", on this device only. It replaces the "Data
+  access" button. `AccessNotice` says when a context is shared read-only,
+  and the viewport adds `viewport-fit=cover` and
+  `interactive-widget=resizes-content`.
 - The app workflow describes the kit and the reference layout of a list app.
 
 ### Upgrade notes
@@ -139,7 +141,7 @@ configuration choices and the SDK migration.
    rules, offer the owner the new skeleton rules: they stop shifting the
    sign-in form and placing the `AppAccess` icon beside its title. Keep the
    app's own colours unless the owner wants the neutral palette.
-8. Existing apps keep their layout. To give one the standard look, offer
+9. Existing apps keep their layout. To give one the standard look, offer
    the skeleton's header and `src/ui/` (from
    `node_modules/@sempods/apps/skeleton/app/src/`) with their texts in
    `src/texts.ts`, once the repository is on SDK 0.6.0.
