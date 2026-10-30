@@ -208,6 +208,15 @@ const checks = {
     const saved = await page.locator('.zen-title').first().textContent();
     return { pass: !s.dialogOpen && !!saved?.endsWith(EDIT), savedTitle: saved, ...s };
   },
+  // Closed right after opening, during the entry animation: it goes.
+  'close-right-after-open': async (c, page) => {
+    await page.locator('.zen-title').click();
+    await c.title.waitFor();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.waitForTimeout(1500);
+    const s = await c.state();
+    return { pass: !s.dialogOpen && (await c.dialog.count()) === 0, ...s };
+  },
   // Phone <-> desktop while editing: no remount, the draft stays.
   'resize-keeps-draft': async (c, page) => {
     await c.open();

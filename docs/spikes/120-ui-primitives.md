@@ -42,9 +42,10 @@ Chromium and WebKit:
    `defaultPrevented`; on SDK 0.6.0 it leaked Escape from every SDK
    confirmation, React Aria from one. On SDK main both pass.
 
-The kit corrections the spike needed (two for React Aria's dialog and
-calendar locale plus the calendar size, three for Base UI) are a snapshot of
-this exercise, not a maintenance metric. **Base UI remains a viable
+The kit corrections the spike needed (for React Aria the dialog's outside
+presses, the calendar locale and size, and no entry animation, because
+WebKit kept a modal closed during it mounted; three for Base UI) are a
+snapshot of this exercise, not a maintenance metric. **Base UI remains a viable
 alternative.** The price of React Aria: about 13 KB gzip more JavaScript,
 and shadcn's aria track is newer than its base track (shadcn's default
 preset is base-nova), so assistants have seen fewer examples of it.
@@ -95,7 +96,7 @@ A routed task dialog from each candidate holds an SDK `ResourceEditor`; SDK
 confirmations (native `<dialog>` with `showModal()`) open above it. The
 route lives in the address and, as in the template's `routes.ts`, every
 switch, Back and Forward runs through the SDK's `navigate`, which asks before
-an unsaved edit is left. Fourteen checks per candidate and SDK baseline, by
+an unsaved edit is left. Fifteen checks per candidate and SDK baseline, by
 keyboard and pointer, each from a fresh page
 ([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
 `evidence/gate-*.json`). Chromium:
@@ -116,6 +117,7 @@ keyboard and pointer, each from a fresh page
 | Back closes the routed dialog, Forward reopens it | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Back with a dirty draft asks; "Keep editing" keeps dialog, draft and address | ✓ | ✓ | ✓ | ✓ | ✗ ⁴ |
 | Back with a dirty draft, then discard: the dialog closes | ✓ | ✓ | ✓ | ✓ | ✗ ⁴ |
+| Closed right after opening, during its entry animation: it goes | ✓ | ✓ | ✓ ⁸ | ✓ ⁸ | ✓ |
 
 1. SDK 0.6.0 discards the draft on Escape (the #186 bug), in every candidate.
 2. The key reaches the library dialog, which asks to close again: the question
@@ -131,9 +133,15 @@ keyboard and pointer, each from a fresh page
    ([probe-min.mjs](../../spikes/120-ui/scripts/probe-min.mjs)). Not a
    concern for people, but for automated tests.
 7. Focus lands on `body`.
+8. In WebKit, React Aria's modal stayed mounted for good (`data-entering`
+   and `data-exiting` at once, no animation running) when it closed within
+   about 150 ms of opening, a quick Back or Close; Base UI did not
+   ([probe-fast-close.mjs](../../spikes/120-ui/scripts/probe-fast-close.mjs)).
+   Found by the routing spike. The package's dialog no longer animates its
+   entry; with that, the check passes in Chromium and WebKit.
 
 **WebKit 27.2** (Playwright, SDK main): Base UI and React Aria pass all
-fourteen checks (`evidence/gate-*-main-webkit.json`). An earlier version of
+fifteen checks (`evidence/gate-*-main-webkit.json`). An earlier version of
 the focus check opened the dialog with a mouse click; WebKit does not focus a
 link on click, so there was nothing to return focus to, in both candidates.
 The check now opens the dialog by keyboard. WebKit automation is not evidence
@@ -481,7 +489,7 @@ evidence.
 
 ### Verified (fixture and browser evidence)
 
-- The interop gate: Base UI and React Aria pass all fourteen checks on SDK
+- The interop gate: Base UI and React Aria pass all fifteen checks on SDK
   main in Chromium and WebKit 27.2; Radix fails
   (`evidence/gate-*.json`).
 - Keyboard menu with submenu, calendar selection in three time zones and
@@ -516,9 +524,10 @@ evidence.
   integration, its home and release process, and the owner upgrade path
   through Dependabot. The tarball experiment shows the mechanism only.
 - Routing in the app baseline (#114): every app needs guarded routes, or
-  Back loses unsaved work, as the notes app showed. The route contract
-  across generator, host, PWA and `returnTo` stays #114's work; whether a
-  router library should sit under it is a separate, small decision.
+  Back loses unsaved work, as the notes app showed. The
+  [routing spike](114-routing.md) recommends declared resource patterns
+  with generated rewrites, allowlist and `returnTo`, and the template's own
+  router.
 - Starter and instructions: a `ListScreen` reference and `routes.ts` on the
   package, the theme contract in the owner instructions, and the rendered
   contrast check in the theme workflow.
@@ -533,7 +542,7 @@ evidence.
 | #119 Filled action styles, bounded responsive action group | Styles absorbed by the variant contract (`data-actions`, `data-secondary`); the responsive action group stays a reference layout. |
 | #115 Mobile dialogs inside the viewport with a scrollbar | Likely absorbed (the full-screen sheet held at 375 px); the scrollbar case was not tested. |
 | #111 Chips, collection and log reference screens | Partly: chips can come from the package (React Aria `TagGroup`); the reference screens, copy and layouts remain. The notes app shows the list-and-editor case works from a short brief on the package. |
-| #114 Routes with guarded history | Prerequisite: the notes app lost an unsaved note on Back without routes. The library dialog follows the route either way. |
+| #114 Routes with guarded history | Prerequisite: the notes app lost an unsaved note on Back without routes. The library dialog follows the route either way; see the [routing spike](114-routing.md). |
 | sempods/sempods-typescript#107 Reference app for look and feel | Unaffected; it should use the package once it exists. |
 
 SDK follow-ups (bounded, styling only, for `@sempods/app-sdk`):

@@ -1,0 +1,126 @@
+/* The theme and variant contract of the spike, in three parts.
+
+   1. Palette roles (per theme): semantic colours with foreground pairs, in
+      light-dark() so they follow the system's light or dark mode. Names
+      follow shadcn/ui, so components and assistants use them as documented
+      there. A theme changes only these values.
+   2. Component variants (per app): how controls use the roles. Switch them
+      on <html> with data-actions and data-secondary; they never change
+      palette values, so contrast checked for a theme stays checked.
+   3. The bridge to the SDK's --sempods-* tokens.
+
+   A theme in this file is selected with data-theme on <html>; the template
+   would ship one file per theme instead. */
+
+/* 1. Palette roles. Theme "calm" (the default). */
+:root {
+  color-scheme: light dark;
+  --background: light-dark(#ffffff, #111315);
+  --foreground: light-dark(#1f2933, #e5e7eb);
+  --card: light-dark(#ffffff, #181b1f);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(#ffffff, #1b1e23);
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(#1f2933, #e5e7eb);
+  --primary-foreground: light-dark(#ffffff, #111315);
+  --secondary: light-dark(#eef0f3, #23272e);
+  --secondary-foreground: var(--foreground);
+  /* shadcn: muted is a quiet surface and muted-foreground its text; the
+     SDK's --sempods-muted is that text colour. */
+  --muted: light-dark(#f3f4f6, #1d2026);
+  --muted-foreground: light-dark(#5f6672, #a1a7b0);
+  /* shadcn: accent is the highlight surface of focused menu items. */
+  --accent: light-dark(#eef0f3, #262a31);
+  --accent-foreground: var(--foreground);
+  --destructive: light-dark(#b42318, #f97066);
+  --destructive-foreground: light-dark(#ffffff, #111315);
+  /* Decorative separators; control boundaries use --input (3:1). */
+  --border: light-dark(#e5e7eb, #2d3138);
+  --input: light-dark(#7a818c, #6b7280);
+  --ring: light-dark(#1f2933, #e5e7eb);
+  --radius: 0.625rem;
+}
+
+/* Theme "fresh": teal accent on cool neutrals. */
+:root[data-theme='fresh'] {
+  --background: light-dark(#ffffff, #0e171d);
+  --foreground: light-dark(#11293a, #e1edf3);
+  --card: light-dark(#ffffff, #13202a);
+  --popover: light-dark(#ffffff, #152530);
+  --primary: light-dark(#0a6680, #5ec6e4);
+  --primary-foreground: light-dark(#ffffff, #06212b);
+  --secondary: light-dark(#e6f1f5, #1a2c37);
+  --muted: light-dark(#f1f6f8, #16242d);
+  --muted-foreground: light-dark(#58697a, #94a8b6);
+  --accent: light-dark(#e6f1f5, #1d313d);
+  --border: light-dark(#dce8ef, #22343f);
+  --input: light-dark(#6f8391, #688494);
+  --ring: light-dark(#0a6680, #5ec6e4);
+}
+
+/* 2. Component variants. Actions: "solid" (default) fills the primary
+   action; "inverted" turns it into the page colour with a strong primary
+   outline and text, so it still stands out more than secondary actions.
+   Secondary actions: "tonal" (default), "outline" or "text". */
+:root {
+  --action: var(--primary);
+  --action-foreground: var(--primary-foreground);
+  --action-border: var(--primary);
+  --action-secondary: var(--secondary);
+  --action-secondary-foreground: var(--secondary-foreground);
+  --action-secondary-border: transparent;
+}
+:root[data-actions='inverted'] {
+  --action: var(--background);
+  --action-foreground: var(--primary);
+  --action-border: var(--primary);
+}
+:root[data-secondary='outline'] {
+  --action-secondary: transparent;
+  --action-secondary-foreground: var(--foreground);
+  --action-secondary-border: var(--input);
+}
+:root[data-secondary='text'] {
+  --action-secondary: transparent;
+  --action-secondary-foreground: var(--primary);
+  --action-secondary-border: transparent;
+}
+
+/* Focus: a solid outline in the ring colour. shadcn's own ring is the ring
+   colour at 50% opacity, which stays below 3:1 for mid-tone accents. */
+:where(button, a, input, textarea, select, [tabindex], [role='gridcell'] *):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+[data-slot]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@theme inline {
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-border: var(--action-border);
+  --color-action-secondary: var(--action-secondary);
+  --color-action-secondary-foreground: var(--action-secondary-foreground);
+  --color-action-secondary-border: var(--action-secondary-border);
+}
+
+/* 3. Bridge to the SDK. --sempods-accent fills the SDK's primary button and
+   also colours its secondary button text, checkbox accents and focus
+   outlines, so it follows the palette's primary, not the action variant:
+   SDK buttons cannot express "inverted" or "outline" yet. */
+:root {
+  --sempods-bg: var(--background);
+  --sempods-text: var(--foreground);
+  --sempods-muted: var(--muted-foreground);
+  /* The SDK draws field borders and separators with one token. Field
+     borders must reach 3:1 (WCAG 1.4.11), so it takes the input role and
+     SDK separators come out stronger than the app's own. */
+  --sempods-line: var(--input);
+  --sempods-accent: var(--primary);
+  --sempods-on-accent: var(--primary-foreground);
+  /* SDK main only (#186); 0.6.0 ignores them. */
+  --sempods-font: var(--font-sans);
+  --sempods-radius: var(--radius);
+}

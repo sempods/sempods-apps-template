@@ -1,0 +1,135 @@
+{
+  "app": {
+    "path": "/focus/",
+    "routes": [
+      "list"
+    ],
+    "resources": [
+      "tasks/:id",
+      "tasks/:id/postpone"
+    ]
+  },
+  "today": "^\\/focus\\/((list)\\/?)?$",
+  "proposed": "^\\/focus\\/(?:(?:list|tasks\\/[A-Za-z0-9_-]+|tasks\\/[A-Za-z0-9_-]+\\/postpone)\\/?)?(?:\\?[^#]*)?$",
+  "redirects": [
+    "/focus/tasks/:id /focus/index.html 200",
+    "/focus/tasks/:id/postpone /focus/index.html 200"
+  ],
+  "table": [
+    {
+      "address": "/focus/",
+      "expected": true,
+      "today": true,
+      "proposed": true
+    },
+    {
+      "address": "/focus/list",
+      "expected": true,
+      "today": true,
+      "proposed": true
+    },
+    {
+      "address": "/focus/list/",
+      "expected": true,
+      "today": true,
+      "proposed": true
+    },
+    {
+      "address": "/focus/list?from=menu",
+      "expected": true,
+      "today": false,
+      "proposed": true
+    },
+    {
+      "address": "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
+      "expected": true,
+      "today": false,
+      "proposed": true
+    },
+    {
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
+      "expected": true,
+      "today": false,
+      "proposed": true
+    },
+    {
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone",
+      "expected": true,
+      "today": false,
+      "proposed": true
+    },
+    {
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod%2Fwork",
+      "expected": true,
+      "today": false,
+      "proposed": true
+    },
+    {
+      "address": "/focus/callback?code=abc&state=def",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/assets/index-abc123.js",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/did.json",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/favicon.svg",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/tasks/abc/delete",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/tasks/a/b/c",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/tasks/abc.json",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus/unknown",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/konsum/",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    },
+    {
+      "address": "/focus-other/",
+      "expected": false,
+      "today": false,
+      "proposed": false
+    }
+  ],
+  "todayMisses": [
+    "/focus/list?from=menu",
+    "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone",
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod%2Fwork"
+  ]
+}

@@ -86,6 +86,14 @@
       "note": "error: locator.click: Timeout 30000ms exceeded."
     },
     {
+      "id": "close-right-after-open",
+      "pass": true,
+      "dialogOpen": false,
+      "confirmOpen": false,
+      "draftKept": false,
+      "focus": "a\"Call the plumber about t\"@page"
+    },
+    {
       "id": "resize-keeps-draft",
       "pass": true,
       "phoneWidth": 375,

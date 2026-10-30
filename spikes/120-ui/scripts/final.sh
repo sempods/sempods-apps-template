@@ -23,4 +23,9 @@ fi
 node scripts/notes-check.mjs > evidence/notes.log 2>&1
 node scripts/sheets.mjs evidence/notes/shots evidence/sheets/notes.jpg "notes app from a short owner brief · React Aria package · SDK main" list,note,new-note,empty,read-only,loading,error
 node scripts/sizes.mjs > evidence/sizes.log 2>&1
+# Routing spike (#114).
+node scripts/route-contract.mjs > evidence/route-contract.log 2>&1
+node scripts/routing-gate.mjs > evidence/routing.log 2>&1
+node scripts/routing-gate.mjs --browser=webkit > evidence/routing-webkit.log 2>&1
+node scripts/routing-sizes.mjs > evidence/routing-sizes.log 2>&1
 echo done

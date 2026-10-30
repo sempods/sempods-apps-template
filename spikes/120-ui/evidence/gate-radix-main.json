@@ -84,6 +84,14 @@
       "focus": "body"
     },
     {
+      "id": "close-right-after-open",
+      "pass": true,
+      "dialogOpen": false,
+      "confirmOpen": false,
+      "draftKept": false,
+      "focus": "body"
+    },
+    {
       "id": "resize-keeps-draft",
       "pass": true,
       "phoneWidth": 375,

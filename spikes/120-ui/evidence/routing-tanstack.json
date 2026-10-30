@@ -1,0 +1,98 @@
+{
+  "router": "tanstack",
+  "browser": "chromium 156.0.8078.4",
+  "results": [
+    {
+      "id": "direct-entry-signed-out",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x",
+      "pageErrors": []
+    },
+    {
+      "id": "direct-entry-signed-in",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x"
+    },
+    {
+      "id": "link-plain-click-in-place",
+      "pass": true,
+      "href": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x",
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x",
+      "noReload": true
+    },
+    {
+      "id": "link-modified-click-new-tab",
+      "pass": true,
+      "newTab": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x",
+      "stayed": "/focus/"
+    },
+    {
+      "id": "action-route",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x/postpone"
+    },
+    {
+      "id": "close-returns-to-opener",
+      "pass": true,
+      "path": "/focus/list",
+      "historyLength": [
+        10,
+        10
+      ]
+    },
+    {
+      "id": "close-direct-entry-falls-back",
+      "pass": true,
+      "path": "/focus/",
+      "historyLength": [
+        10,
+        10
+      ]
+    },
+    {
+      "id": "back-dirty-stay",
+      "pass": true,
+      "asked": true,
+      "draftKept": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x"
+    },
+    {
+      "id": "back-dirty-discard",
+      "pass": true,
+      "asked": true,
+      "path": "/focus/"
+    },
+    {
+      "id": "back-forward-clean",
+      "pass": true,
+      "back": "/focus/",
+      "forward": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x"
+    },
+    {
+      "id": "legacy-query-link",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x",
+      "historyLength": [
+        14,
+        15
+      ]
+    },
+    {
+      "id": "not-found-and-invalid",
+      "pass": true,
+      "unknown": "This address does not lead anywhere in Focus.",
+      "invalid": "This task link is not valid."
+    },
+    {
+      "id": "reload-keeps-resource",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo2MjMwOC9hbGljZS90YXNrcy8x"
+    },
+    {
+      "id": "menu-switches-view",
+      "pass": true,
+      "path": "/focus/list"
+    }
+  ],
+  "pageErrors": []
+}

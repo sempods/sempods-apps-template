@@ -21,12 +21,17 @@ here ships: this folder is its own pnpm workspace, outside the template's
   demonstration and the notes app.
 - `apps/notes`: the notes app an assistant built from a short owner brief on
   the package; `AUTHORING.md` and `NOTES.md` were its starting point.
+- `apps/routing`: the routing spike for #114 ([write-up](../../docs/spikes/114-routing.md)),
+  a Focus-like app under `/focus/` with the address model in `places.ts`
+  and one adapter per router in `src/routers/` (`ROUTER=own|react-router|tanstack`).
 - `scripts/`: the evidence. `gate.mjs` (stage 1, `--browser=webkit` for
   WebKit), `interaction.mjs`, `roundtrip.mjs` (calendar-date persistence),
   `contrast.js` with `evidence.mjs` and its controls in
   `contrast-selftest.mjs` (stage 2), `sizes.mjs` and `notes-check.mjs`
-  (stage 3), `prompt-copy.mjs` (isolated copies for the prompt runs),
-  `sheets.mjs` (contact sheets), `final.sh` (all of it), and three
+  (stage 3), `routing-gate.mjs`, `routing-sizes.mjs` and
+  `route-contract.mjs` (routing spike), `prompt-copy.mjs` (isolated copies
+  for the prompt runs),
+  `sheets.mjs` (contact sheets), `final.sh` (all of it), and four
   `probe-*.mjs` scripts that isolate individual findings.
 - `evidence/`: the JSON results, the prompt runs' changes (`change.diff`)
   and the contact sheets the write-up cites. Single screenshots and logs are

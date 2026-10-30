@@ -12,7 +12,7 @@
     "id": "create",
     "pass": true,
     "stored": {
-      "@id": "http://127.0.0.1:61800/alice/notes/90124ffe-4471-4931-bf80-d75e644605ba",
+      "@id": "http://127.0.0.1:61697/alice/notes/aa6d8bac-416a-409d-9c2d-41a2da15020c",
       "@type": [
         "https://schema.org/NoteDigitalDocument"
       ],
@@ -61,8 +61,8 @@
   {
     "id": "back-with-open-note",
     "pass": null,
-    "before": "http://127.0.0.1:61800/",
-    "after": "http://127.0.0.1:61800/",
+    "before": "http://127.0.0.1:61697/",
+    "after": "http://127.0.0.1:61697/",
     "historyEntries": 3,
     "dialogOpen": false,
     "draftKept": false,
