@@ -1,7 +1,8 @@
 // Library-independent parts of the spike apps: the task data, texts, a tiny
 // history route and date helpers. Each variant composes its own screen.
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
+import { useApp } from '@sempods/app-sdk/react';
 import { fields, flag, text, type DraftOf } from '@sempods/client-sdk/edit';
 
 declare const __SDK_BASELINE__: string;
@@ -50,24 +51,62 @@ export const texts = {
   },
 };
 
-/** The route lives in the query: ?task=<iri>&view=list. Back/Forward work. */
-const subscribe = (notify: () => void) => {
-  addEventListener('popstate', notify);
-  addEventListener('spike-route', notify);
-  return () => {
-    removeEventListener('popstate', notify);
-    removeEventListener('spike-route', notify);
-  };
+/*
+ * The route lives in the query: ?task=<iri>&view=list. Like the template's
+ * routes.ts, every switch, Back and Forward runs through the SDK's navigate:
+ * an unsaved edit asks first, and staying keeps the view, its address and
+ * the history (the shown entry's position is kept in history.state).
+ */
+let shown = typeof location === 'object' ? location.search : '';
+let position: number = typeof history === 'object' ? (history.state?.position ?? 0) : 0;
+// Set while the router itself undoes a step, whose popstate it ignores.
+let undoing = false;
+const listeners = new Set<() => void>();
+function show(search: string) {
+  shown = search;
+  for (const listener of listeners) listener();
+}
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
 };
 export function useRoute() {
-  const search = useSyncExternalStore(subscribe, () => location.search);
+  const search = useSyncExternalStore(subscribe, () => shown);
   const params = new URLSearchParams(search);
-  const go = useCallback((changes: Record<string, string | null>) => {
-    const next = new URLSearchParams(location.search);
-    for (const [k, v] of Object.entries(changes)) if (v === null) next.delete(k); else next.set(k, v);
-    history.pushState(null, '', '?' + next.toString());
-    dispatchEvent(new Event('spike-route'));
-  }, []);
+  const { navigate } = useApp();
+  useEffect(() => {
+    const onPop = () => {
+      if (undoing) {
+        undoing = false;
+        return;
+      }
+      const to = location.search;
+      const target: number = history.state?.position ?? 0;
+      void navigate(() => {
+        position = target;
+        show(to);
+      }).then((left) => {
+        // Staying: step back to the shown entry; the history stays intact.
+        if (left || target === position) return;
+        undoing = true;
+        history.go(position - target);
+      });
+    };
+    addEventListener('popstate', onPop);
+    return () => removeEventListener('popstate', onPop);
+  }, [navigate]);
+  const go = useCallback(
+    (changes: Record<string, string | null>) => {
+      const next = new URLSearchParams(location.search);
+      for (const [k, v] of Object.entries(changes)) if (v === null) next.delete(k); else next.set(k, v);
+      void navigate(() => {
+        position += 1;
+        history.pushState({ position }, '', '?' + next.toString());
+        show(location.search);
+      });
+    },
+    [navigate],
+  );
   return { params, go };
 }
 

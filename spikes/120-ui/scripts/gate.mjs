@@ -224,14 +224,31 @@ const checks = {
     const forward = await c.title.isVisible();
     return { pass: !back && forward, openAfterBack: back, openAfterForward: forward };
   },
-  // Observation only: Back with a dirty draft (history guard is #114).
-  'back-dirty-observe': async (c, page) => {
+  // Back with a dirty draft asks through the SDK's navigate; staying keeps
+  // the dialog, the draft and the address.
+  'back-dirty-stay': async (c, page) => {
+    await c.open();
+    await c.dirty();
+    const address = new URL(page.url()).search;
+    await page.goBack();
+    const asked = await c.confirm.waitFor({ timeout: 3000 }).then(() => true, () => false);
+    if (asked) await c.confirm.getByRole('button').first().click();
+    await page.waitForTimeout(600);
+    const s = await c.state();
+    const kept = new URL(page.url()).search === address;
+    return { pass: asked && s.dialogOpen && s.draftKept && !s.confirmOpen && kept, asked, addressKept: kept, ...s };
+  },
+  // Back with a dirty draft, then discard: the dialog closes, the step stays.
+  'back-dirty-discard': async (c, page) => {
     await c.open();
     await c.dirty();
     await page.goBack();
+    const asked = await c.confirm.waitFor({ timeout: 3000 }).then(() => true, () => false);
+    if (asked) await c.confirm.getByRole('button').last().click();
     await page.waitForTimeout(600);
     const s = await c.state();
-    return { pass: null, ...s, url: new URL(page.url()).search };
+    const left = !new URL(page.url()).searchParams.has('task');
+    return { pass: asked && !s.dialogOpen && !s.confirmOpen && left, asked, left, ...s };
   },
 };
 
@@ -250,7 +267,7 @@ for (const variant of chosen.length ? chosen : variants)
     for (const [id, run] of Object.entries(checks).filter(([id]) => !only || only.includes(id))) {
       const r = await check(page, origin, id, (c) => run(c, page));
       results.push(r);
-      console.log(`${variant} sdk=${sdk} ${r.pass === null ? '·' : r.pass ? '✓' : '✗'} ${id} ${JSON.stringify(r)}`);
+      console.log(`${variant} sdk=${sdk} ${r.pass ? '✓' : '✗'} ${id} ${JSON.stringify(r)}`);
     }
     writeFileSync(join(out, `gate-${variant}-${sdk}${label ? '-' + label : ''}.json`), JSON.stringify({ variant, sdk, results, pageErrors: errors }, null, 2) + '\n');
     await context.close();

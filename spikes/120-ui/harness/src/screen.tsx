@@ -19,6 +19,9 @@ import {
 import type { BrowserRuntime } from '@sempods/app-sdk';
 import { createRuntime, sdkBaseline, taskFields, texts, useRoute, type TaskDraft } from './index.ts';
 
+// One route per app, read once in the frame and passed down.
+type Route = ReturnType<typeof useRoute>;
+
 export type MenuEntry =
   | { readonly label: string; readonly onSelect: () => void }
   | {
@@ -122,7 +125,7 @@ function Frame({ ui }: { readonly ui: UiKit }) {
         onClose={() => setManaging(false)}
       />
       <TargetScreen>
-        <Tasks ui={ui} view={view} />
+        <Tasks ui={ui} view={view} route={route} />
       </TargetScreen>
       {/* Isolation probe: the variant's dialog without SDK content. */}
       {route.params.get('probe') === 'plain' && (
@@ -134,10 +137,9 @@ function Frame({ ui }: { readonly ui: UiKit }) {
   );
 }
 
-function Tasks({ ui, view }: { readonly ui: UiKit; readonly view: 'zen' | 'list' }) {
+function Tasks({ ui, view, route }: { readonly ui: UiKit; readonly view: 'zen' | 'list'; readonly route: Route }) {
   const t = useMessages(texts);
   const list = useList(taskFields);
-  const route = useRoute();
   const [index, setIndex] = useState(0);
   const { view: target } = useAppState();
   const items = (list.data?.items ?? []).filter((item) => !item.data.done);
@@ -191,16 +193,15 @@ function Tasks({ ui, view }: { readonly ui: UiKit; readonly view: 'zen' | 'list'
       ) : (
         list.state.kind === 'ready' && <p className="zen-empty">{t.emptyZen}</p>
       )}
-      {target && <TaskDialog ui={ui} subject={subject} context={target.contextIri} reload={list.reload} />}
+      {target && <TaskDialog ui={ui} route={route} subject={subject} context={target.contextIri} reload={list.reload} />}
     </>
   );
 }
 
-function TaskDialog({ ui, subject, context, reload }: {
-  readonly ui: UiKit; readonly subject: string | null; readonly context: string; readonly reload: () => unknown;
+function TaskDialog({ ui, route, subject, context, reload }: {
+  readonly ui: UiKit; readonly route: Route; readonly subject: string | null; readonly context: string; readonly reload: () => unknown;
 }) {
   const t = useMessages(texts);
-  const route = useRoute();
   const edit = useContextEditor(taskFields);
   const { open, close: closeEditor } = edit;
   const { changing } = useAppState();

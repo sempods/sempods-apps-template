@@ -81,9 +81,12 @@ maintenance with sempods, which is what the kit already costs.
 ## Stage 1: interop gate
 
 A routed task dialog from each candidate holds an SDK `ResourceEditor`; SDK
-confirmations (native `<dialog>` with `showModal()`) open above it. Thirteen
-checks per candidate and SDK baseline, by keyboard and pointer, each from a
-fresh page ([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
+confirmations (native `<dialog>` with `showModal()`) open above it. The
+route lives in the address and, as in the template's `routes.ts`, every
+switch, Back and Forward runs through the SDK's `navigate`, which asks before
+an unsaved edit is left. Fourteen checks per candidate and SDK baseline, by
+keyboard and pointer, each from a fresh page
+([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
 `evidence/gate-*.json`).
 
 | Check | Base UI 0.6.0 | Base UI main | React Aria 0.6.0 | React Aria main | Radix main |
@@ -100,7 +103,8 @@ fresh page ([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
 | Explicit Save after the cancelled closes | ✗ ² | ✓ | ✓ | ✓ | ✓ |
 | 1280 → 375 → 1280 px keeps the draft, full screen on the phone | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Back closes the routed dialog, Forward reopens it | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Back with a dirty draft (observation) | ⁸ | ⁸ | ⁸ | ⁸ | ⁸ |
+| Back with a dirty draft asks; "Keep editing" keeps dialog, draft and address | ✓ | ✓ | ✓ | ✓ | ✗ ⁴ |
+| Back with a dirty draft, then discard: the dialog closes | ✓ | ✓ | ✓ | ✓ | ✗ ⁴ |
 
 1. SDK 0.6.0 discards the draft on Escape (the #186 bug), in every candidate.
 2. The key reaches the library dialog, which asks to close again: the question
@@ -116,9 +120,12 @@ fresh page ([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
    ([probe-min.mjs](../../spikes/120-ui/scripts/probe-min.mjs)). Not a
    concern for people, but for automated tests.
 7. Focus lands on `body`.
-8. In every candidate the route changes first, the dialog closes and the SDK
-   asks afterwards; "Keep editing" then has no dialog to return to. This is
-   the guarded-history work of #114, not a library property.
+
+A first version of the harness switched routes with plain
+`history.pushState`, without the SDK's `navigate`. There, Back with a dirty
+draft closed the dialog before the SDK asked, in every candidate; the first
+version of this write-up attributed that to #114. With the template's routing
+pattern, both Back checks pass on SDK 0.6.0 and main.
 
 **Radix is out**: its modal blocks the SDK confirmations, and working around
 it would mean overriding three library internals. Base UI and React Aria
@@ -362,12 +369,12 @@ task dialog, the date chooser and the SDK question.
 | Issue | With the recommendation |
 |---|---|
 | #116 Menu: submenus with checked choices and keyboard return | Absorbed by the package's header menu (React Aria `SubmenuTrigger`, single selection). |
-| #117 Responsive routed screen | Absorbed: React Aria modal with the SDK adapter, full screen on phones, roomy on desktop; the Escape and Close semantics need the SDK release with #186. Back with a dirty draft stays with #114. |
+| #117 Responsive routed screen | Absorbed: React Aria modal with the SDK adapter, full screen on phones, roomy on desktop; the Escape and Close semantics need the SDK release with #186. Back and Forward with a dirty draft already work through the SDK's `navigate`. |
 | #118 Calendar-date chooser composed with SDK editors | Absorbed: React Aria calendar on `CalendarDate`; presets and typed entry stay app or reference-screen composition. |
 | #119 Filled action styles, bounded responsive action group | Styles absorbed by the variant contract (`data-actions`, `data-secondary`); the responsive action group stays a reference layout. |
 | #115 Mobile dialogs inside the viewport with a scrollbar | Likely absorbed (the full-screen sheet held at 375 px); the scrollbar case was not tested. |
 | #111 Chips, collection and log reference screens | Partly: chips can come from the package (React Aria `TagGroup`); the reference screens, copy and layouts remain. Not exercised here. |
-| #114 Routes with guarded history | Unaffected; the gate's observation 8 is input for it. |
+| #114 Routes with guarded history | Unaffected: the library dialog follows the route, and the template's routing pattern with the SDK's `navigate` guarded Back and Forward in the gate. The route contract across generator, host, PWA and `returnTo` stays #114's work. |
 | sempods/sempods-typescript#107 Reference app for look and feel | Unaffected; it should use the package once it exists. |
 
 SDK follow-ups (bounded, styling only, for `@sempods/app-sdk`):

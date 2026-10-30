@@ -98,13 +98,14 @@
       "openAfterForward": true
     },
     {
-      "id": "back-dirty-observe",
-      "pass": null,
-      "dialogOpen": false,
-      "confirmOpen": true,
-      "draftKept": false,
-      "focus": "button\"Keep editing\"@sdk-confirm",
-      "url": ""
+      "id": "back-dirty-stay",
+      "pass": false,
+      "note": "error: locator.click: Timeout 30000ms exceeded."
+    },
+    {
+      "id": "back-dirty-discard",
+      "pass": false,
+      "note": "error: locator.click: Timeout 30000ms exceeded."
     }
   ],
   "pageErrors": []

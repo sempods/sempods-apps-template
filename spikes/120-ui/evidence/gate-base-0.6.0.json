@@ -100,13 +100,24 @@
       "openAfterForward": true
     },
     {
-      "id": "back-dirty-observe",
-      "pass": null,
+      "id": "back-dirty-stay",
+      "pass": true,
+      "asked": true,
+      "addressKept": true,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "input@dialog"
+    },
+    {
+      "id": "back-dirty-discard",
+      "pass": true,
+      "asked": true,
+      "left": true,
       "dialogOpen": false,
-      "confirmOpen": true,
+      "confirmOpen": false,
       "draftKept": false,
-      "focus": "button\"Keep editing\"@sdk-confirm",
-      "url": ""
+      "focus": "a\"Call the plumber about t\"@page"
     }
   ],
   "pageErrors": []
