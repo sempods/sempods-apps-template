@@ -1,0 +1,6 @@
+node_modules/
+dist/
+vendor/
+*.tsbuildinfo
+evidence/**/shots/
+evidence/*.log

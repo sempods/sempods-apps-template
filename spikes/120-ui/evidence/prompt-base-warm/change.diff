@@ -1,0 +1,66 @@
+diff --git a/apps/base/src/theme.css b/apps/base/src/theme.css
+index 4d82308..f3e8e6f 100644
+--- a/apps/base/src/theme.css
++++ b/apps/base/src/theme.css
+@@ -12,32 +12,32 @@
+    A theme in this file is selected with data-theme on <html>; the template
+    would ship one file per theme instead. */
+ 
+-/* 1. Palette roles. Theme "calm" (the default). */
++/* 1. Palette roles. Theme "calm" (the default), now warm: cream and brown neutrals with a terracotta accent. */
+ :root {
+   color-scheme: light dark;
+-  --background: light-dark(#ffffff, #111315);
+-  --foreground: light-dark(#1f2933, #e5e7eb);
+-  --card: light-dark(#ffffff, #181b1f);
++  --background: light-dark(#fffaf4, #17120e);
++  --foreground: light-dark(#3a2a20, #f3e8dc);
++  --card: light-dark(#fffdf9, #1e1813);
+   --card-foreground: var(--foreground);
+-  --popover: light-dark(#ffffff, #1b1e23);
++  --popover: light-dark(#fffdf9, #221b15);
+   --popover-foreground: var(--foreground);
+-  --primary: light-dark(#1f2933, #e5e7eb);
+-  --primary-foreground: light-dark(#ffffff, #111315);
+-  --secondary: light-dark(#eef0f3, #23272e);
++  --primary: light-dark(#a24b10, #f0a45d);
++  --primary-foreground: light-dark(#ffffff, #2a1707);
++  --secondary: light-dark(#f6ebdf, #2b231c);
+   --secondary-foreground: var(--foreground);
+   /* shadcn: muted is a quiet surface and muted-foreground its text; the
+      SDK's --sempods-muted is that text colour. */
+-  --muted: light-dark(#f3f4f6, #1d2026);
+-  --muted-foreground: light-dark(#5f6672, #a1a7b0);
++  --muted: light-dark(#f9f1e7, #231c16);
++  --muted-foreground: light-dark(#6f5d50, #bba995);
+   /* shadcn: accent is the highlight surface of focused menu items. */
+-  --accent: light-dark(#eef0f3, #262a31);
++  --accent: light-dark(#f6ebdf, #302720);
+   --accent-foreground: var(--foreground);
+   --destructive: light-dark(#b42318, #f97066);
+-  --destructive-foreground: light-dark(#ffffff, #111315);
++  --destructive-foreground: light-dark(#ffffff, #17120e);
+   /* Decorative separators; control boundaries use --input (3:1). */
+-  --border: light-dark(#e5e7eb, #2d3138);
+-  --input: light-dark(#7a818c, #6b7280);
+-  --ring: light-dark(#1f2933, #e5e7eb);
++  --border: light-dark(#eadfd3, #3a3027);
++  --input: light-dark(#8a7566, #8a7766);
++  --ring: light-dark(#a24b10, #f0a45d);
+   --radius: 0.625rem;
+ }
+ 
+diff --git a/harness/src/screen.css b/harness/src/screen.css
+index e56967e..660abf1 100644
+--- a/harness/src/screen.css
++++ b/harness/src/screen.css
+@@ -115,3 +115,9 @@
+   display: grid;
+   gap: 6px;
+ }
++/* Tailwind's preflight sets margin: 0 on every element, which takes the
++   browser's centring (margin: auto) from native modal dialogs such as the
++   SDK's confirmations. Unlayered, this restores it. */
++:where(dialog:modal) {
++  margin: auto;
++}

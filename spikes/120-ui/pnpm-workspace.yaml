@@ -1,0 +1,8 @@
+# A standalone workspace for the #120 spike: the template's own workspace
+# (packages/*) does not include it, and nothing here ships.
+packages:
+  - 'harness'
+  - 'apps/*'
+
+saveExact: true
+minimumReleaseAge: 0

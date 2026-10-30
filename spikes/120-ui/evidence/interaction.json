@@ -1,0 +1,202 @@
+{
+  "base": [
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026, se\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026, se\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026, se\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Oktober 2026MoDiMiDoFrSaSo28293012345678",
+      "firstDay": "Montag",
+      "sdkSave": 1
+    }
+  ],
+  "aria": [
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026 sel\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026 sel\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "menu-keyboard",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "zenChecked": "true",
+      "submenuClosedLeft": true,
+      "menuOpenAfterSubEscape": true,
+      "backOnTrigger": true,
+      "listShown": true,
+      "listChecked": "true",
+      "steps": [
+        "Enter opens: menuitem \"View\"",
+        "ArrowRight opens submenu: menuitemradio \"Zen\"",
+        "ArrowLeft returns: menuitem \"View\"",
+        "Escape in submenu: menuitem \"View\"",
+        "second Escape: button \"Menu\"",
+        "ArrowDown in submenu: menuitemradio \"List\"",
+        "Enter chooses: button \"Menu\""
+      ]
+    },
+    {
+      "id": "calendar-keyboard",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "start": "button \"Wednesday, 28 October 2026 sel\"",
+      "right": "button \"Thursday, 29 October 2026\"",
+      "nextMonth": "button \"Sunday, 29 November 2026\"",
+      "label": "Start considering: 29 Nov 2026",
+      "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Vormerken ab, Oktober 2026Oktober 2026MD",
+      "firstDay": "M",
+      "sdkSave": 1
+    }
+  ]
+}

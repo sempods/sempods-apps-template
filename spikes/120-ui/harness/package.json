@@ -1,0 +1,26 @@
+{
+  "name": "@spike/harness",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vite": "./src/vite.ts",
+    "./screen": "./src/screen.tsx",
+    "./screen.css": "./src/screen.css",
+    "./theme.css": "./src/theme.css"
+  },
+  "peerDependencies": {
+    "@sempods/app-sdk": "0.6.0",
+    "@sempods/client-sdk": "0.6.0",
+    "react": "19.3.1",
+    "vite": "8.3.5"
+  },
+  "devDependencies": {
+    "@sempods/app-sdk": "0.6.0",
+    "@sempods/client-sdk": "0.6.0",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "react": "19.3.1",
+    "vite": "8.3.5"
+  }
+}

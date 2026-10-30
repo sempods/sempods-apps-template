@@ -1,0 +1,116 @@
+{
+  "variant": "aria",
+  "sdk": "main",
+  "results": [
+    {
+      "id": "escape-field-dirty",
+      "pass": true,
+      "dialogOpen": true,
+      "confirmOpen": true,
+      "draftKept": true,
+      "focus": "button\"Keep editing\"@sdk-confirm"
+    },
+    {
+      "id": "escape-in-sdk-confirm",
+      "pass": true,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Close\"@dialog"
+    },
+    {
+      "id": "escape-on-close-button",
+      "pass": true,
+      "asked": true,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Close\"@dialog"
+    },
+    {
+      "id": "close-click-cancel",
+      "pass": true,
+      "confirmOnTop": true,
+      "tabTrappedInConfirm": true,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Close\"@dialog"
+    },
+    {
+      "id": "escape-heading-menu",
+      "pass": true,
+      "menuOpen": false,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Task menu\"@dialog"
+    },
+    {
+      "id": "escape-date-chooser",
+      "pass": true,
+      "gridOpen": false,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Start considering: 28 Oct 2026\"@dialog"
+    },
+    {
+      "id": "escape-delete-confirm",
+      "pass": true,
+      "asked": true,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "button\"Delete\"@dialog"
+    },
+    {
+      "id": "focus-trapped-in-dialog",
+      "pass": true,
+      "focused": "button\"Task menu\"@dialog | button\"Close\"@dialog | input@dialog | textarea@dialog | button\"Start considering: 28 Oct 2026\"@dialog | button\"Cancel\"@dialog | button\"Delete\"@dialog",
+      "backgroundInertOrHidden": true
+    },
+    {
+      "id": "escape-clean-restores-focus",
+      "pass": true,
+      "dialogOpen": false,
+      "confirmOpen": false,
+      "draftKept": false,
+      "focus": "a\"Call the plumber about t\"@page"
+    },
+    {
+      "id": "save-after-cancels",
+      "pass": true,
+      "savedTitle": "Call the plumber about the kitchen tap (edited)",
+      "dialogOpen": false,
+      "confirmOpen": false,
+      "draftKept": false,
+      "focus": "a\"Call the plumber about t\"@page"
+    },
+    {
+      "id": "resize-keeps-draft",
+      "pass": true,
+      "phoneWidth": 375,
+      "dialogOpen": true,
+      "confirmOpen": false,
+      "draftKept": true,
+      "focus": "input@dialog"
+    },
+    {
+      "id": "back-forward",
+      "pass": true,
+      "openAfterBack": false,
+      "openAfterForward": true
+    },
+    {
+      "id": "back-dirty-observe",
+      "pass": null,
+      "dialogOpen": false,
+      "confirmOpen": true,
+      "draftKept": false,
+      "focus": "button\"Keep editing\"@sdk-confirm",
+      "url": ""
+    }
+  ],
+  "pageErrors": []
+}

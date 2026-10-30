@@ -1,0 +1,49 @@
+diff --git a/apps/base/src/theme.css b/apps/base/src/theme.css
+index 4d82308..d86c65c 100644
+--- a/apps/base/src/theme.css
++++ b/apps/base/src/theme.css
+@@ -58,21 +58,22 @@
+   --ring: light-dark(#0a6680, #5ec6e4);
+ }
+ 
+-/* 2. Component variants. Actions: "solid" (default) fills the primary
+-   action; "inverted" turns it into the page colour with a strong primary
+-   outline and text, so it still stands out more than secondary actions.
++/* 2. Component variants. Actions: "inverted" (default) turns the primary
++   action into the page colour with a strong primary outline and text, so it
++   still stands out more than secondary actions; "solid" fills it with the
++   primary colour.
+    Secondary actions: "tonal" (default), "outline" or "text". */
+ :root {
+-  --action: var(--primary);
+-  --action-foreground: var(--primary-foreground);
++  --action: var(--background);
++  --action-foreground: var(--primary);
+   --action-border: var(--primary);
+   --action-secondary: var(--secondary);
+   --action-secondary-foreground: var(--secondary-foreground);
+   --action-secondary-border: transparent;
+ }
+-:root[data-actions='inverted'] {
+-  --action: var(--background);
+-  --action-foreground: var(--primary);
++:root[data-actions='solid'] {
++  --action: var(--primary);
++  --action-foreground: var(--primary-foreground);
+   --action-border: var(--primary);
+ }
+ :root[data-secondary='outline'] {
+diff --git a/harness/src/screen.css b/harness/src/screen.css
+index e56967e..660abf1 100644
+--- a/harness/src/screen.css
++++ b/harness/src/screen.css
+@@ -115,3 +115,9 @@
+   display: grid;
+   gap: 6px;
+ }
++/* Tailwind's preflight sets margin: 0 on every element, which takes the
++   browser's centring (margin: auto) from native modal dialogs such as the
++   SDK's confirmations. Unlayered, this restores it. */
++:where(dialog:modal) {
++  margin: auto;
++}

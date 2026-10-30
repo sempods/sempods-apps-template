@@ -1,0 +1,25 @@
+{
+  "name": "spike-120-ui",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.28.2",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "vendor:sdk-main": "node scripts/vendor-sdk-main.mjs",
+    "dev:base": "pnpm --filter spike-base dev",
+    "dev:aria": "pnpm --filter spike-aria dev",
+    "dev:radix": "pnpm --filter spike-radix dev",
+    "gate": "node scripts/gate.mjs",
+    "evidence": "node scripts/evidence.mjs",
+    "sizes": "node scripts/sizes.mjs"
+  },
+  "devDependencies": {
+    "oauth4webapi": "3.8.8",
+    "playwright": "1.64.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "vite": "8.3.5"
+  }
+}
