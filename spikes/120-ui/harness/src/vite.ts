@@ -8,16 +8,23 @@ import type { Plugin, UserConfig } from 'vite';
 const schema = 'https://schema.org/';
 type Task = { context: string; body: Record<string, unknown>; version: number };
 
-/** Seed tasks in the "work" context; dates are plain day strings. */
-function seed(base: string): Map<string, Task> {
+const xsd = 'http://www.w3.org/2001/XMLSchema#';
+/**
+ * Seed tasks in the "work" context. With the SDK main baseline the start
+ * dates are typed: two xsd:date days and one zoned xsd:dateTime that must
+ * survive unchanged; SDK 0.6.0 has no date field and gets plain strings.
+ */
+function seed(base: string, typed: boolean): Map<string, Task> {
   const work = base + '/_system/contexts/work';
   const tasks = new Map<string, Task>();
   const titles = [
     ['Call the plumber about the kitchen tap', '2026-10-28'],
     ['Draft the club newsletter', ''],
-    ['Book train tickets to Leipzig', '2026-10-30'],
+    ['Book train tickets to Leipzig', typed ? '2026-10-30T09:30:00+02:00' : '2026-10-30'],
     ['Return the library books', ''],
   ] as const;
+  const literal = (value: string) =>
+    typed ? { '@value': value, '@type': xsd + (value.includes('T') ? 'dateTime' : 'date') } : { '@value': value };
   titles.forEach(([title, planned], i) => {
     const iri = `${base}/tasks/${i + 1}`;
     tasks.set(work + '|' + iri, {
@@ -28,15 +35,53 @@ function seed(base: string): Map<string, Task> {
         '@type': [schema + 'Action'],
         [schema + 'name']: [{ '@value': title }],
         [schema + 'actionStatus']: [{ '@id': schema + 'PotentialActionStatus' }],
-        ...(planned ? { [schema + 'startDate']: [{ '@value': planned }] } : {}),
+        ...(planned ? { [schema + 'startDate']: [literal(planned)] } : {}),
       },
     });
   });
   return tasks;
 }
 
-/** A loopback Pod at /alice: OAuth with PKCE, two contexts, list and edit. */
-export function fakePod(): Plugin {
+/**
+ * The notes fixture: notes in "personal" (schema:NoteDigitalDocument with
+ * name and text), an empty "work" and a read-only "shared" context.
+ */
+function seedNotes(base: string): Map<string, Task> {
+  const notes = new Map<string, Task>();
+  const note = (context: string, n: number, title: string, text: string) => {
+    const iri = `${base}/notes/${context}-${n}`;
+    const graph = `${base}/_system/contexts/${context}`;
+    notes.set(graph + '|' + iri, {
+      context: graph,
+      version: 1,
+      body: {
+        '@id': iri,
+        '@type': [schema + 'NoteDigitalDocument'],
+        [schema + 'name']: [{ '@value': title }],
+        [schema + 'text']: [{ '@value': text }],
+      },
+    });
+  };
+  note('personal', 1, 'Gift ideas for Mia', 'Watercolour set, the blue scarf from the market.');
+  note('personal', 2, 'Recipe: lentil soup', 'Red lentils, carrots, cumin, a squeeze of lemon at the end.');
+  note('shared', 1, 'Holiday packing list', 'Passport, chargers, rain jacket. Shared by Jonas.');
+  return notes;
+}
+
+/**
+ * A loopback Pod at /alice: OAuth with PKCE, contexts, list and edit. Test
+ * fixtures: /__reset, /__store (what is stored), /__fail?count=n (the next n
+ * data requests answer 503) and /__delay?ms=n (data requests wait).
+ */
+export function fakePod({
+  typed = process.env.SDK === 'main',
+  fixture = 'tasks',
+}: { readonly typed?: boolean; readonly fixture?: 'tasks' | 'notes' } = {}): Plugin {
+  const fresh = (base: string) => (fixture === 'notes' ? seedNotes(base) : seed(base, typed));
+  const names = fixture === 'notes' ? ['personal', 'work', 'shared'] : ['work', 'personal'];
+  const writableNames = fixture === 'notes' ? ['personal', 'work'] : names;
+  let failing = 0;
+  let delay = 0;
   const codes = new Map<string, { client: string; challenge: string }>();
   let tasks: Map<string, Task> | undefined;
   let version = 10;
@@ -47,17 +92,29 @@ export function fakePod(): Plugin {
       server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next) => {
         const origin = 'http://' + req.headers.host;
         const url = new URL(req.url ?? '/', origin);
-        if (!url.pathname.startsWith('/alice') && url.pathname !== '/__reset') return next();
+        if (!url.pathname.startsWith('/alice') && !url.pathname.startsWith('/__')) return next();
         const base = origin + '/alice';
-        tasks ??= seed(base);
+        tasks ??= fresh(base);
         const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => {
           res.writeHead(status, { 'content-type': 'application/json', ...headers });
           res.end(JSON.stringify(body));
         };
         if (url.pathname === '/__reset') {
-          tasks = seed(base);
+          tasks = fresh(base);
+          failing = 0;
+          delay = 0;
           return json({ ok: true });
         }
+        if (url.pathname === '/__fail') {
+          failing = Number(url.searchParams.get('count') ?? 1);
+          return json({ failing });
+        }
+        if (url.pathname === '/__delay') {
+          delay = Number(url.searchParams.get('ms') ?? 0);
+          return json({ delay });
+        }
+        // Test inspection: the stored bodies and versions, as written.
+        if (url.pathname === '/__store') return json([...tasks.values()]);
         if (url.pathname.endsWith('/.well-known/oauth-protected-resource'))
           return json({ resource: base, authorization_servers: [base], bearer_methods_supported: ['header'] });
         if (url.pathname.endsWith('/.well-known/oauth-authorization-server'))
@@ -101,7 +158,8 @@ export function fakePod(): Plugin {
           const token = `${enc({ alg: 'RS256' })}.${enc({ iss: base, client_id: code.client, sub: base + '/person', iat: now, exp: now + 3600, scope: '' })}.c2lnbmF0dXJl`;
           return json({ access_token: token, token_type: 'Bearer', refresh_token: 'fixture-refresh' });
         }
-        const contexts = ['work', 'personal'].map((s) => base + '/_system/contexts/' + s);
+        const contexts = names.map((s) => base + '/_system/contexts/' + s);
+        const writable = writableNames.map((s) => base + '/_system/contexts/' + s);
         if (url.pathname.endsWith('/_system/contexts')) {
           const refs = contexts.map((iri) => ({ '@id': iri }));
           return json({
@@ -109,8 +167,15 @@ export function fakePod(): Plugin {
             '@type': ['http://www.w3.org/ns/sparql-service-description#GraphCollection'],
             'http://www.w3.org/ns/sparql-service-description#namedGraph': refs,
             'https://schema.sempods.org/readableContext': refs,
-            'https://schema.sempods.org/writableContext': refs,
+            'https://schema.sempods.org/writableContext': writable.map((iri) => ({ '@id': iri })),
           });
+        }
+        if (url.pathname.endsWith('/sparql/query') || url.pathname.includes('/_system/resources/')) {
+          if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+          if (failing > 0) {
+            failing--;
+            return json({ error: 'unavailable' }, 503);
+          }
         }
         if (url.pathname.endsWith('/sparql/query')) {
           const target = url.searchParams.get('default-graph-uri');
@@ -122,6 +187,7 @@ export function fakePod(): Plugin {
           if (!contexts.includes(context)) return json({}, 400);
           const key = context + '|' + iri;
           const task = tasks.get(key);
+          if (req.method !== 'GET' && !writable.includes(context)) return json({}, 403);
           if (req.method === 'GET')
             return task ? json(task.body, 200, { etag: `"v${task.version}"` }) : json({}, 404);
           if (req.method === 'PUT') {
@@ -177,4 +243,4 @@ export function sdkBaseline(): Plugin {
   };
 }
 
-export const harness = () => [fakePod(), sdkBaseline()];
+export const harness = (options?: Parameters<typeof fakePod>[0]) => [fakePod(options), sdkBaseline()];

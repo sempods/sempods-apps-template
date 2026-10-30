@@ -1,13 +1,13 @@
 // Composes screenshot folders into one contact sheet each: rows are the
 // screen states, columns 375px and desktop in light and dark.
-// Usage: node scripts/sheets.mjs <shots dir> <out.png> <title>
+// Usage: node scripts/sheets.mjs <shots dir> <out.png> <title> [state,state,...]
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
-const [dir, out, title] = process.argv.slice(2);
-const states = ['zen', 'menu', 'dialog', 'date', 'confirm'];
+const [dir, out, title, list] = process.argv.slice(2);
+const states = list ? list.split(',') : ['zen', 'menu', 'dialog', 'date', 'confirm'];
 const columns = [['light', 375], ['dark', 375], ['light', 1280], ['dark', 1280]];
 const cell = (state, scheme, width) => {
   const file = resolve(join(dir, `${state}-${scheme}-${width}.png`));

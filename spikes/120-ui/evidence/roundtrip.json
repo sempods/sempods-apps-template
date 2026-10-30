@@ -1,0 +1,187 @@
+{
+  "aria": [
+    {
+      "id": "save-and-reread",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-29",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "shownAfterReload": "Start considering: 29 Oct 2026"
+    },
+    {
+      "id": "cancel-chooser",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "shown": "Start considering: 28 Oct 2026",
+      "saveEnabled": false,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "cancel-edit",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "zoned-datetime",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "shownBefore": "Start considering: 30 Oct 2026, 08:30",
+      "chooserStartsAt": "Today, Friday, 30 October 2026 selected",
+      "afterTitleEdit": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "afterApplyingADay": {
+        "@value": "2026-10-31",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "save-and-reread",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-29",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "shownAfterReload": "Start considering: 29 Oct 2026"
+    },
+    {
+      "id": "cancel-chooser",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "shown": "Start considering: 28 Oct 2026",
+      "saveEnabled": false,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "cancel-edit",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "zoned-datetime",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "shownBefore": "Start considering: 30 Oct 2026, 21:30",
+      "chooserStartsAt": "Friday, 30 October 2026 selected",
+      "afterTitleEdit": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "afterApplyingADay": {
+        "@value": "2026-10-31",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "save-and-reread",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-29",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "shownAfterReload": "Start considering: 29 Oct 2026"
+    },
+    {
+      "id": "cancel-chooser",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "shown": "Start considering: 28 Oct 2026",
+      "saveEnabled": false,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "cancel-edit",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      },
+      "after": {
+        "@value": "2026-10-28",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    },
+    {
+      "id": "zoned-datetime",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "before": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "shownBefore": "Start considering: 29 Oct 2026, 20:30",
+      "chooserStartsAt": "Today, Friday, 30 October 2026 selected",
+      "afterTitleEdit": {
+        "@value": "2026-10-30T09:30:00+02:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "afterApplyingADay": {
+        "@value": "2026-10-31",
+        "@type": "http://www.w3.org/2001/XMLSchema#date"
+      }
+    }
+  ]
+}

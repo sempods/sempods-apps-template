@@ -31,6 +31,58 @@
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
     },
     {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Europe/Berlin",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 399,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 683.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Europe/Berlin",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 11,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 295.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
       "id": "menu-keyboard",
       "timezoneId": "Pacific/Kiritimati",
       "pass": true,
@@ -61,6 +113,58 @@
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
     },
     {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 399,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 683.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 11,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 295.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
       "id": "menu-keyboard",
       "timezoneId": "Pacific/Pago_Pago",
       "pass": true,
@@ -89,6 +193,74 @@
       "nextMonth": "button \"Sunday, 29 November 2026\"",
       "label": "Start considering: 29 Nov 2026",
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 399,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 683.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": false,
+      "dayMin": 28,
+      "navMin": 28,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 24,
+        "y": 11,
+        "w": 228,
+        "h": 336.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 32,
+        "y": 295.28125,
+        "width": 212,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Oktober 2026MoDiMiDoFrSaSo28293012345678",
+      "firstDay": "Montag",
+      "sdkSave": 1
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Oktober 2026MoDiMiDoFrSaSo28293012345678",
+      "firstDay": "Montag",
+      "sdkSave": 1
     },
     {
       "id": "calendar-german",
@@ -131,6 +303,58 @@
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
     },
     {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 407,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 756.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 20,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 295.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
       "id": "menu-keyboard",
       "timezoneId": "Pacific/Kiritimati",
       "pass": true,
@@ -161,6 +385,58 @@
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
     },
     {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 407,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 756.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Pacific/Kiritimati",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 20,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 295.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
       "id": "menu-keyboard",
       "timezoneId": "Pacific/Pago_Pago",
       "pass": true,
@@ -189,6 +465,74 @@
       "nextMonth": "button \"Sunday, 29 November 2026\"",
       "label": "Start considering: 29 Nov 2026",
       "focusAfter": "button \"Start considering: 29 Nov 2026\""
+    },
+    {
+      "id": "calendar-targets-375x812",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 407,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 756.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-targets-375x560",
+      "timezoneId": "Pacific/Pago_Pago",
+      "pass": true,
+      "dayMin": 44,
+      "navMin": 44,
+      "navCount": 2,
+      "overlaps": 0,
+      "popup": {
+        "x": 31,
+        "y": 20,
+        "w": 324,
+        "h": 406.28125
+      },
+      "horizontalOverflow": false,
+      "applyReachedByTab": true,
+      "applyVisible": true,
+      "applyBox": {
+        "x": 31,
+        "y": 295.28125,
+        "width": 324,
+        "height": 44
+      },
+      "label": "Start considering: 29 Oct 2026",
+      "focusBack": true
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Vormerken ab, Oktober 2026Oktober 2026MD",
+      "firstDay": "M",
+      "sdkSave": 1
+    },
+    {
+      "id": "calendar-german",
+      "timezoneId": "Europe/Berlin",
+      "pass": true,
+      "heading": "Vormerken ab, Oktober 2026Oktober 2026MD",
+      "firstDay": "M",
+      "sdkSave": 1
     },
     {
       "id": "calendar-german",

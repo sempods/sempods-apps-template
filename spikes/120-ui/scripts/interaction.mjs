@@ -110,6 +110,63 @@ const checks = {
   },
 };
 
+// Touch targets of the calendar-date chooser on a phone, also on a short
+// screen: 44 x 44px days and month buttons without overlapping hit areas, no
+// horizontal overflow, Apply reachable, keyboard and focus return intact.
+async function calendarTargets(page, height) {
+  await page.setViewportSize({ width: 375, height });
+  await page.goto(page.url().split('?')[0]);
+  await page.locator('.zen-title').click();
+  const trigger = page.getByRole('button', { name: /^Start considering:/ });
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const grid = page.getByRole('grid');
+  await grid.waitFor();
+  await page.waitForTimeout(300);
+  const boxes = await page.evaluate(() => {
+    const grid = document.querySelector('[role=grid]');
+    const popup = grid.closest('[data-slot=popover-content], [role=dialog]');
+    const days = [...grid.querySelectorAll('[role=gridcell] > *')].map((el) => el.getBoundingClientRect());
+    const nav = [...popup.querySelectorAll('button, [role=button]')].filter((b) => !b.closest('[role=grid]') && /month|previous|next/i.test(b.getAttribute('aria-label') ?? '')).map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0);
+    const box = (r) => ({ x: r.x, y: r.y, w: r.width, h: r.height });
+    const overlap = (a, b) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
+    let overlaps = 0;
+    for (let i = 0; i < days.length; i++) for (let j = i + 1; j < days.length; j++) if (overlap(days[i], days[j])) overlaps++;
+    const p = popup.getBoundingClientRect();
+    return {
+      dayMin: Math.min(...days.map((r) => Math.min(r.width, r.height))),
+      navMin: Math.min(...nav.map((r) => Math.min(r.width, r.height))),
+      navCount: nav.length,
+      overlaps,
+      popup: box(p),
+      horizontalOverflow: document.scrollingElement.scrollWidth > innerWidth || p.left < 0 || p.right > innerWidth,
+    };
+  });
+  // Keyboard: next day, choose, reach Apply, confirm.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  const apply = page.getByRole('button', { name: 'Apply', exact: true });
+  let reached = false;
+  for (let i = 0; i < 6 && !reached; i++) {
+    await page.keyboard.press('Tab');
+    reached = await apply.evaluate((el) => el === document.activeElement);
+  }
+  const applyBox = await apply.boundingBox();
+  const applyVisible = !!applyBox && applyBox.y >= 0 && applyBox.y + applyBox.height <= height;
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const label = await trigger.getAttribute('aria-label');
+  const focusBack = await trigger.evaluate((el) => el === document.activeElement);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  return {
+    pass: boxes.dayMin >= 44 && boxes.navMin >= 44 && boxes.navCount === 2 && boxes.overlaps === 0 && !boxes.horizontalOverflow && reached && applyVisible && /29 Oct 2026/.test(label ?? '') && focusBack,
+    ...boxes, applyReachedByTab: reached, applyVisible, applyBox, label, focusBack,
+  };
+}
+checks['calendar-targets-375x812'] = (page) => calendarTargets(page, 812);
+checks['calendar-targets-375x560'] = (page) => calendarTargets(page, 560);
+
 const results = {};
 const browser = await chromium.launch();
 for (const variant of chosen.length ? chosen : ['base', 'aria']) {

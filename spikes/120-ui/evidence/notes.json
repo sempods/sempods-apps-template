@@ -1,0 +1,261 @@
+[
+  {
+    "id": "list-sorted",
+    "pass": true,
+    "rows": [
+      "Gift ideas for Mia",
+      "Recipe: lentil soup"
+    ],
+    "pageErrors": []
+  },
+  {
+    "id": "create",
+    "pass": true,
+    "stored": {
+      "@id": "http://127.0.0.1:61800/alice/notes/90124ffe-4471-4931-bf80-d75e644605ba",
+      "@type": [
+        "https://schema.org/NoteDigitalDocument"
+      ],
+      "https://schema.org/name": [
+        {
+          "@value": "Call grandma"
+        }
+      ],
+      "https://schema.org/text": [
+        {
+          "@value": "Sunday afternoon."
+        }
+      ]
+    },
+    "pageErrors": []
+  },
+  {
+    "id": "edit-save",
+    "pass": true,
+    "names": [
+      "Gift ideas for Mia and Leo",
+      "Recipe: lentil soup"
+    ],
+    "pageErrors": []
+  },
+  {
+    "id": "edit-cancel",
+    "pass": true,
+    "pageErrors": []
+  },
+  {
+    "id": "close-dirty-asks",
+    "pass": true,
+    "asked": true,
+    "draftKept": true,
+    "pageErrors": []
+  },
+  {
+    "id": "delete-row",
+    "pass": true,
+    "names": [
+      "Gift ideas for Mia"
+    ],
+    "pageErrors": []
+  },
+  {
+    "id": "back-with-open-note",
+    "pass": null,
+    "before": "http://127.0.0.1:61800/",
+    "after": "http://127.0.0.1:61800/",
+    "historyEntries": 3,
+    "dialogOpen": false,
+    "draftKept": false,
+    "signInShown": false,
+    "pageErrors": []
+  },
+  {
+    "id": "state-list-light-375",
+    "pass": true,
+    "checked": 10,
+    "failures": []
+  },
+  {
+    "id": "state-note-light-375",
+    "pass": true,
+    "checked": 11,
+    "failures": []
+  },
+  {
+    "id": "state-new-note-light-375",
+    "pass": true,
+    "checked": 8,
+    "failures": []
+  },
+  {
+    "id": "state-empty-light-375",
+    "pass": true,
+    "checked": 5,
+    "failures": []
+  },
+  {
+    "id": "state-read-only-light-375",
+    "pass": true,
+    "checked": 4,
+    "failures": [],
+    "addButton": 0,
+    "editorFields": 0
+  },
+  {
+    "id": "state-loading-light-375",
+    "pass": true,
+    "checked": 5,
+    "failures": [],
+    "text": "Notes\n\nLoading…\n\nNew note"
+  },
+  {
+    "id": "state-error-light-375",
+    "pass": true,
+    "checked": 6,
+    "failures": [],
+    "text": "Notes\n\nThe pod reported an error. Try again later.\n\nTry again\nNew note"
+  },
+  {
+    "id": "state-list-light-1280",
+    "pass": true,
+    "checked": 10,
+    "failures": []
+  },
+  {
+    "id": "state-note-light-1280",
+    "pass": true,
+    "checked": 11,
+    "failures": []
+  },
+  {
+    "id": "state-new-note-light-1280",
+    "pass": true,
+    "checked": 8,
+    "failures": []
+  },
+  {
+    "id": "state-empty-light-1280",
+    "pass": true,
+    "checked": 5,
+    "failures": []
+  },
+  {
+    "id": "state-read-only-light-1280",
+    "pass": true,
+    "checked": 4,
+    "failures": [],
+    "addButton": 0,
+    "editorFields": 0
+  },
+  {
+    "id": "state-loading-light-1280",
+    "pass": true,
+    "checked": 5,
+    "failures": [],
+    "text": "Notes\n\nLoading…\n\nNew note"
+  },
+  {
+    "id": "state-error-light-1280",
+    "pass": true,
+    "checked": 6,
+    "failures": [],
+    "text": "Notes\n\nThe pod reported an error. Try again later.\n\nTry again\nNew note"
+  },
+  {
+    "id": "recovery-after-error",
+    "pass": true,
+    "by": "retry button"
+  },
+  {
+    "id": "state-list-dark-375",
+    "pass": true,
+    "checked": 10,
+    "failures": []
+  },
+  {
+    "id": "state-note-dark-375",
+    "pass": true,
+    "checked": 11,
+    "failures": []
+  },
+  {
+    "id": "state-new-note-dark-375",
+    "pass": true,
+    "checked": 8,
+    "failures": []
+  },
+  {
+    "id": "state-empty-dark-375",
+    "pass": true,
+    "checked": 5,
+    "failures": []
+  },
+  {
+    "id": "state-read-only-dark-375",
+    "pass": true,
+    "checked": 4,
+    "failures": [],
+    "addButton": 0,
+    "editorFields": 0
+  },
+  {
+    "id": "state-loading-dark-375",
+    "pass": true,
+    "checked": 5,
+    "failures": [],
+    "text": "Notes\n\nLoading…\n\nNew note"
+  },
+  {
+    "id": "state-error-dark-375",
+    "pass": true,
+    "checked": 6,
+    "failures": [],
+    "text": "Notes\n\nThe pod reported an error. Try again later.\n\nTry again\nNew note"
+  },
+  {
+    "id": "state-list-dark-1280",
+    "pass": true,
+    "checked": 10,
+    "failures": []
+  },
+  {
+    "id": "state-note-dark-1280",
+    "pass": true,
+    "checked": 11,
+    "failures": []
+  },
+  {
+    "id": "state-new-note-dark-1280",
+    "pass": true,
+    "checked": 8,
+    "failures": []
+  },
+  {
+    "id": "state-empty-dark-1280",
+    "pass": true,
+    "checked": 5,
+    "failures": []
+  },
+  {
+    "id": "state-read-only-dark-1280",
+    "pass": true,
+    "checked": 4,
+    "failures": [],
+    "addButton": 0,
+    "editorFields": 0
+  },
+  {
+    "id": "state-loading-dark-1280",
+    "pass": true,
+    "checked": 5,
+    "failures": [],
+    "text": "Notes\n\nLoading…\n\nNew note"
+  },
+  {
+    "id": "state-error-dark-1280",
+    "pass": true,
+    "checked": 6,
+    "failures": [],
+    "text": "Notes\n\nThe pod reported an error. Try again later.\n\nTry again\nNew note"
+  }
+]

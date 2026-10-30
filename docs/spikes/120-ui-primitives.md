@@ -1,8 +1,11 @@
 # Spike #120: UI primitives and role tokens
 
 [Claude] Result of the spike in sempods/sempods-apps-template#120, run on
-2026-10-30. The owner decides; nothing here changes the starter. Evidence,
-scripts and the variants are in [spikes/120-ui](../../spikes/120-ui/README.md).
+2026-10-30 and revised after Codex's review of commit 4ff2b48 (in the issue).
+The owner decides; nothing here changes the starter. Evidence, scripts and
+the variants are in [spikes/120-ui](../../spikes/120-ui/README.md). The
+[status](#status) at the end separates what is verified from remaining spike
+work and adoption prerequisites.
 
 ## Recommendation
 
@@ -19,28 +22,32 @@ rather than as source copied into each app:
 - `@sempods/client-sdk` stays UI-free. `@sempods/app-sdk` gets no UI
   framework; it needs four bounded styling follow-ups (below).
 - Adopt only with the SDK release that contains the Escape fix from
-  sempods/sempods-typescript#186 (merged on main, not in 0.6.0). On 0.6.0
-  every candidate fails the interop gate.
+  sempods/sempods-typescript#186 and the calendar-date field from
+  sempods/sempods-typescript#190 (both on main, not in 0.6.0). On 0.6.0 every
+  candidate fails the interop gate.
 
-Why React Aria over Base UI, given that both pass the gate on SDK main:
+Why React Aria over Base UI, given that both pass the gate on SDK main, in
+Chromium and WebKit:
 
 1. **Dates.** React Aria's calendar works on `CalendarDate`, a date without
-   time or zone; it matches the day strings the SDK edits (#118,
-   sempods/sempods-typescript#190). Base UI ships no calendar; shadcn's
-   base-nova calendar is react-day-picker on `Date` objects, so every app
-   converts at local noon to avoid midnight shifts, and the registry item had
-   a keyboard bug (below).
-2. **Event model.** React Aria handles Escape and outside presses through
-   React events on its own overlay, so it respects the SDK's propagation
-   boundaries. Base UI listens on `document` and ignores `defaultPrevented`;
-   on SDK 0.6.0 it leaked Escape from every SDK confirmation, React Aria only
-   from one.
-3. **Fewer kit corrections**: two for React Aria, three for Base UI, all
-   found by the evidence scripts rather than by reading.
+   time or zone, which matches the SDK's `xsd:date` field. The persistence
+   roundtrip below passes with it in three time zones. Base UI ships no
+   calendar; shadcn's base-nova calendar is react-day-picker on `Date`
+   objects, so the conversion at local noon has to live somewhere. That could
+   be one adapter in the package rather than in every app, so this is a
+   reason of fit, not a blocker.
+2. **Overlay integration.** React Aria handles Escape and outside presses
+   through React events on its own overlay and so respects the SDK's
+   propagation boundaries. Base UI listens on `document` and ignores
+   `defaultPrevented`; on SDK 0.6.0 it leaked Escape from every SDK
+   confirmation, React Aria from one. On SDK main both pass.
 
-The price: about 13 KB gzip more JavaScript than Base UI, and shadcn's aria
-track is newer than its base track (shadcn's default preset is now
-base-nova), so fewer examples exist that assistants have seen.
+The kit corrections the spike needed (two for React Aria's dialog and
+calendar locale plus the calendar size, three for Base UI) are a snapshot of
+this exercise, not a maintenance metric. **Base UI remains a viable
+alternative.** The price of React Aria: about 13 KB gzip more JavaScript,
+and shadcn's aria track is newer than its base track (shadcn's default
+preset is base-nova), so assistants have seen fewer examples of it.
 
 ## Baseline and candidates
 
@@ -53,10 +60,14 @@ base-nova), so fewer examples exist that assistants have seen.
 | Primitives | `@base-ui/react` 1.9.0, `react-aria-components` 1.22.1 (+ `@internationalized/date` 3.12.4), `radix-ui` 1.8.1 |
 | Styling | `tailwindcss` 4.3.3, `cn` 0.5.1, `class-variance-authority` 0.7.1 |
 | Calendar (base, radix) | `react-day-picker` 10.0.2, `date-fns` 4.4.0 |
-| React, Vite, browser | React 19.3.1, Vite 8.3.5, Playwright 1.64.1 Chromium |
+| React, Vite | React 19.3.1, Vite 8.3.5 |
+| Browsers | Playwright 1.64.1: Chromium 156.0.8078.4, WebKit 27.2; Firefox 157 did not launch on the test machine |
+| Node | 24.21.0 (the repository pins 24.15.0; `pnpm run check` was run with 24.21.0) |
 
-Every result below names its SDK baseline. "main" results are not
-available to apps until the SDK releases them.
+Every result names its SDK baseline. "main" results are not available to
+apps until the SDK releases them. All evidence uses a loopback fake Pod in
+the dev server; it is fixture and browser evidence, not a real Pod, an
+installed PWA or a human test.
 
 **Desk step.** The candidates share the styling and distribution layer
 (shadcn) and differ only in primitives. Reading the libraries' dismissal code
@@ -87,7 +98,7 @@ switch, Back and Forward runs through the SDK's `navigate`, which asks before
 an unsaved edit is left. Fourteen checks per candidate and SDK baseline, by
 keyboard and pointer, each from a fresh page
 ([gate.mjs](../../spikes/120-ui/scripts/gate.mjs), results in
-`evidence/gate-*.json`).
+`evidence/gate-*.json`). Chromium:
 
 | Check | Base UI 0.6.0 | Base UI main | React Aria 0.6.0 | React Aria main | Radix main |
 |---|---|---|---|---|---|
@@ -99,7 +110,7 @@ keyboard and pointer, each from a fresh page
 | Escape in the date chooser inside the fields closes only it | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Escape in the SDK delete question closes only it | ✗ ² | ✓ | ✗ ² | ✓ | ✗ ⁵ |
 | Tab stays in the dialog; page behind inert or hidden | ✓ ⁶ | ✓ ⁶ | ✓ | ✓ | ✓ |
-| Clean Escape closes and returns focus to the opener | ✓ | ✓ | ✓ | ✓ | ✗ ⁷ |
+| Clean Escape closes and returns focus to the opener (opened by keyboard) | ✓ | ✓ | ✓ | ✓ | ✗ ⁷ |
 | Explicit Save after the cancelled closes | ✗ ² | ✓ | ✓ | ✓ | ✓ |
 | 1280 → 375 → 1280 px keeps the draft, full screen on the phone | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Back closes the routed dialog, Forward reopens it | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -120,6 +131,15 @@ keyboard and pointer, each from a fresh page
    ([probe-min.mjs](../../spikes/120-ui/scripts/probe-min.mjs)). Not a
    concern for people, but for automated tests.
 7. Focus lands on `body`.
+
+**WebKit 27.2** (Playwright, SDK main): Base UI and React Aria pass all
+fourteen checks (`evidence/gate-*-main-webkit.json`). An earlier version of
+the focus check opened the dialog with a mouse click; WebKit does not focus a
+link on click, so there was nothing to return focus to, in both candidates.
+The check now opens the dialog by keyboard. WebKit automation is not evidence
+of installed iOS or PWA behaviour. **Firefox** stays untested: Playwright's
+Firefox 157 failed to launch on the test machine (a macOS sandbox extension
+error), with and without the tool sandbox.
 
 A first version of the harness switched routes with plain
 `history.pushState`, without the SDK's `navigate`. There, Back with a dirty
@@ -145,7 +165,7 @@ follow-ups proposed below):
 - **Inherited properties.** Inside SDK surfaces, SDK rules still colour what
   a component does not set itself (the outline button's text).
 
-## Stage 2: reference screen, contract, contrast, prompts
+## Stage 2: reference screen, dates, contract, contrast, prompts
 
 ### Focus Zen screen
 
@@ -153,14 +173,16 @@ The Zen view, the header menu with a View submenu and checked choices, the
 routed dialog (full screen below 640 px, up to 42rem wide above) and a
 calendar-date chooser inside the editor fields run on both candidates
 ([screen.tsx](../../spikes/120-ui/harness/src/screen.tsx)). Keyboard-only
-checks ([interaction.mjs](../../spikes/120-ui/scripts/interaction.mjs)), in
-Europe/Berlin, Pacific/Kiritimati (UTC+14) and Pacific/Pago_Pago (UTC−11):
+checks ([interaction.mjs](../../spikes/120-ui/scripts/interaction.mjs)),
+Chromium, SDK main, in Europe/Berlin, Pacific/Kiritimati (UTC+14) and
+Pacific/Pago_Pago (UTC−11):
 
 | Check | Base UI | React Aria |
 |---|---|---|
-| Menu: Enter opens, ArrowRight opens View, ArrowLeft returns, Escape closes the submenu first, then the menu, focus back on the button; choosing "List" closes and checks it | ✓ after fix a | ✓ |
-| Calendar: focus starts on the chosen day; arrows, PageDown, Enter, Apply; the stored day is exactly one day and one month later in all three zones | ✓ after fixes b, c | ✓ |
-| German: month names, Monday first, SDK texts | ✓ | ✓ after fix d |
+| Menu: Enter opens, ArrowRight opens View, ArrowLeft returns, Escape closes the submenu first, then the menu, focus back on the button; choosing "List" closes and checks it | ✓ after a | ✓ |
+| Calendar selection: focus starts on the chosen day; arrows, PageDown, Enter, Apply; the chooser shows exactly one day and one month later in all three zones | ✓ after b, c | ✓ |
+| German: month names, Monday first, SDK texts | ✓ | ✓ after d |
+| Touch targets at 375 × 812 and 375 × 560: days and month buttons at least 44 × 44px without overlap, no horizontal overflow, Apply reachable by Tab and visible, focus back on the trigger | ✗ (not corrected) | ✓ after e |
 
 Kit corrections the checks forced:
 
@@ -174,10 +196,38 @@ Kit corrections the checks forced:
   patch in generated code, worth reporting upstream.
 - d. React Aria reads the browser's locale unless the calendar sits in an
   `I18nProvider` with the app's locale.
+- e. shadcn's calendar uses 28 × 28px cells (`--cell-size: --spacing(7)`),
+  below the template's 44px targets. The kit sets `--spacing(11)` on the
+  calendar, and the popover scrolls within the screen height (otherwise it
+  overflowed a 812px screen by 8px). The same correction is in the package.
+  The first version of this write-up claimed 44px controls throughout; the
+  calendar was missed. Base UI's calendar was left at 28px. With 44px cells
+  the chooser is tall: below a field low on a 375 × 812 screen, Apply first
+  sits partly beyond the popover's edge and comes into view when the popover
+  scrolls or Tab reaches it. A more compact chooser (presets first, as in
+  Focus) is reference-screen work for #118.
 
-shadcn's default control heights (32 px buttons, 28 px icon buttons) are
-below the 44 px touch targets the template uses; the kit sets sizes
-explicitly.
+### Calendar dates: persistence
+
+With SDK main, the start date uses the SDK's public
+`date(predicate, { optional: true, orDateTime: true })` field; the fake Pod
+is seeded with typed RDF (two `xsd:date` days and one zoned `xsd:dateTime`).
+SDK 0.6.0 has no date field; its gate runs read the same property as plain
+text and are labelled as the compatibility baseline.
+[roundtrip.mjs](../../spikes/120-ui/scripts/roundtrip.mjs) checks what the
+Pod stores, React Aria, in the three time zones (`evidence/roundtrip.json`):
+
+| Check | Berlin | UTC+14 | UTC−11 |
+|---|---|---|---|
+| Select, Apply, explicit SDK Save, fresh page: stored `"2026-10-29"^^xsd:date`, no time, read back and shown | ✓ | ✓ | ✓ |
+| Chooser closed without Apply: draft and stored value unchanged, Save stays disabled | ✓ | ✓ | ✓ |
+| Day applied, then the edit cancelled: nothing written | ✓ | ✓ | ✓ |
+| Stored `"2026-10-30T09:30:00+02:00"^^xsd:dateTime`: unchanged lexical value and datatype after a title edit and a cancelled chooser; applying a day replaces it with an `xsd:date` | ✓ | ✓ | ✓ |
+
+One open design point: the trigger shows a stored date-time in the device's
+zone (in UTC−11 "29 Oct 2026, 20:30"), while the chooser starts at the day of
+the stored offset (30 October). Which day a person expects there is a
+question for #118, not for the library.
 
 ### Theme and variant contract
 
@@ -219,21 +269,38 @@ draws a solid 2 px outline in the ring colour instead.
 
 ### Contrast
 
-Measured on what the browser renders, not on token pairs
-([contrast.js](../../spikes/120-ui/scripts/contrast.js)): every visible
-text against its composited background (4.5:1, 3:1 when large), icons in
-buttons and field boundaries against their adjacent colour (3:1), and the
-focus indicator of each control reached by Tab (3:1). Colours are resolved
-through a canvas, so `oklch`, `color-mix` and transparency count as painted.
-Disabled controls and content covered by a modal are exempt; decorative
-borders are not measured.
+[contrast.js](../../spikes/120-ui/scripts/contrast.js) measures what the
+browser renders in the states a run reaches. It is a measurement aid for
+these states, not a complete accessibility validation:
 
-Six theme and variant combinations × light and dark × five states (Zen, menu
-open, dialog, date chooser, SDK question) × two candidates:
+- Text, including the displayed value and the placeholder of inputs and text
+  areas, against its composited background: 4.5:1, or 3:1 when large.
+- Icons in buttons and field boundaries against the adjacent colour: 3:1.
+- The focus indicator of each control reached by Tab: 3:1.
+- Colours are resolved through a canvas, so `oklch`, `color-mix` and
+  transparency count as painted. Disabled controls and content covered by a
+  modal are exempt; decorative borders are not measured.
 
-With the contract as described, all 120 measured states pass
-(`evidence/contract/contrast-*.json`): text at least 4.93:1, icons 6.51:1,
-field boundaries 3.05:1, focus indicators 6.51:1. On the way there:
+[contrast-selftest.mjs](../../spikes/120-ui/scripts/contrast-selftest.mjs)
+holds 19 controls that must behave as stated: white text on white,
+transparent text, small text at 3:1, an input value white on white, a grey
+text area value, a light placeholder, a light icon, a light field border, a
+50 % teal ring and a light outline all fail; their readable counterparts pass.
+One control repeats the reported blind spot in the real app: the task title
+made white on white fails, the normal title passes. The first version of the
+checker did not measure field values at all.
+
+The runs cover six theme and variant combinations (calm and fresh; solid and
+inverted actions; tonal, outline and text secondary actions) × light and dark
+× 375 px and 1280 px × five states (Zen, menu open, dialog, date chooser, SDK
+question) × two candidates. In the Zen state the three kinds of action
+(primary, secondary, icon) are also measured hovered and pressed, and every
+control reached by Tab while focused. Results (`evidence/contract/contrast-*.json`): 240 page states with 5,928
+measurements, no failure. Lowest values: text 4.93:1, field values 14.76:1
+(these screens have no placeholders; the notes app below does), icons
+4.96:1, field boundaries 3.05:1, focus indicators 6.51:1.
+
+On the way there:
 
 - Field boundaries: SDK editor fields measured 1.13:1 with `--sempods-line`
   on the decorative border role, and 2.89:1 on the editor's tinted card with
@@ -244,30 +311,35 @@ field boundaries 3.05:1, focus indicators 6.51:1. On the way there:
   solid outline replaced it, also on menu items, which otherwise show focus
   only through the `accent` surface (about 1.1:1).
 
+Not measured: states the runs do not reach (for example validation errors
+inside the SDK editor), selected text, scrollbars, Windows high-contrast
+mode, and anything beyond colour contrast.
+
 ### Theme-edit prompts
 
 Three owner prompts from the issue, each given once to a fresh assistant
 (Claude Sonnet) per candidate, in an isolated copy of the app with the theme
 moved into the app as in an owner repository. The brief named the app folder
 and the owner's words only; no hint about roles or variants. Each result was
-rendered and measured afterwards.
+rendered and measured afterwards with the extended checker.
 
 | Prompt | Base UI | React Aria |
 |---|---|---|
 | "Invert the colours of the action buttons." | Made `inverted` the default in `theme.css`, kept `solid` as the switch. | First run reported a change to `index.html` that was not on disk; the rendered check caught it. Second run: same as Base UI. |
 | "Make the secondary actions outlined." | Made `outline` the default, kept `tonal` as the switch. | Same. |
-| "Switch to a warmer colour palette." | New palette values (cream, terracotta, amber in dark). Text ≥ 5.21:1. | New palette values, destructive moved to crimson to stay distinct. Text ≥ 4.88:1. |
+| "Switch to a warmer colour palette." | New palette values (cream, terracotta, amber in dark). | New palette values, destructive moved to crimson to stay distinct. |
 
-All results changed one file, used the contract instead of editing component
-colours, and rendered without a contrast failure in light and dark across the
-five states (`evidence/prompt-*/contrast-*.json`; each run's change is in
-`change.diff` next to it). Every "invert" run
-read "action buttons" as the primary action only and said so. The prompts
-show no difference between the candidates: the contract decided the outcome,
-not the primitives. Whether assistants build better UI with libraries they
-know therefore stays open; these prompts did not test it.
+All results changed one file and used the contract instead of editing
+component colours (each run's change is in `evidence/prompt-*/change.diff`).
+Contrast, with the extended checker at 375 px and 1280 px, light and dark,
+five states each (120 page states): no failure in any of the six results;
+lowest text 4.88:1 (React Aria, warm), lowest icon 4.58:1 (Base UI, warm). Every "invert" run read "action buttons" as the
+primary action only and said so. The prompts show no difference between the
+candidates: the contract decided the outcome, not the primitives. Whether
+assistants build better UI with libraries they know stays open; these
+prompts did not test it.
 
-## Stage 3: update path, costs, notes app
+## Stage 3: update path, costs, an ordinary app
 
 ### Update path
 
@@ -288,9 +360,10 @@ The versioned package reached a customised app: an app on the warm theme
 from the prompt run, depending on `@sempods-spike/ui-aria` 0.1.0 (without the
 outside-press adapter), failed `close-click-cancel`. Changing the dependency
 to 0.1.1 changed `package.json` and the lockfile only; `theme.css` stayed as
-the owner made it, and all gate checks passed
-(`evidence/gate-aria-main-pkg-*.json`). Dependabot does this step today for
-the SDK. Remaining work and forks:
+the owner made it, and the gate checks of that version passed
+(`evidence/gate-aria-main-pkg-*.json`, 13 checks: the Back checks came
+later). Dependabot does this step today for the SDK. This is evidence for
+the mechanism, not a finished distributable:
 
 - A real package ships built JavaScript; the spike's TSX source package
   needed a Vite `optimizeDeps` hint and a Tailwind `@source` line in the app.
@@ -308,7 +381,7 @@ Production builds with SDK main, gzip, split by origin
 | React | 67.4 KB | 67.4 KB |
 | SDK | 50.5 KB | 50.5 KB |
 | UI library (primitives, calendar, icons, `cn`, `cva`) | 83.6 KB | 96.7 KB |
-| App code | 7.6 KB | 8.1 KB |
+| App code | 7.8 KB | 8.3 KB |
 | CSS | 8.8 KB | 10.0 KB |
 | Production packages for the UI layer | 16 | 16 |
 
@@ -316,37 +389,87 @@ The UI layer adds about two thirds to the JavaScript of an app. shadcn's
 init also makes the `shadcn` CLI a runtime dependency (for its
 `shadcn/tailwind.css`), which pulls 199 more packages into production
 dependencies; it belongs in `devDependencies`. The default Geist font adds
-up to 76 KB of WOFF2 files; the template's `system-ui` would avoid it.
+up to 76 KB of WOFF2 files; the template's `system-ui` would avoid it (the
+notes app uses it).
 
-### Notes app and human evidence
+### Notes app from a short owner brief
 
-Not done in this spike: a simple notes or collection app from a short owner
-prompt (#111) and a non-technical participant identifying the primary action
-and completing, editing and cancelling a task. Human usability evidence
-stays open until the owner provides it; agent walkthroughs do not replace
-it.
+The ordinary case, React Aria only. The starter
+([apps/notes](../../spikes/120-ui/apps/notes)) had the frame (sign-in, "Pods
+& sharing", a placeholder screen), the package as a dependency, the theme
+contract, `NOTES.md` with the data agreed and inspected beforehand
+(`schema:NoteDigitalDocument` with `schema:name` and `schema:text`; contexts
+`personal`, an empty `work`, a read-only `shared`) and
+[AUTHORING.md](../../spikes/120-ui/apps/notes/AUTHORING.md), the template's
+"Build the screen" instructions rewritten for the package. The template's
+`ListScreen` reference and its `routes.ts` were not carried over.
+
+A fresh assistant (Claude Opus 5.5, the session default) got this brief and
+nothing else about the implementation:
+
+> I'd like a simple notes app. I want to jot down short notes with a title
+> and some text, see them in a list, open one to change it, and delete the
+> ones I don't need any more. It should feel calm and be easy to use on my
+> phone.
+
+| | |
+|---|---|
+| Elapsed | 5.2 minutes, 32 tool calls, no intervention, no rework |
+| Result | `src/App.tsx`, `src/notes.ts`, `src/texts.ts` (EN/DE), `NOTES.md` (change in `evidence/notes-run/change.diff`); `tsc` and `pnpm build` pass |
+| Its own decisions | Title required, text optional; list sorted by title (no date in the vocabulary); the new-note draft survives closing its dialog ("Continue new note"); read-only contexts show notes as text without add or delete |
+| Reported obstacles | No app-side routing guidance; the SDK's buttons cannot follow the theme's variants; the bundle warning above 500 kB |
+
+Rendered check ([notes-check.mjs](../../spikes/120-ui/scripts/notes-check.mjs),
+`evidence/notes.json`), Chromium, SDK main, against the stored data:
+
+- Passed: list in title order; create (stored as `schema:NoteDigitalDocument`
+  with name and text); edit and Save; edit and Cancel (nothing written);
+  Close with unsaved text asks and keeps it; delete from the row after the
+  SDK's question.
+- Passed at 375 px and 1280 px, light and dark, with no contrast failure
+  (placeholders included): list, open note, new note, empty context,
+  read-only context (no add, no editor), loading, read error with "Try
+  again", and recovery once the Pod answers again.
+
+Defects and observations:
+
+- **Back loses an unsaved note silently.** Without routes, the browser's Back
+  leaves the document; the app reloads, restores the session and the list,
+  and the typed text is gone without a question. The template's `routes.ts`
+  would have guarded this, but neither it nor any routing guidance was in the
+  starter, and the assistant correctly declined to depend on the spike
+  harness. Routing belongs to the app baseline (#114).
+- "New note" stays offered while the list is loading or failed.
+- On desktop the sticky "New note" button sits at the bottom of a mostly
+  empty page.
+
+This is agent authoring evidence on a fake Pod. It is not human usability
+evidence.
 
 ## Screenshots
 
-375 px and 1280 px, light and dark, for the Zen view, the open menu, the
-task dialog, the date chooser and the SDK question.
+375 px and 1280 px, light and dark:
 
 - [Base UI, default contract](../../spikes/120-ui/evidence/sheets/base.jpg)
-- [React Aria, default contract](../../spikes/120-ui/evidence/sheets/aria.jpg)
+  and [React Aria, default contract](../../spikes/120-ui/evidence/sheets/aria.jpg):
+  Zen view, open menu, task dialog, date chooser, SDK question.
+- [Notes app](../../spikes/120-ui/evidence/sheets/notes.jpg): list, note,
+  new note, empty, read-only, loading, error.
 - Prompt runs: [Base invert](../../spikes/120-ui/evidence/sheets/prompt-base-invert.jpg),
   [Base outline](../../spikes/120-ui/evidence/sheets/prompt-base-outline.jpg),
   [Base warm](../../spikes/120-ui/evidence/sheets/prompt-base-warm.jpg),
   [Aria invert](../../spikes/120-ui/evidence/sheets/prompt-aria-invert.jpg),
   [Aria outline](../../spikes/120-ui/evidence/sheets/prompt-aria-outline.jpg),
-  [Aria warm](../../spikes/120-ui/evidence/sheets/prompt-aria-warm.jpg)
+  [Aria warm](../../spikes/120-ui/evidence/sheets/prompt-aria-warm.jpg).
+  The prompt copies were taken before the calendar size correction.
 
 ## Rejected alternatives
 
 - **Radix (shadcn radix-nova)**: fails the gate; its modal blocks the SDK
   confirmations.
-- **Base UI (shadcn base-nova)**: passes the gate on SDK main; rejected for
-  the date model, the document-level Escape handling and the extra kit
-  corrections, not for a blocking defect. The closest second choice.
+- **Base UI (shadcn base-nova)**: passes the gate on SDK main in Chromium and
+  WebKit. Not recommended because of the date model and the document-level
+  Escape handling; a viable alternative with a shared date adapter.
 - **Mantine**: desk comparison only; replaces the token contract with its
   own theme system and shares Radix's capture-phase Escape.
 - **Plain React Aria with our own CSS**: keeps the whole styling burden.
@@ -354,27 +477,63 @@ task dialog, the date chooser and the SDK question.
   customised apps; kept only as the way an owner deliberately ejects a
   component.
 
-## Uncertainties
+## Status
 
-- Every "main" result depends on an unreleased SDK; the release may differ.
-- One browser engine (Chromium) and one run per prompt. Safari and Firefox
-  top-layer and focus behaviour were not tested.
-- Assistant familiarity: shadcn's aria track is newer than its base track.
-- A real package needs a build, a Tailwind integration and a release process
-  in this repository; the spike only packed tarballs.
-- No human participant.
+### Verified (fixture and browser evidence)
+
+- The interop gate: Base UI and React Aria pass all fourteen checks on SDK
+  main in Chromium and WebKit 27.2; Radix fails
+  (`evidence/gate-*.json`).
+- Keyboard menu with submenu, calendar selection in three time zones and
+  German, both candidates (`evidence/interaction.json`).
+- 44px calendar targets at 375 × 812 and 375 × 560, React Aria
+  (`evidence/interaction.json`).
+- Calendar-date persistence with the SDK's `date` field, React Aria, three
+  time zones, including cancelling and an unchanged zoned `xsd:dateTime`
+  (`evidence/roundtrip.json`).
+- Contrast of the measured states and the checker's controls (above).
+- Theme-edit prompts through the contract, rendered and measured.
+- A version bump of the package delivering a fix to a customised app.
+- A notes app from a short brief, with its flows and states checked against
+  the stored data.
+
+### Remaining spike work
+
+- Firefox: the gate did not run (launch failure on the test machine).
+- Base UI's calendar at 28px and its persistence roundtrip: not repeated,
+  since React Aria is recommended.
+- Human usability evidence: a non-technical participant identifying the
+  primary action and completing, editing and cancelling a task. Open until
+  the owner provides it; agent walkthroughs do not replace it.
+
+### Adoption prerequisites
+
+- The SDK release with sempods/sempods-typescript#186 (Escape) and #190
+  (calendar-date field).
+- The four SDK styling follow-ups below; until then the app's action
+  variants do not reach the SDK's Save, Cancel and confirmation buttons.
+- The package as a real distributable: built JavaScript, the Tailwind
+  integration, its home and release process, and the owner upgrade path
+  through Dependabot. The tarball experiment shows the mechanism only.
+- Routing in the app baseline (#114): every app needs guarded routes, or
+  Back loses unsaved work, as the notes app showed. The route contract
+  across generator, host, PWA and `returnTo` stays #114's work; whether a
+  router library should sit under it is a separate, small decision.
+- Starter and instructions: a `ListScreen` reference and `routes.ts` on the
+  package, the theme contract in the owner instructions, and the rendered
+  contrast check in the theme workflow.
 
 ## Adoption map
 
 | Issue | With the recommendation |
 |---|---|
 | #116 Menu: submenus with checked choices and keyboard return | Absorbed by the package's header menu (React Aria `SubmenuTrigger`, single selection). |
-| #117 Responsive routed screen | Absorbed: React Aria modal with the SDK adapter, full screen on phones, roomy on desktop; the Escape and Close semantics need the SDK release with #186. Back and Forward with a dirty draft already work through the SDK's `navigate`. |
-| #118 Calendar-date chooser composed with SDK editors | Absorbed: React Aria calendar on `CalendarDate`; presets and typed entry stay app or reference-screen composition. |
+| #117 Responsive routed screen | Absorbed: React Aria modal with the SDK adapter, full screen on phones, roomy on desktop; the Escape and Close semantics need the SDK release with #186. Back and Forward with a dirty draft work through the SDK's `navigate` when the app routes through it. |
+| #118 Calendar-date chooser composed with SDK editors | Absorbed: React Aria calendar on `CalendarDate` with the SDK's `date` field; presets, typed entry and the display of stored date-times stay app or reference-screen composition. |
 | #119 Filled action styles, bounded responsive action group | Styles absorbed by the variant contract (`data-actions`, `data-secondary`); the responsive action group stays a reference layout. |
 | #115 Mobile dialogs inside the viewport with a scrollbar | Likely absorbed (the full-screen sheet held at 375 px); the scrollbar case was not tested. |
-| #111 Chips, collection and log reference screens | Partly: chips can come from the package (React Aria `TagGroup`); the reference screens, copy and layouts remain. Not exercised here. |
-| #114 Routes with guarded history | Unaffected: the library dialog follows the route, and the template's routing pattern with the SDK's `navigate` guarded Back and Forward in the gate. The route contract across generator, host, PWA and `returnTo` stays #114's work. |
+| #111 Chips, collection and log reference screens | Partly: chips can come from the package (React Aria `TagGroup`); the reference screens, copy and layouts remain. The notes app shows the list-and-editor case works from a short brief on the package. |
+| #114 Routes with guarded history | Prerequisite: the notes app lost an unsaved note on Back without routes. The library dialog follows the route either way. |
 | sempods/sempods-typescript#107 Reference app for look and feel | Unaffected; it should use the package once it exists. |
 
 SDK follow-ups (bounded, styling only, for `@sempods/app-sdk`):
@@ -388,9 +547,5 @@ SDK follow-ups (bounded, styling only, for `@sempods/app-sdk`):
 4. `margin: auto` on the SDK's own modal dialogs, so a CSS reset cannot move
    them.
 
-Starter and instructions: the owner instructions name the theme contract
-(roles in `theme.css`, `data-actions` and `data-secondary` for variants),
-the theme check runs the rendered contrast measurement, and the reference
-screens use the package. Focus in haed/sempods-apps adopts the package after
-the template release and drops its own `Menu.tsx`, `Dialog.tsx` and
-`Calendar.tsx`.
+Focus in haed/sempods-apps adopts the package after the template release and
+drops its own `Menu.tsx`, `Dialog.tsx` and `Calendar.tsx`.

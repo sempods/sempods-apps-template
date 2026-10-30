@@ -91,15 +91,17 @@ export const kit: UiKit = {
   },
   DateField({ label, value, onChange, noneLabel, applyLabel, locale }) {
     const [open, setOpen] = useState(false);
-    const [picked, setPicked] = useState<Date | undefined>(value ? toDate(value) : undefined);
+    // A stored zoned date-time starts the chooser at its own day.
+    const day = value ? toDate(value.slice(0, 10)) : undefined;
+    const [picked, setPicked] = useState<Date | undefined>(day);
     const popup = useRef<HTMLDivElement>(null);
     const shown = value
-      ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(toDate(value))
+      ? new Intl.DateTimeFormat(locale, value.includes('T') ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }).format(value.includes('T') ? new Date(value) : toDate(value))
       : noneLabel;
     return (
       <div className="grid gap-1.5">
         <span>{label}</span>
-        <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setPicked(value ? toDate(value) : undefined); }}>
+        <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setPicked(day); }}>
           <PopoverTrigger render={<Button variant="outline" className="h-11 justify-between text-base font-normal" aria-label={`${label}: ${shown}`} />}>
             {shown}
           </PopoverTrigger>

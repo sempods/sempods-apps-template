@@ -3,6 +3,7 @@
 packages:
   - 'harness'
   - 'apps/*'
+  - 'ui-aria'
 
 saveExact: true
 minimumReleaseAge: 0

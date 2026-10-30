@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Spike #120: the reusable interaction layer (shadcn aria-nova components plus the sempods adapters) as a versioned package; apps keep only their theme and screens.",
   "exports": {
-    ".": "./src/kit.tsx"
+    ".": "./src/kit.tsx",
+    "./ui/*": "./src/components/ui/*.tsx"
   },
   "files": [
     "src"
   ],
   "peerDependencies": {
     "react": "19.3.1",
-    "@spike/harness": "*"
+    "@spike/harness": "workspace:*"
   },
   "dependencies": {
     "@internationalized/date": "3.12.4",
@@ -20,5 +21,8 @@
     "cn": "0.5.1",
     "lucide-react": "1.65.0",
     "react-aria-components": "1.22.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0"
   }
 }

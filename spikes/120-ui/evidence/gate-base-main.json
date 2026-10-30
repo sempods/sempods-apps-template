@@ -1,6 +1,7 @@
 {
   "variant": "base",
   "sdk": "main",
+  "browser": "chromium 156.0.8078.4",
   "results": [
     {
       "id": "escape-field-dirty",

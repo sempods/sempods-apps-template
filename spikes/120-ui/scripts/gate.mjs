@@ -3,9 +3,10 @@
 // fresh page; results go to evidence/gate-<variant>-<sdk>.json.
 // Usage: node scripts/gate.mjs [variant ...] [--sdk=0.6.0|main|both]
 //        [--apps=<apps dir>] [--only=<check,...>] [--label=<file suffix>]
+//        [--browser=chromium|firefox|webkit]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { root, signIn, startApp, variants } from './lib.mjs';
 
 const args = process.argv.slice(2);
@@ -14,7 +15,9 @@ const sdkArg = args.find((a) => a.startsWith('--sdk='))?.slice(6) ?? 'both';
 const sdks = sdkArg === 'both' ? ['0.6.0', 'main'] : [sdkArg];
 const appsArg = args.find((a) => a.startsWith('--apps='))?.slice(7);
 const only = args.find((a) => a.startsWith('--only='))?.slice(7).split(',');
-const label = args.find((a) => a.startsWith('--label='))?.slice(8);
+const engineName = args.find((a) => a.startsWith('--browser='))?.slice(10) ?? 'chromium';
+const engine = { chromium, firefox, webkit }[engineName];
+const label = [args.find((a) => a.startsWith('--label='))?.slice(8), engineName === 'chromium' ? undefined : engineName].filter(Boolean).join('-') || undefined;
 const EDIT = ' (edited)';
 
 /** A short description of the focused element and the layer it sits in. */
@@ -177,9 +180,14 @@ const checks = {
     const layers = new Set([...seen].map((f) => f.split('@')[1] ?? f));
     return { pass: !layers.has('page') && !layers.has('body') && inert, focused: [...seen].join(' | '), backgroundInertOrHidden: inert };
   },
-  // A clean dialog closes on Escape and returns focus to its opener.
+  // A clean dialog, opened by keyboard, closes on Escape and returns focus
+  // to its opener. (WebKit does not focus a link on a mouse click, so
+  // there would be no opener to return to.)
   'escape-clean-restores-focus': async (c, page) => {
-    await c.open();
+    await page.locator('.zen-title').focus();
+    await page.keyboard.press('Enter');
+    await c.title.waitFor();
+    await page.waitForTimeout(250);
     await c.title.focus();
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
@@ -252,7 +260,8 @@ const checks = {
   },
 };
 
-const browser = await chromium.launch();
+const browser = await engine.launch();
+console.log(`${engineName} ${browser.version()}`);
 const out = join(root, 'evidence');
 mkdirSync(out, { recursive: true });
 for (const variant of chosen.length ? chosen : variants)
@@ -269,7 +278,7 @@ for (const variant of chosen.length ? chosen : variants)
       results.push(r);
       console.log(`${variant} sdk=${sdk} ${r.pass ? '✓' : '✗'} ${id} ${JSON.stringify(r)}`);
     }
-    writeFileSync(join(out, `gate-${variant}-${sdk}${label ? '-' + label : ''}.json`), JSON.stringify({ variant, sdk, results, pageErrors: errors }, null, 2) + '\n');
+    writeFileSync(join(out, `gate-${variant}-${sdk}${label ? '-' + label : ''}.json`), JSON.stringify({ variant, sdk, browser: `${engineName} ${browser.version()}`, results, pageErrors: errors }, null, 2) + '\n');
     await context.close();
     await server.close();
   }

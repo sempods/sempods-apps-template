@@ -60,7 +60,7 @@ for (const variant of chosen.length ? chosen : ['base', 'aria']) {
     for (const scheme of ['light', 'dark']) {
       await page.emulateMedia({ colorScheme: scheme });
       for (const [state, reach] of Object.entries(states)) {
-        for (const width of flag('shots') && combos.length === 1 ? [375, 1280] : [1280]) {
+        for (const width of flag('contrast') || combos.length === 1 ? [375, 1280] : [1280]) {
           await page.setViewportSize({ width, height: width < 600 ? 812 : 800 });
           await page.goto(origin + '/' + query);
           await reach(page);
@@ -71,27 +71,47 @@ for (const variant of chosen.length ? chosen : ['base', 'aria']) {
             mkdirSync(dir, { recursive: true });
             await page.screenshot({ path: join(dir, `${state}-${scheme}-${width}.png`) });
           }
-          if (flag('contrast') && width === 1280) {
+          if (flag('contrast')) {
             const measured = await page.evaluate(() => spikeContrast());
-            // Focus indicators: walk the state's focus order by keyboard.
+            const tagged = (list, suffix) => list.map((m) => ({ ...m, what: `${m.what} ${suffix}` }));
+            // The Zen actions in their interaction states: hover, and pressed
+            // (released away from the button, so nothing is triggered).
+            if (state === 'zen')
+              for (const name of ['Complete', 'Not today', 'Previous task']) {
+                const target = page.getByRole('button', { name, exact: true });
+                await target.hover();
+                await page.waitForTimeout(200);
+                measured.push(...tagged(await target.evaluate((el) => spikeContrast(el)), ':hover'));
+                await page.mouse.down();
+                await page.waitForTimeout(120);
+                measured.push(...tagged(await target.evaluate((el) => spikeContrast(el)), ':active'));
+                await page.mouse.move(1, 1);
+                await page.mouse.up();
+              }
+            // Focus: walk the state's focus order by keyboard, measuring each
+            // control's indicator and its own content while focused.
             const focus = [];
             for (let i = 0; i < 8; i++) {
               await page.keyboard.press('Tab');
               await page.waitForTimeout(250); // ring transition
               const f = await page.evaluate(() => spikeFocusIndicator());
-              if (f && !focus.some((x) => x.what === f.what)) focus.push(f);
+              if (f && !focus.some((x) => x.what === f.what)) {
+                focus.push(f);
+                measured.push(...tagged(await page.evaluate(() => spikeContrast(document.activeElement)), ':focus'));
+              }
             }
             const failures = measured.filter((m) => !m.pass);
             const min = (kind) => Math.min(...measured.filter((m) => m.kind === kind).map((m) => m.ratio));
             report.push({
-              theme, actions, secondary, scheme, state,
+              theme, actions, secondary, scheme, state, width,
               checked: measured.length,
-              minText: min('text'), minIcon: min('icon'), minField: min('field-boundary'),
+              minText: min('text'), minValue: Math.min(min('field-value'), min('placeholder')),
+              minIcon: min('icon'), minField: min('field-boundary'),
               focusMin: Math.min(...focus.map((f) => f.ratio)),
               failures: [...new Map(failures.map((f) => [f.kind + f.what + f.fg + f.bg, f])).values()],
               focusFailures: focus.filter((f) => !f.pass),
             });
-            console.log(variant, theme, actions, secondary, scheme, state, 'checked', measured.length, 'fail', failures.length, 'focus-fail', focus.filter((f) => !f.pass).length);
+            console.log(variant, theme, actions, secondary, scheme, state, width, 'checked', measured.length, 'fail', failures.length, 'focus-fail', focus.filter((f) => !f.pass).length);
           }
           await page.keyboard.press('Escape').catch(() => {});
         }

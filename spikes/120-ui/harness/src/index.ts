@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
 import { useApp } from '@sempods/app-sdk/react';
+import * as edit from '@sempods/client-sdk/edit';
 import { fields, flag, text, type DraftOf } from '@sempods/client-sdk/edit';
 
 declare const __SDK_BASELINE__: string;
@@ -10,7 +11,17 @@ declare const __SDK_BASELINE__: string;
 export const sdkBaseline: string = __SDK_BASELINE__;
 
 const schema = 'https://schema.org/';
-/** Plain day strings on purpose: SDK 0.6.0 has no calendar-date field. */
+/**
+ * The start date is a calendar day (xsd:date) that also keeps an existing
+ * zoned xsd:dateTime unchanged: SDK main's date(..., { orDateTime }). SDK
+ * 0.6.0 has no date field; that baseline reads it as plain text.
+ */
+const date = (edit as unknown as {
+  date?: (predicate: string, options: { optional: true; orDateTime: true }) => ReturnType<typeof text>;
+}).date;
+const planned = date
+  ? date(schema + 'startDate', { optional: true, orDateTime: true })
+  : text(schema + 'startDate', { language: null, trim: true, optional: true });
 export const taskFields = fields(
   {
     title: text(schema + 'name', { language: null, trim: true }),
@@ -19,7 +30,7 @@ export const taskFields = fields(
       on: schema + 'CompletedActionStatus',
       off: schema + 'PotentialActionStatus',
     }),
-    planned: text(schema + 'startDate', { language: null, trim: true, optional: true }),
+    planned,
   },
   { type: schema + 'Action' },
 );

@@ -3,9 +3,13 @@
 // for icons that carry meaning, boundaries of fields and focus indicators
 // against the adjacent colour. Disabled controls and content covered by a
 // modal layer are exempt. Colours are resolved through a canvas, so oklch,
-// color-mix and transparency are measured as the browser paints them.
+// color-mix and transparency are measured as the browser paints them. The
+// displayed value and the placeholder of fields count as text. This is a
+// measurement of the states a run reaches, not a complete accessibility
+// validation; contrast-selftest.mjs checks it against known failures.
+// `root` limits it to one element and its content (hover, pressed, focus).
 // eslint-disable-next-line no-unused-vars
-function spikeContrast() {
+function spikeContrast(root = document.body) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const g = canvas.getContext('2d', { willReadFrequently: true });
@@ -72,9 +76,26 @@ function spikeContrast() {
     const r = ratio(fg, bg);
     results.push({ kind, what: describe(el), ratio: Math.round(r * 100) / 100, required, pass: r >= required - 0.005, fg: hex(fg), bg: hex(bg) });
   };
-  for (const el of document.querySelectorAll('body *')) {
+  const elements = root === document.body ? document.querySelectorAll('body *') : [root, ...root.querySelectorAll('*')];
+  for (const el of elements) {
     if (!visible(el) || disabled(el)) continue;
     const s = getComputedStyle(el);
+    // A field's value and placeholder are not text nodes; measure them as
+    // painted on the field's own background.
+    if (el.matches('input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=color]), textarea')) {
+      const bg = backdrop(el);
+      const size = parseFloat(s.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(s.fontWeight) >= 700);
+      if (el.value) {
+        const c = rgba(s.color);
+        c[3] *= opacity(el);
+        record('field-value', el, over(c, bg), bg, large ? 3 : 4.5);
+      } else if (el.placeholder) {
+        const c = rgba(getComputedStyle(el, '::placeholder').color);
+        c[3] *= opacity(el) * Number(getComputedStyle(el, '::placeholder').opacity || 1);
+        record('placeholder', el, over(c, bg), bg, large ? 3 : 4.5);
+      }
+    }
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (ownText && !el.closest('.sr-only')) {
       const bg = backdrop(el);

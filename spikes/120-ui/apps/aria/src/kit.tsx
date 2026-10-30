@@ -84,23 +84,31 @@ export const kit: UiKit = {
   },
   DateField({ label, value, onChange, noneLabel, applyLabel, locale }) {
     const [open, setOpen] = useState(false);
-    const [picked, setPicked] = useState<CalendarDate | null>(value ? parseDate(value) : null);
-    // CalendarDate is date-only: no instant, no time zone.
-    const shown = value
-      ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(value + 'T12:00:00Z'))
-      : noneLabel;
+    // CalendarDate is date-only: no instant, no time zone. A stored zoned
+    // date-time starts the chooser at its own day; it is replaced only when
+    // a day is applied.
+    const day = value ? parseDate(value.slice(0, 10)) : null;
+    const [picked, setPicked] = useState<CalendarDate | null>(day);
+    const shown = !value
+      ? noneLabel
+      : value.includes('T')
+        ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+        : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(value + 'T12:00:00Z'));
     return (
       <div className="grid gap-1.5">
         <span>{label}</span>
-        <PopoverTrigger isOpen={open} onOpenChange={(next) => { setOpen(next); if (next) setPicked(value ? parseDate(value) : null); }}>
+        <PopoverTrigger isOpen={open} onOpenChange={(next) => { setOpen(next); if (next) setPicked(day); }}>
           <Button variant="outline" className="h-11 justify-between text-base font-normal" aria-label={`${label}: ${shown}`}>
             {shown}
           </Button>
-          <Popover placement="bottom start" className="w-auto p-2">
+          {/* React Aria limits the height to the screen; the content scrolls. */}
+          <Popover placement="bottom start" className="w-auto overflow-y-auto p-2">
             <AriaDialog aria-label={label} className="outline-none">
               {/* React Aria reads the browser's locale unless told otherwise. */}
               <I18nProvider locale={locale}>
-                <Calendar aria-label={label} autoFocus value={picked} onChange={setPicked} />
+                {/* 44px days and month buttons, the template's touch target; the
+                    shadcn default is 28px. */}
+                <Calendar aria-label={label} autoFocus value={picked} onChange={setPicked} className="[--cell-size:--spacing(11)]" />
               </I18nProvider>
               <Button className="mt-2 h-11 w-full" isDisabled={!picked} onPress={() => { if (picked) onChange(picked.toString()); setOpen(false); }}>
                 {applyLabel}
