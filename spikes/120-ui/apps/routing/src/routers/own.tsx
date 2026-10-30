@@ -11,8 +11,14 @@ let shown = location.pathname + location.search;
 // The position of the shown entry in the session history, kept in its state,
 // so a declined back or forward can return to it without a new entry.
 let position: number = history.state?.position ?? 0;
+// An entry without the router's metadata (the first load) gets it.
+if (typeof history.state?.position !== 'number') history.replaceState({ ...history.state, position }, '');
 // Set while the router itself undoes a step, whose popstate it ignores.
 let undoing = false;
+// Set while the SDK decides about a Back or Forward. Further steps the
+// browser takes meanwhile start no second decision: the decision applies to
+// wherever the browser is when it ends, never to an earlier target.
+let deciding = false;
 const listeners = new Set<() => void>();
 function show(address: string) {
   shown = address;
@@ -39,16 +45,28 @@ function useNav(): Nav {
         undoing = false;
         return;
       }
-      const to = location.pathname + location.search;
-      const target: number = history.state?.position ?? 0;
+      if (deciding) return;
+      deciding = true;
       void navigate(() => {
-        position = target;
-        show(to);
+        // Leaving: show the entry the browser is on now.
+        position = history.state?.position ?? position;
+        show(location.pathname + location.search);
       }).then((left) => {
-        // Staying: step back to the shown entry; the history stays intact.
-        if (left || target === position) return;
-        undoing = true;
-        history.go(position - target);
+        deciding = false;
+        const target: unknown = history.state?.position;
+        if (left) {
+          // The browser moved on after the decision applied: decide again.
+          if (location.pathname + location.search !== shown) onPop();
+          return;
+        }
+        // Staying: back to the shown entry, keeping the history intact. An
+        // entry without the router's position cannot be measured; it shows
+        // the shown address again in place.
+        if (typeof target !== 'number') history.replaceState({ ...history.state, position }, '', shown);
+        else if (target !== position) {
+          undoing = true;
+          history.go(position - target);
+        }
       });
     };
     addEventListener('popstate', onPop);

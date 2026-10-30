@@ -12,6 +12,7 @@ import {
   TargetScreen,
   useAppState,
   useContextEditor,
+  useContexts,
   useList,
   useSdkLocale,
 } from '@sempods/app-sdk/react';
@@ -73,7 +74,8 @@ function Frame() {
       <TargetScreen>
         <Tasks nav={nav} view={view} />
       </TargetScreen>
-      {nav.place.kind === 'not-found' && (
+      {/* Signed out, sign-in stays usable: the error shows once connected. */}
+      {nav.place.kind === 'not-found' && connections.length > 0 && (
         <kit.ScreenDialog title="Not found" closeLabel="Close" open onRequestClose={() => nav.go({ kind: 'view', view: 'zen' }, { replace: true })}>
           <p data-testid="not-found">{nav.place.reason === 'invalid' ? 'This task link is not valid.' : 'This address does not lead anywhere in Focus.'}</p>
         </kit.ScreenDialog>
@@ -87,7 +89,13 @@ function Tasks({ nav, view }: { readonly nav: Nav; readonly view: 'zen' | 'list'
   const { view: target } = useAppState();
   const items = (list.data?.items ?? []).filter((item) => !item.data.done);
   const first = items[0];
-  const taskPlace = (iri: string, action?: 'postpone'): Place => ({ kind: 'task', id: encodeSubject(iri), ...(action ? { action } : {}) });
+  // Links name the task's source Context explicitly.
+  const taskPlace = (iri: string, action?: 'postpone'): Place => ({
+    kind: 'task',
+    id: encodeSubject(iri),
+    ...(target ? { context: target.contextIri } : {}),
+    ...(action ? { action } : {}),
+  });
   return (
     <>
       <LoadNotice {...list} />
@@ -109,15 +117,28 @@ function Tasks({ nav, view }: { readonly nav: Nav; readonly view: 'zen' | 'list'
           </section>
         )
       )}
-      {target && <TaskScreen nav={nav} context={target.contextIri} />}
+      {target && <TaskScreen nav={nav} selected={target.contextIri} />}
+      {nav.place.kind === 'new' && (
+        <kit.ScreenDialog title="New task" closeLabel="Close" open onRequestClose={() => nav.close()}>
+          <p data-testid="new-task">A new task would be written here.</p>
+        </kit.ScreenDialog>
+      )}
     </>
   );
 }
 
-/** The task's resource screen: open while the address names a task. */
-function TaskScreen({ nav, context }: { readonly nav: Nav; readonly context: string }) {
+/**
+ * The task's resource screen: open while the address names a task. It edits
+ * the source Context the address names; only an address without one uses the
+ * selected Context. A named source the person cannot read is an explicit
+ * error, never replaced by another Context.
+ */
+function TaskScreen({ nav, selected }: { readonly nav: Nav; readonly selected: string }) {
   const place = nav.place.kind === 'task' ? nav.place : null;
-  const subject = place ? decodeSubject(place.id) : null;
+  const contexts = useContexts();
+  const readable = !place?.context || contexts.contexts.some((c) => c.iri === place.context);
+  const context = place?.context ?? selected;
+  const subject = place && readable ? decodeSubject(place.id) : null;
   const edit = useContextEditor(taskFields);
   const { open, close } = edit;
   const { changing } = useAppState();
@@ -126,22 +147,24 @@ function TaskScreen({ nav, context }: { readonly nav: Nav; readonly context: str
     if (subject) void open({ subject, context });
     else void close();
   }, [subject, context, changing, open, close]);
-  const editor = subject && edit.target?.subject === subject ? edit.editor : null;
+  const editor = subject && edit.target?.subject === subject && edit.target?.context === context ? edit.editor : null;
   // Guarded: the SDK asks before a dirty draft is discarded, then the
   // address goes back to the opener (or the start page on a direct entry).
   const leave = async () => {
-    if (await edit.close()) nav.close();
+    if (!readable || (await edit.close())) nav.close();
   };
   return (
     <kit.ScreenDialog title={place?.action === 'postpone' ? 'Not today' : 'Details'} closeLabel="Close" open={!!place} onRequestClose={() => void leave()}>
-      <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title' }}>
+      <p className="text-sm text-muted-foreground" data-testid="source">{context.split('/').pop()}</p>
+      {!readable && <p role="alert" data-testid="source-missing">The source of this task is not available to you.</p>}
+      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title' }}>
         {(draft, change) => (
           <label className="grid gap-1.5">
             Title
             <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
           </label>
         )}
-      </ResourceEditor>
+      </ResourceEditor>}
     </kit.ScreenDialog>
   );
 }

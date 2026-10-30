@@ -2,30 +2,36 @@
 
 [Claude] Companion to the [UI spike](120-ui-primitives.md), run on
 2026-10-30 at the owner's request so that both decisions are settled before
-implementation starts. It answers how apps get addressable resource and
-action screens (sempods/sempods-apps-template#114) and whether a router
-library should sit under them. The owner decides; nothing here changes the
-starter. Evidence and scripts are in
+implementation starts, and revised after Codex's review of 368057f
+(sempods/sempods-apps-template#121). It answers how apps get addressable
+resource and action screens (sempods/sempods-apps-template#114) and whether
+a router library should sit under them. The owner decides; nothing here
+changes the starter. Evidence and scripts are in
 [spikes/120-ui](../../spikes/120-ui/README.md) (`apps/routing`,
 `scripts/routing-gate.mjs`, `scripts/route-contract.mjs`).
 
 ## Answer
 
-1. **The address contract is the decision; the router is not.** All three
-   clients tested (the template's own router, React Router, TanStack Router)
-   pass every client-side routing check in Chromium and WebKit with the
-   SDK's `navigate` as the only guard. What differs is not the router but
-   what the template generates for hosts, the PWA worker and sign-in.
-2. **Declare resource and action patterns per app** (for Focus
-   `tasks/:id` and `tasks/:id/postpone`) next to the static routes, and
-   generate from them: narrow host rewrites, a PWA allowlist that accepts
-   them and an optional query, and a `returnTo` that keeps them through
-   sign-in. Static views keep their copies.
-3. **Keep the template's own router** and extend `routes.ts` with the
-   declared patterns, the opener-aware close and the canonical replacement
-   of legacy links. A library adds 29–33 KB gzip and a second blocking
-   mechanism and brings nothing this contract uses. Reconsider one if apps
-   need nested layouts, typed search parameters or data loaders.
+1. **One declaration per app drives the address contract.** Literal routes
+   and resource patterns in `apps.json` (for Focus `list`, `tasks/add`,
+   legacy `tasks/new`, `tasks/:id`, `tasks/:id/postpone`) generate the host
+   rewrites, the PWA navigation allowlist and the bounded sign-in return.
+   The app's own parser recognises the same addresses and shows an explicit
+   page for anything else.
+2. **Keep the template's own router.** After Codex's review it needed one
+   correction for history moves during an open leave question; the fix is
+   about twenty lines, and the own router now passes the whole expanded
+   matrix in Chromium and WebKit. React Router fails one of its cases,
+   TanStack Router three, one of them losing a draft without a question.
+   This is evidence for these adapters on this matrix, not a general
+   ranking of the libraries.
+3. **The source Context belongs to the address.** A resource address names
+   its source (`?context=…`); the app edits that Context or shows an explicit
+   error, never the currently selected one.
+4. **Leaving the document is not protected by any router.** Back past the
+   document's first entry, a reload or closing the tab loses an unsaved
+   draft without a question. That needs an SDK decision (a `beforeunload`
+   prompt or draft persistence), not routing.
 
 The routing work does not change the UI recommendation: the package's
 screen dialog follows the route, whichever router moves the history. The
@@ -37,140 +43,175 @@ Template 0.8.0 (908615c), SDK main at addf662, the UI package from the UI
 spike (React Aria). Routers: `react-router` 8.5.1 (data router, library
 use) and `@tanstack/react-router` 1.170.46 (code-based route tree).
 Playwright 1.64.1 with Chromium 156.0.8078.4 and WebKit 27.2; Firefox did
-not launch on the test machine. A loopback fake Pod; no live host, no
+not launch on the test machine. A loopback fake Pod in which two Contexts
+hold the same task subject with different titles; no live host, no
 installed PWA, no real OAuth provider.
 
 ## The contract today
 
-Apps declare static routes in `apps.json`. The generator turns them into:
+Apps declare static routes in `apps.json`. The generator turns them into
+`app.routes` and a `returnPath` that returns only to a static route, a
+Workbox `navigateFallbackAllowlist` of the start page and the routes, and in
+the site build one copy of `index.html` per route, so "the layout is the
+same for every host" and needs no rewrites. Today's allowlist ends at the
+path although Workbox matches path and query: of the thirteen addresses
+below that should open the app offline, it serves ten without the shell
+(every query, every resource and creation path). Focus works around this in
+`routeFallback.ts`, with its own Netlify rules and a `returnTo` override.
 
-- `app.routes` and a `returnPath` for sign-in that returns only to a static
-  route;
-- a Workbox `navigateFallbackAllowlist` of the start page and the routes;
-- in the site build, one copy of `index.html` per route, so "the layout is
-  the same for every host" and needs no rewrites.
+## The proposed contract, checked layer by layer
 
-[route-contract.mjs](../../spikes/120-ui/scripts/route-contract.mjs) tests
-the generated allowlist against addresses Focus needs. It misses five of
-eight: every address with a query (Workbox matches path and query, the
-pattern ends at the path) and every resource or action path
-(`evidence/route-contract.json`). Offline, these addresses get no app
-shell. Focus works around both in `routeFallback.ts` and with its own
-Netlify rules; its `returnTo` override exists for the same reason.
+[route-contract.mjs](../../spikes/120-ui/scripts/route-contract.mjs) checks
+24 addresses against four layers at once (`evidence/route-contract.json`):
 
-## Options for resource addresses
+- **Host**: the published files first (the shell, a copy per literal route,
+  the callback page, `did.json`, assets), then the generated rewrites
+  `/focus/tasks/:id /focus/index.html 200` and
+  `/focus/tasks/:id/postpone /focus/index.html 200`, with the placeholder
+  semantics [Netlify](https://docs.netlify.com/manage/routing/redirects/redirect-options/#placeholders)
+  and [Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/redirects/#placeholders)
+  document: one segment including dots, query kept, trailing slash ignored.
+  This is an emulation of the documented rules, not a deployment.
+- **Worker**: the allowlist
+  `^/focus/(?:(?:list|tasks/add|tasks/new|tasks/[A-Za-z0-9_-]+|tasks/[A-Za-z0-9_-]+/postpone)/?)?(?:\?[^#]*)?$`.
+- **App**: the real parser of the routing app (`places.ts`).
+- **Sign-in return**: the address itself if it is below the app's path and
+  not the callback, else the start page.
 
-| | Address | Host | PWA, `returnTo` | Owner's request |
-|---|---|---|---|---|
-| A. Query on a static route | `/focus/tasks?id=…` | Works on every host today (a copy) | Allowlist needs the optional query | Not met: the owner asked for stable paths |
-| **B. Declared path patterns, generated rewrites** | `/focus/tasks/{id}`, `/focus/tasks/{id}/postpone` | Rewrites for the declared patterns only; Netlify and Cloudflare Pages read the same `_redirects` lines | Generated from the same declaration | Met |
-| C. Paths through the 404 page | `/focus/tasks/{id}` | Every host, but answers with status 404 | Allowlist as in B | Met, at the cost of a wrong status and a site-wide 404 page that must boot apps |
+Rules the check enforces: offline, the worker serves the shell only for
+addresses the host would answer; wherever the shell answers, the app knows
+the address or shows an explicit page; sign-in never returns to the callback
+or another app. The one **permitted difference**: a host placeholder matches
+any segment, so `/focus/tasks/abc.json` and `/focus/tasks/!!!` get the shell
+online but not offline; the app shows "This task link is not valid" for
+both. **Precedence**: literal routes win over patterns that share their
+prefix (`tasks/add` before `tasks/:id`): the host serves their file first
+and the parser checks literals first. The app guarantees its identifiers
+never equal a literal; Focus's base64url-encoded absolute IRIs always start
+with `aHR0c`. A literal route with a slash (`tasks/add`) needs the site build
+to write `tasks/add.html` in a subfolder, which it does not do today.
 
-**Recommendation: B.** One declaration in `apps.json` (for example
-`"resources": ["tasks/:id", "tasks/:id/postpone"]`) generates:
-
-- `_redirects` lines such as `/focus/tasks/:id /focus/index.html 200`, only
-  for the declared patterns, never a catch-all;
-- the allowlist
-  `^/focus/(?:(?:list|tasks/[A-Za-z0-9_-]+|tasks/[A-Za-z0-9_-]+/postpone)/?)?(?:\?[^#]*)?$`,
-  whose parameter segments cannot reach a file, the callback or another app;
-- a `returnTo` that accepts the same addresses and nothing else.
-
-The proposal opens all eight Focus addresses and none of ten that must stay
-outside (callback with its query, assets, `did.json`, favicon, unknown
-sub-paths, other apps). The cost: apps with resource paths need a host that
-honours `_redirects` rewrites. The publishing instructions name that host
-requirement; a static host without rewrites keeps working for apps with
-static views only.
+Apps with resource patterns need a host that honours `_redirects` rewrites;
+apps with literal routes only stay host-neutral.
 
 ## Client routers
 
 The same Focus-like app under `/focus/`
 ([apps/routing](../../spikes/120-ui/apps/routing)): Zen and List views, a
 task screen with the SDK's `ResourceEditor` in the package's dialog, its
-"Not today" action, the legacy `?task=` link and not-found pages. The
-address model ([places.ts](../../spikes/120-ui/apps/routing/src/places.ts))
-is the app's, as #114 asks: base64url subjects, canonical forms, legacy
-migration. Each adapter only moves through the history:
+"Not today" action, a creation route, the legacy `?task=` and `tasks/new`
+links and not-found pages. The address model
+([places.ts](../../spikes/120-ui/apps/routing/src/places.ts)) is the app's,
+as #114 asks; the adapters only move through the history:
 
 - **own**: the template's `routes.ts` pattern (History API, the shown
   entry's position in `history.state`, the SDK's `navigate` around every
-  switch, undoing a declined Back or Forward), extended from static views to
-  the patterns, with `close()` going back to an in-app opener or replacing
-  with the start page.
+  switch, undoing a declined Back or Forward), extended to the patterns and
+  an opener-aware `close()`. The correction after the review: while the SDK
+  decides about a Back or Forward, further history moves start no second
+  decision, and the decision applies to wherever the browser is when it
+  ends, never to an earlier target. An entry without the router's position
+  shows the shown address again in place when the person stays.
 - **React Router**: a data router with one catch-all route; `useBlocker`
-  blocks every Back and Forward and hands it to the SDK's `navigate`, which
-  calls `proceed()` or `reset()`. The basename needs its trailing slash
-  (`/focus/`): without it, the start page became `/focus`, which the
-  allowlist and the static copies do not answer.
+  pauses every Back and Forward and hands it to the SDK's `navigate`, which
+  calls `proceed()` or `reset()`. The basename needs its trailing slash.
 - **TanStack Router**: a code-based route tree; `useBlocker` with an
-  asynchronous `shouldBlockFn` that awaits the SDK's `navigate` for Back
-  and Forward.
+  asynchronous `shouldBlockFn` that awaits the SDK's `navigate`.
 
-[routing-gate.mjs](../../spikes/120-ui/scripts/routing-gate.mjs), fourteen
-checks per router (`evidence/routing-*.json`):
+In both library adapters the blocker is only the transport that pauses the
+navigation; the decision stays with the SDK. That is a legitimate design,
+not a second policy for unsaved edits.
+
+[routing-gate.mjs](../../spikes/120-ui/scripts/routing-gate.mjs): 29
+checks and one observation per router, the same in Chromium and WebKit 27.2
+(`evidence/routing-*.json`). Each history check asserts the address, what is
+shown, the draft and the next Back together.
 
 | Check | own | React Router | TanStack |
 |---|---|---|---|
-| Signed out, a resource link keeps its address through sign-in and opens | ✓ | ✓ | ✓ |
-| Direct entry, signed in | ✓ | ✓ | ✓ |
-| A plain click on a real link switches in place, without a reload | ✓ | ✓ | ✓ |
-| Ctrl/Cmd-click opens the address in a new tab; the page stays | ✓ | ✓ | ✓ |
-| The action address (`…/postpone`) opens its screen | ✓ | ✓ | ✓ |
-| Close returns to the in-app opener (List) | ✓ | ✓ | ✓ |
-| Close after a direct entry replaces with the start page (no extra entry) | ✓ | ✓ | ✓ |
-| Back with a dirty draft asks; "Keep editing" keeps address and draft | ✓ | ✓ | ✓ |
-| Back with a dirty draft, then discard | ✓ | ✓ | ✓ |
-| Clean Back and Forward | ✓ | ✓ | ✓ |
-| Legacy `?task=` becomes the canonical path by replacement | ✓ | ✓ | ✓ |
-| Unknown and invalid addresses show explicit pages | ✓ | ✓ | ✓ |
-| Reload on a resource address keeps the screen | ✓ | ✓ | ✓ |
-| The View menu switches the address | ✓ | ✓ | ✓ |
+| Signed out: a resource link, a link with a named source, an invalid legacy link keep their address through sign-in and show it | ✓ | ✓ | ✓ |
+| Direct entry, plain and Ctrl/Cmd-click on real links, action address, View menu | ✓ | ✓ | ✓ |
+| Close returns to the in-app opener; after a direct entry it replaces with the start page | ✓ | ✓ | ✓ |
+| Back with a dirty draft: keep editing, discard; clean Back and Forward | ✓ | ✓ | ✓ |
+| Back, then Forward while the question is open, then **discard**: address and screen agree, the draft is gone, the next Back leaves | ✓ | ✓ | ✗ ¹ |
+| Back, then Forward while the question is open, then **keep**: address, screen and draft kept, the next Back asks again | ✓ | ✓ | ✗ ¹ |
+| Back twice while the question is open, then keep | ✓ | ✓ | ✓ |
+| Back twice while the question is open, then **discard**: the person leaves the task | ✓ | ✗ ² | ✗ ² |
+| Two entries back and forward at once (`history.go(±2)`) | ✓ | ✓ | ✓ |
+| Reload on a task, then Back and Forward | ✓ | ✓ | ✓ |
+| Legacy `?task=` and `tasks/new` become canonical by replacement; an invalid legacy link keeps its error page | ✓ | ✓ | ✓ |
+| `tasks/add` wins over `tasks/:id` | ✓ | ✓ | ✓ |
+| Unknown and invalid addresses show explicit pages; reload keeps a task | ✓ | ✓ | ✓ |
+| Links name the source Context; a named source is read and written (the other Context's copy stays unchanged), also on the action route and after reload | ✓ | ✓ | ✓ |
+| A named source the person cannot read: an explicit error, no editor | ✓ | ✓ | ✓ |
+| Observation: Back out of the document with a dirty draft | ³ | ³ | ³ |
 
-Results are the same in Chromium and WebKit 27.2.
+1. The Forward makes the SDK's question disappear; the draft is gone without
+   an answer, and in the keep case the next Back leaves without asking.
+2. After "Discard and continue" the task stays on screen (consistent with
+   the address, but the person's step away is not carried out).
+3. In every adapter: no prompt, and the draft is not restored when the
+   person comes back. No router can intercept leaving the document.
+
+Codex found three of these cases in 368057f: the own router applied an
+obsolete target after a Forward during the question (fixed above), the
+source query was dropped on canonicalisation and the editor opened the
+selected Context (fixed in the model and the screen), and the own router
+replaced an invalid legacy link with the start page (fixed: unknown and
+invalid addresses keep their address). Writing the matrix also showed that
+the not-found dialog, a modal, blocked sign-in for signed-out invalid links;
+the app now shows it only once connected, as #114 asks.
 
 | | own | React Router 8.5.1 | TanStack Router 1.170.46 |
 |---|---|---|---|
 | Router library, gzip | 0 | 32.9 KB | 29.1 KB |
-| App JavaScript, gzip | 221.6 KB | 252.3 KB | 248.2 KB |
-| Adapter, lines | 99 | 83 | 106 |
+| App JavaScript, gzip | 222.4 KB | 253.1 KB | 249.0 KB |
+| Adapter, lines | 117 | 83 | 106 |
 | Production packages added | 0 | 3 | 9 |
-| Blocking | the SDK's `navigate` only | the library's blocker, handed to the SDK | the library's blocker, awaiting the SDK |
+| Matrix (29 checks) | 29 | 28 | 26 |
 
-The libraries do not shorten the adapter, and each adds its own blocking
-mechanism beside the SDK's; the SDK must stay the one that decides about
-unsaved edits. Their strengths (nested layouts, typed search parameters,
-loaders, code splitting by route) are not what sempods apps need for a few
-views and resource screens.
+The library adapters might reach the full matrix with more work on their
+blocker handling; the spike did not try. If the own router's history code
+grows well beyond the correction above during implementation, compare it
+with the React Router adapter again on this matrix.
 
-Found on the way, recorded in the UI spike: in WebKit, React Aria's modal
-stayed mounted for good when it closed during its entry animation (a quick
-Back or Close). The package's dialog no longer animates its entry; a gate
-check covers it.
+## What is protected, and what is not
+
+| Situation | Protected? |
+|---|---|
+| In-app links, menu switches, Close, Back and Forward within the app's history | Yes: the SDK asks; staying keeps address, screen and draft |
+| History moves while the question is open | Yes, with the own router (see the matrix) |
+| Back past the document's first entry, reload, closing the tab, a typed address | No: the draft is lost without a question |
 
 ## Not verified
 
-- Live hosts: the `_redirects` rules were generated and tested as patterns,
-  not deployed to Netlify or Cloudflare Pages.
+- Live hosts: the rewrite semantics are emulated from the hosts'
+  documentation, not deployed to Netlify or Cloudflare Pages.
 - An installed PWA navigating offline with the proposed allowlist.
 - A real OAuth provider and callback; the fake Pod redirects at once.
 - Firefox (launch failure on the test machine).
 - Creation completion and slow overview reads, which #114 also describes
   (return to the opener after a confirmed creation, not waiting for a
-  reload): app composition on top of this contract, not tested here.
+  reload): the creation route here only shows a placeholder.
 
 ## Scope for #114
 
-- `apps.json`: an optional `resources` list of patterns per app, validated
-  (no catch-all, no overlap with static routes, the callback and reserved
-  files).
-- Generator: allowlist with the optional query, `_redirects` lines for the
-  declared patterns, `returnTo` for the declared patterns, with tests for
-  the addresses above.
-- Skeleton `routes.ts`: the declared patterns, `close()` with the opener in
-  `history.state`, canonical replacement; recipe and reference screen with
-  the package's screen dialog (#117).
-- Publishing instructions: the rewrite requirement for apps with resources.
+- `apps.json`: literal `routes` (with slashes) and `resources` patterns,
+  validated: no catch-all, literals win over patterns sharing their prefix,
+  never the callback, reserved files or assets.
+- Generator and site build: the allowlist with the optional query, a copy
+  per literal route including subfolders, `_redirects` lines for the
+  patterns only, a `returnTo` bounded to the app's path; tests over the 24
+  addresses above.
+- Skeleton `routes.ts`: the declared patterns, the corrected decision
+  handling, `close()` with the opener in `history.state`, canonical
+  replacement only for known addresses; a recipe for the source Context in
+  resource addresses and an explicit error when it cannot be used.
+- Sign-in: explicit error pages wait until the person is connected.
+- Publishing instructions: the rewrite requirement for apps with resource
+  patterns, and a deployment check on each host the template supports.
+- SDK: a decision on leaving the document with unsaved edits
+  (`beforeunload` or draft persistence).
 - Focus adoption in haed/sempods-apps#88: replace `routeFallback.ts`, the
   hand-written Netlify rules and the `returnTo` override with the generated
   ones.

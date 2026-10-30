@@ -1,7 +1,8 @@
 // The app's addresses, owned by the app as #114 asks: Focus-like views,
-// resource and action paths with the subject in base64url, the legacy query
-// form, the callback and explicit not-found pages. Every router adapter uses
-// this model; the routers only move through the browser history.
+// resource and action paths with the subject in base64url and its source
+// Context in the query, a creation route, the legacy forms, the callback and
+// explicit not-found pages. Every router adapter uses this model; the
+// routers only move through the browser history.
 
 /** The app's path on the site. */
 export const BASE = '/focus/';
@@ -9,7 +10,9 @@ export const BASE = '/focus/';
 export type View = 'zen' | 'list';
 export type Place =
   | { readonly kind: 'view'; readonly view: View }
-  | { readonly kind: 'task'; readonly id: string; readonly action?: 'postpone' }
+  /** `context`: the source Context the address names; never substituted. */
+  | { readonly kind: 'task'; readonly id: string; readonly context?: string; readonly action?: 'postpone' }
+  | { readonly kind: 'new' }
   | { readonly kind: 'callback' }
   | { readonly kind: 'not-found'; readonly reason: 'unknown' | 'invalid' };
 
@@ -28,14 +31,19 @@ export function decodeSubject(id: string): string | null {
     return null;
   }
 }
+const absolute = (value: string) => /^https?:\/\/[^\s]+$/.test(value);
 
-/** The path of a place, below BASE without its leading slash ("" is the start). */
+/** The path and query of a place, below BASE without its leading slash. */
 export function pathOf(place: Place): string {
   switch (place.kind) {
     case 'view':
       return place.view === 'zen' ? '' : 'list';
-    case 'task':
-      return `tasks/${place.id}${place.action ? '/' + place.action : ''}`;
+    case 'task': {
+      const path = `tasks/${place.id}${place.action ? '/' + place.action : ''}`;
+      return place.context ? `${path}?context=${encodeURIComponent(place.context)}` : path;
+    }
+    case 'new':
+      return 'tasks/add';
     case 'callback':
       return 'callback';
     case 'not-found':
@@ -45,31 +53,42 @@ export function pathOf(place: Place): string {
 export const addressOf = (place: Place) => BASE + pathOf(place);
 
 /**
- * The place of an address and its canonical form. The legacy `?task=<id>`
- * on the start page becomes the task's path; a trailing slash goes.
+ * The place of an address and its canonical form. Legacy links (`?task=<id>`
+ * on the start page, `tasks/new`) become canonical, keeping the source
+ * Context; a trailing slash goes. Unknown or invalid addresses keep their
+ * address as canonical, so their explicit page stays.
  */
 export function placeOf(pathname: string, search: string): { place: Place; canonical: string } {
+  const here = pathname + search;
   const path = pathname.startsWith(BASE) ? pathname.slice(BASE.length).replace(/\/$/, '') : null;
+  const query = new URLSearchParams(search);
   const at = (place: Place) => ({ place, canonical: addressOf(place) });
-  if (path === null) return { place: { kind: 'not-found', reason: 'unknown' }, canonical: pathname + search };
-  if (path === 'callback') return { place: { kind: 'callback' }, canonical: pathname + search };
-  const legacy = new URLSearchParams(search).get('task');
-  if (path === '' && legacy) return at(decodeSubject(legacy) ? { kind: 'task', id: legacy } : { kind: 'not-found', reason: 'invalid' });
+  const missing = (reason: 'unknown' | 'invalid') => ({ place: { kind: 'not-found', reason } as Place, canonical: here });
+  if (path === null) return missing('unknown');
+  if (path === 'callback') return { place: { kind: 'callback' }, canonical: here };
+  const context = query.get('context');
+  if (context !== null && !absolute(context)) return missing('invalid');
+  const task = (id: string, action?: 'postpone') =>
+    decodeSubject(id) ? at({ kind: 'task', id, ...(context ? { context } : {}), ...(action ? { action } : {}) }) : missing('invalid');
+  const legacy = query.get('task');
+  if (path === '' && legacy !== null) return task(legacy);
   if (path === '') return at({ kind: 'view', view: 'zen' });
   if (path === 'list') return at({ kind: 'view', view: 'list' });
-  const task = /^tasks\/([^/]+)(?:\/(postpone))?$/.exec(path);
-  if (task) {
-    const id = task[1]!;
-    if (!decodeSubject(id)) return { place: { kind: 'not-found', reason: 'invalid' }, canonical: pathname };
-    return at({ kind: 'task', id, ...(task[2] ? { action: 'postpone' as const } : {}) });
-  }
-  return { place: { kind: 'not-found', reason: 'unknown' }, canonical: pathname };
+  // Literal routes win over the resource pattern below.
+  if (path === 'tasks/add' || path === 'tasks/new') return at({ kind: 'new' });
+  const match = /^tasks\/([^/]+)(?:\/(postpone))?$/.exec(path);
+  if (match) return task(match[1]!, match[2] ? 'postpone' : undefined);
+  return missing(/^tasks\//.test(path) ? 'invalid' : 'unknown');
 }
 
-/** Where sign-in returns: the current place, never the callback or other paths. */
+/**
+ * Where sign-in returns: the address as it is, if it is the app's (below
+ * BASE) and not the callback, so even an explicit error shows afterwards;
+ * otherwise the start page. Bounded to the app: never another path.
+ */
 export function returnAddress(): string {
-  const { place, canonical } = placeOf(location.pathname, location.search);
-  return place.kind === 'callback' || place.kind === 'not-found' ? BASE : canonical;
+  const address = location.pathname + location.search;
+  return address.startsWith(BASE) && !address.startsWith(BASE + 'callback') ? address : BASE;
 }
 
 /**

@@ -1,14 +1,14 @@
 {
   "own": {
     "routerGzipKB": 0,
-    "totalJsGzipKB": 221.6
+    "totalJsGzipKB": 222.4
   },
   "react-router": {
     "routerGzipKB": 32.9,
-    "totalJsGzipKB": 252.3
+    "totalJsGzipKB": 253.1
   },
   "tanstack": {
     "routerGzipKB": 29.1,
-    "totalJsGzipKB": 248.2
+    "totalJsGzipKB": 249
   }
 }

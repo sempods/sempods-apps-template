@@ -2,7 +2,9 @@
   "app": {
     "path": "/focus/",
     "routes": [
-      "list"
+      "list",
+      "tasks/add",
+      "tasks/new"
     ],
     "resources": [
       "tasks/:id",
@@ -10,7 +12,7 @@
     ]
   },
   "today": "^\\/focus\\/((list)\\/?)?$",
-  "proposed": "^\\/focus\\/(?:(?:list|tasks\\/[A-Za-z0-9_-]+|tasks\\/[A-Za-z0-9_-]+\\/postpone)\\/?)?(?:\\?[^#]*)?$",
+  "allowlist": "^\\/focus\\/(?:(?:list|tasks\\/add|tasks\\/new|tasks\\/[A-Za-z0-9_-]+|tasks\\/[A-Za-z0-9_-]+\\/postpone)\\/?)?(?:\\?[^#]*)?$",
   "redirects": [
     "/focus/tasks/:id /focus/index.html 200",
     "/focus/tasks/:id/postpone /focus/index.html 200"
@@ -18,118 +20,207 @@
   "table": [
     {
       "address": "/focus/",
-      "expected": true,
+      "host": "file",
+      "offline": true,
       "today": true,
-      "proposed": true
+      "place": "view",
+      "returnTo": "/focus/"
     },
     {
       "address": "/focus/list",
-      "expected": true,
+      "host": "file",
+      "offline": true,
       "today": true,
-      "proposed": true
+      "place": "view",
+      "returnTo": "/focus/list"
     },
     {
       "address": "/focus/list/",
-      "expected": true,
+      "host": "file",
+      "offline": true,
       "today": true,
-      "proposed": true
+      "place": "view",
+      "returnTo": "/focus/list/"
     },
     {
       "address": "/focus/list?from=menu",
-      "expected": true,
+      "host": "file",
+      "offline": true,
       "today": false,
-      "proposed": true
+      "place": "view",
+      "returnTo": "/focus/list?from=menu"
     },
     {
       "address": "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
-      "expected": true,
+      "host": "file",
+      "offline": true,
       "today": false,
-      "proposed": true
+      "place": "task",
+      "returnTo": "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x"
+    },
+    {
+      "address": "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x&context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "file",
+      "offline": true,
+      "today": false,
+      "place": "task",
+      "returnTo": "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x&context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork"
+    },
+    {
+      "address": "/focus/?task=!!!",
+      "host": "file",
+      "offline": true,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/?task=!!!"
+    },
+    {
+      "address": "/focus/tasks/add",
+      "host": "file",
+      "offline": true,
+      "today": false,
+      "place": "new",
+      "returnTo": "/focus/tasks/add"
+    },
+    {
+      "address": "/focus/tasks/new",
+      "host": "file",
+      "offline": true,
+      "today": false,
+      "place": "new",
+      "returnTo": "/focus/tasks/new"
     },
     {
       "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
-      "expected": true,
+      "host": "shell",
+      "offline": true,
       "today": false,
-      "proposed": true
+      "place": "task",
+      "returnTo": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x"
     },
     {
-      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone",
-      "expected": true,
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/",
+      "host": "shell",
+      "offline": true,
       "today": false,
-      "proposed": true
+      "place": "task",
+      "returnTo": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/"
     },
     {
-      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod%2Fwork",
-      "expected": true,
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "shell",
+      "offline": true,
       "today": false,
-      "proposed": true
+      "place": "task",
+      "returnTo": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork"
     },
     {
-      "address": "/focus/callback?code=abc&state=def",
-      "expected": false,
+      "address": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "shell",
+      "offline": true,
       "today": false,
-      "proposed": false
-    },
-    {
-      "address": "/focus/assets/index-abc123.js",
-      "expected": false,
-      "today": false,
-      "proposed": false
-    },
-    {
-      "address": "/focus/did.json",
-      "expected": false,
-      "today": false,
-      "proposed": false
-    },
-    {
-      "address": "/focus/favicon.svg",
-      "expected": false,
-      "today": false,
-      "proposed": false
-    },
-    {
-      "address": "/focus/tasks/abc/delete",
-      "expected": false,
-      "today": false,
-      "proposed": false
-    },
-    {
-      "address": "/focus/tasks/a/b/c",
-      "expected": false,
-      "today": false,
-      "proposed": false
+      "place": "task",
+      "returnTo": "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork"
     },
     {
       "address": "/focus/tasks/abc.json",
-      "expected": false,
+      "host": "shell",
+      "offline": false,
       "today": false,
-      "proposed": false
+      "place": "not-found",
+      "returnTo": "/focus/tasks/abc.json"
+    },
+    {
+      "address": "/focus/tasks/!!!",
+      "host": "shell",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/tasks/!!!"
+    },
+    {
+      "address": "/focus/tasks/abc/delete",
+      "host": "404",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/tasks/abc/delete"
+    },
+    {
+      "address": "/focus/tasks/a/b/c",
+      "host": "404",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/tasks/a/b/c"
     },
     {
       "address": "/focus/unknown",
-      "expected": false,
+      "host": "404",
+      "offline": false,
       "today": false,
-      "proposed": false
+      "place": "not-found",
+      "returnTo": "/focus/unknown"
+    },
+    {
+      "address": "/focus/callback?code=abc&state=def",
+      "host": "file",
+      "offline": false,
+      "today": false,
+      "place": "callback",
+      "returnTo": "/focus/"
+    },
+    {
+      "address": "/focus/did.json",
+      "host": "file",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/did.json"
+    },
+    {
+      "address": "/focus/favicon.svg",
+      "host": "file",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/favicon.svg"
+    },
+    {
+      "address": "/focus/assets/index-abc123.js",
+      "host": "file",
+      "offline": false,
+      "today": false,
+      "place": "not-found",
+      "returnTo": "/focus/assets/index-abc123.js"
     },
     {
       "address": "/konsum/",
-      "expected": false,
+      "host": "404",
+      "offline": false,
       "today": false,
-      "proposed": false
+      "place": "not-found",
+      "returnTo": "/focus/"
     },
     {
       "address": "/focus-other/",
-      "expected": false,
+      "host": "404",
+      "offline": false,
       "today": false,
-      "proposed": false
+      "place": "not-found",
+      "returnTo": "/focus/"
     }
   ],
   "todayMisses": [
     "/focus/list?from=menu",
     "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
+    "/focus/?task=aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x&context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+    "/focus/?task=!!!",
+    "/focus/tasks/add",
+    "/focus/tasks/new",
     "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x",
-    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone",
-    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod%2Fwork"
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/",
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+    "/focus/tasks/aHR0cHM6Ly9leGFtcGxlLm9yZy90YXNrcy8x/postpone?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork"
   ]
 }

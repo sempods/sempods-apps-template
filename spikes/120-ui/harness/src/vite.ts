@@ -39,6 +39,20 @@ function seed(base: string, typed: boolean): Map<string, Task> {
       },
     });
   });
+  // The same subject in a second Context, with its own title: a source-bound
+  // address must read and write the Context it names.
+  const personal = base + '/_system/contexts/personal';
+  const iri = `${base}/tasks/1`;
+  tasks.set(personal + '|' + iri, {
+    context: personal,
+    version: 1,
+    body: {
+      '@id': iri,
+      '@type': [schema + 'Action'],
+      [schema + 'name']: [{ '@value': 'Call the plumber (personal copy)' }],
+      [schema + 'actionStatus']: [{ '@id': schema + 'PotentialActionStatus' }],
+    },
+  });
   return tasks;
 }
 
@@ -144,7 +158,12 @@ export function fakePod({
           return res.end();
         }
         let body = '';
-        for await (const chunk of req) body += chunk;
+        try {
+          for await (const chunk of req) body += chunk;
+        } catch {
+          // The page went away mid-request (a test leaving the document).
+          return;
+        }
         if (url.pathname.endsWith('/register'))
           return json({ ...JSON.parse(body), client_id: 'dyn:' + ++registrations }, 201);
         if (url.pathname.endsWith('/token')) {
