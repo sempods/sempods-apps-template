@@ -100,6 +100,14 @@ files alone do not:
   ([#10](https://github.com/sempods/sempods-apps-template/issues/10)). Owner
   repositories contain only their apps and thin shared files; the tooling, its
   instructions and the starter come from published versions.
+- **UI kit and routing from a package**
+  ([#120](https://github.com/sempods/sempods-apps-template/issues/120),
+  [#121](https://github.com/sempods/sempods-apps-template/issues/121)). The
+  hand-built kit gives way to shadcn/ui on React Aria, and the router to a
+  package API, both in `@sempods/app-ui`, released with the SDK; apps own
+  their theme and address model. The spikes record the evidence:
+  [UI primitives](spikes/120-ui-primitives.md) and
+  [routing](spikes/114-routing.md).
 
 ## Check
 
