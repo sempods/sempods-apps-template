@@ -1,0 +1,4 @@
+{
+  "routes": ["list", "tasks/add", "tasks/new"],
+  "resources": ["tasks/:id", "tasks/:id/postpone"]
+}

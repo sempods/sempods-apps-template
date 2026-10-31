@@ -2,8 +2,11 @@
 // routers (own, react-router, tanstack), against the client side of the
 // route contract in #114. Results: evidence/routing-<router>[-<browser>].json.
 // Usage: node scripts/routing-gate.mjs [router ...] [--browser=chromium|webkit]
+//        node scripts/routing-gate.mjs --app=<app folder> --label=<name>
+//        (another copy of the app, e.g. an authoring run; results go to
+//        evidence/authoring/<name>-matrix.json)
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { chromium, webkit } from 'playwright';
 import { root, startApp } from './lib.mjs';
 
@@ -11,6 +14,8 @@ const args = process.argv.slice(2);
 const routers = args.filter((a) => !a.startsWith('--'));
 const engineName = args.find((a) => a.startsWith('--browser='))?.slice(10) ?? 'chromium';
 const engine = { chromium, webkit }[engineName];
+const app = args.find((a) => a.startsWith('--app='))?.slice(6);
+const label = args.find((a) => a.startsWith('--label='))?.slice(8);
 const EDIT = ' (edited)';
 const b64 = (s) => Buffer.from(s, 'utf8').toString('base64url');
 
@@ -360,11 +365,11 @@ function checks(origin, task) {
 }
 
 const browser = await engine.launch();
-const out = join(root, 'evidence');
+const out = join(root, 'evidence', app ? 'authoring' : '');
 mkdirSync(out, { recursive: true });
-for (const name of routers.length ? routers : ['own', 'react-router', 'tanstack']) {
+for (const name of app ? [label] : routers.length ? routers : ['own', 'react-router', 'tanstack']) {
   process.env.ROUTER = name;
-  const { server, origin } = await startApp('routing', 'main');
+  const { server, origin } = app ? await startApp(basename(resolve(app)), 'main', dirname(resolve(app))) : await startApp('routing', 'main');
   const results = [];
   const record = (r) => {
     results.push(r);
@@ -410,7 +415,7 @@ for (const name of routers.length ? routers : ['own', 'react-router', 'tanstack'
       record({ id, pass: false, note: error.message.split('\n')[0], path: path(page) });
     }
   }
-  writeFileSync(join(out, `routing-${name}${engineName === 'chromium' ? '' : '-' + engineName}.json`), JSON.stringify({ router: name, browser: `${engineName} ${browser.version()}`, results, pageErrors: errors }, null, 2) + '\n');
+  writeFileSync(join(out, `${app ? name + '-matrix' : 'routing-' + name}${engineName === 'chromium' ? '' : '-' + engineName}.json`), JSON.stringify({ router: name, browser: `${engineName} ${browser.version()}`, results, pageErrors: errors }, null, 2) + '\n');
   await context.close();
   await server.close();
 }

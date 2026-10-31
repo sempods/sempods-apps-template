@@ -1,0 +1,106 @@
+{
+  "label": "run-own-2",
+  "routesJsonChanged": true,
+  "declaration": {
+    "settings": {
+      "address": "/focus/settings",
+      "host": "file",
+      "offline": true,
+      "pass": true
+    },
+    "notes": {
+      "address": "/focus/tasks/aHR0cHM6Ly9wb2QuZXhhbXBsZS90YXNrcy8x/notes?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "shell",
+      "offline": true,
+      "pass": true
+    },
+    "task": {
+      "address": "/focus/tasks/aHR0cHM6Ly9wb2QuZXhhbXBsZS90YXNrcy8x?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "shell",
+      "offline": true,
+      "pass": true
+    },
+    "postpone": {
+      "address": "/focus/tasks/aHR0cHM6Ly9wb2QuZXhhbXBsZS90YXNrcy8x/postpone?context=https%3A%2F%2Fpod.example%2F_system%2Fcontexts%2Fwork",
+      "host": "shell",
+      "offline": true,
+      "pass": true
+    },
+    "list": {
+      "address": "/focus/list",
+      "host": "file",
+      "offline": true,
+      "pass": true
+    }
+  },
+  "bypass": [],
+  "routerChanged": false,
+  "diffLines": 85,
+  "behaviour": [
+    {
+      "id": "notes-link-from-list",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8x/notes?context=http://127.0.0.1:52036/alice/_system/contexts/work"
+    },
+    {
+      "id": "notes-direct-entry",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8y/notes?context=http://127.0.0.1:52036/alice/_system/contexts/work"
+    },
+    {
+      "id": "notes-save",
+      "pass": true,
+      "description": "Ask about the washer"
+    },
+    {
+      "id": "notes-back-dirty-keep",
+      "pass": true,
+      "asked": true,
+      "draftKept": true,
+      "value": "draft (edited)",
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8x/notes?context=http://127.0.0.1:52036/alice/_system/contexts/work"
+    },
+    {
+      "id": "notes-close-returns-to-list",
+      "pass": true,
+      "path": "/focus/list"
+    },
+    {
+      "id": "settings-from-menu",
+      "pass": true,
+      "path": "/focus/settings",
+      "afterBack": "/focus/",
+      "headingAfterBack": false
+    },
+    {
+      "id": "settings-direct-entry",
+      "pass": true,
+      "text": true,
+      "notFound": false
+    },
+    {
+      "id": "next-clean",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8y?context=http://127.0.0.1:52036/alice/_system/contexts/work",
+      "title": "Draft the club newsletter",
+      "back": "/focus/list",
+      "backTitle": null,
+      "backToPrevious": false
+    },
+    {
+      "id": "next-dirty-keep",
+      "pass": true,
+      "asked": true,
+      "draftKept": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8x?context=http://127.0.0.1:52036/alice/_system/contexts/work"
+    },
+    {
+      "id": "next-dirty-discard",
+      "pass": true,
+      "asked": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo1MjAzNi9hbGljZS90YXNrcy8y?context=http://127.0.0.1:52036/alice/_system/contexts/work",
+      "title": "Draft the club newsletter"
+    }
+  ],
+  "pageErrors": []
+}

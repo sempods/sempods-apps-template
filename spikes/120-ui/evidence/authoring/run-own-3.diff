@@ -1,0 +1,226 @@
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/routes.json apps/run-own-3/routes.json
+--- apps/authoring-own/routes.json	2026-10-31 11:20:35
++++ apps/run-own-3/routes.json	2026-10-31 11:30:59
+@@ -1,4 +1,4 @@
+ {
+-  "routes": ["list", "tasks/add", "tasks/new"],
+-  "resources": ["tasks/:id", "tasks/:id/postpone"]
++  "routes": ["list", "settings", "tasks/add", "tasks/new"],
++  "resources": ["tasks/:id", "tasks/:id/postpone", "tasks/:id/notes"]
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/src/App.tsx apps/run-own-3/src/App.tsx
+--- apps/authoring-own/src/App.tsx	2026-10-31 11:19:17
++++ apps/run-own-3/src/App.tsx	2026-10-31 11:31:34
+@@ -1,5 +1,5 @@
+-// Focus: Zen and List views, a task screen and its "Not today" action as
+-// addresses, the creation screen and not-found pages.
++// Focus: Zen, List and Settings views, a task screen with its "Not today" and
++// notes actions as addresses, the creation screen and not-found pages.
+ import { useEffect, useState } from 'react';
+ import { createBrowserRuntime } from '@sempods/app-sdk';
+ import {
+@@ -17,7 +17,7 @@
+ import { kit } from '@sempods-spike/ui-aria';
+ import { taskFields } from '@spike/harness';
+ import { replaceUrl, useNav, type Nav } from './sempods/router.tsx';
+-import { BASE, decodeSubject, encodeSubject, places, returnAddress, type Place } from './places.ts';
++import { BASE, decodeSubject, encodeSubject, places, returnAddress, type Place, type TaskAction, type View } from './places.ts';
+ 
+ const runtime = createBrowserRuntime({
+   identity: { kind: 'dynamic', name: 'Focus', redirectUri: location.origin + BASE + 'callback' },
+@@ -42,7 +42,7 @@
+   const [managing, setManaging] = useState(false);
+   const { connections } = useAppState();
+   const { messages } = useSdkLocale();
+-  const view = nav.place.kind === 'view' ? nav.place.view : 'zen';
++  const view: View = nav.place.kind === 'view' ? nav.place.view : 'zen';
+   return (
+     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-4">
+       {connections.length > 0 && (
+@@ -58,6 +58,7 @@
+                   { label: 'List', checked: view === 'list', onSelect: () => nav.go({ kind: 'view', view: 'list' }) },
+                 ],
+               },
++              { label: 'Settings', onSelect: () => nav.go({ kind: 'view', view: 'settings' }) },
+               null,
+               { label: messages.controls.dataAccess, onSelect: () => setManaging(true) },
+             ]}
+@@ -78,13 +79,14 @@
+   );
+ }
+ 
+-function Tasks({ nav, view }: { readonly nav: Nav<Place>; readonly view: 'zen' | 'list' }) {
++function Tasks({ nav, view }: { readonly nav: Nav<Place>; readonly view: View }) {
+   const list = useList(taskFields);
+   const { view: target } = useAppState();
+-  const items = (list.data?.items ?? []).filter((item) => !item.data.done);
++  const all = list.data?.items ?? [];
++  const items = all.filter((item) => !item.data.done);
+   const first = items[0];
+   // Links name the task's source Context.
+-  const taskPlace = (iri: string, action?: 'postpone'): Place => ({
++  const taskPlace = (iri: string, action?: TaskAction): Place => ({
+     kind: 'task',
+     id: encodeSubject(iri),
+     ...(target ? { context: target.contextIri } : {}),
+@@ -93,11 +95,17 @@
+   return (
+     <>
+       <LoadNotice {...list} />
+-      {view === 'list' ? (
++      {view === 'settings' ? (
++        <section className="grid gap-2" aria-label="Settings">
++          <h2 className="text-lg font-semibold">Settings</h2>
++          <p>Nothing to set yet.</p>
++        </section>
++      ) : view === 'list' ? (
+         <ul className="divide-y divide-border">
+           {items.map((item) => (
+-            <li key={item.iri}>
+-              <a className="block py-3" {...nav.link(taskPlace(item.iri))}>{item.data.title}</a>
++            <li key={item.iri} className="flex items-center justify-between gap-4">
++              <a className="block flex-1 py-3" {...nav.link(taskPlace(item.iri))}>{item.data.title}</a>
++              <a className="text-sm text-muted-foreground" {...nav.link(taskPlace(item.iri, 'notes'))}>Notes</a>
+             </li>
+           ))}
+         </ul>
+@@ -111,7 +119,7 @@
+           </section>
+         )
+       )}
+-      {target && <TaskScreen nav={nav} selected={target.contextIri} />}
++      {target && <TaskScreen nav={nav} selected={target.contextIri} tasks={all} />}
+       {nav.place.kind === 'new' && (
+         <kit.ScreenDialog title="New task" closeLabel="Close" open onRequestClose={() => nav.close(ZEN)}>
+           <p data-testid="new-task">A new task would be written here.</p>
+@@ -122,12 +130,23 @@
+ }
+ 
+ /**
+- * The task screen, open while the address names a task. It edits the source
+- * Context the address names; only an address without one uses the selected
+- * Context. A named source the person cannot read is an explicit error.
++ * The task screen, open while the address names a task: its details, its
++ * "Not today" action or its notes. It edits the source Context the address
++ * names; only an address without one uses the selected Context. A named source
++ * the person cannot read is an explicit error. `tasks` is the list in its
++ * order; "Next task" goes to the open task after this one.
+  */
+-function TaskScreen({ nav, selected }: { readonly nav: Nav<Place>; readonly selected: string }) {
++function TaskScreen({
++  nav,
++  selected,
++  tasks,
++}: {
++  readonly nav: Nav<Place>;
++  readonly selected: string;
++  readonly tasks: readonly { readonly iri: string; readonly data: { readonly done?: boolean } }[];
++}) {
+   const place = nav.place.kind === 'task' ? nav.place : null;
++  const action = place?.action;
+   const contexts = useContexts();
+   const readable = !place?.context || contexts.contexts.some((c) => c.iri === place.context);
+   const context = place?.context ?? selected;
+@@ -145,18 +164,37 @@
+   const leave = async () => {
+     if (!readable || (await edit.close())) nav.close(ZEN);
+   };
++  // A task the list does not hold counts from the list's start.
++  const at = tasks.findIndex((task) => task.iri === subject);
++  const next = subject ? tasks.slice(at + 1).find((task) => !task.data.done && task.iri !== subject) : undefined;
++  // Leaving this task asks first about unsaved edits; the next task then
++  // replaces this entry, so Back returns to where this task was opened from.
++  const goNext = async () => {
++    if (next && (await edit.close())) nav.go({ kind: 'task', id: encodeSubject(next.iri), context: selected }, { replace: true });
++  };
++  const title = action === 'postpone' ? 'Not today' : action === 'notes' ? 'Notes' : 'Details';
+   return (
+-    <kit.ScreenDialog title={place?.action === 'postpone' ? 'Not today' : 'Details'} closeLabel="Close" open={!!place} onRequestClose={() => void leave()}>
++    <kit.ScreenDialog title={title} closeLabel="Close" open={!!place} onRequestClose={() => void leave()}>
+       <p className="text-sm text-muted-foreground" data-testid="source">{context.split('/').pop()}</p>
+       {!readable && <p role="alert" data-testid="source-missing">The source of this task is not available to you.</p>}
+-      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title' }}>
+-        {(draft, change) => (
+-          <label className="grid gap-1.5">
+-            Title
+-            <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
+-          </label>
+-        )}
++      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title', description: 'Notes' }}>
++        {(draft, change) =>
++          action === 'notes' ? (
++            <label className="grid gap-1.5">
++              Notes
++              <textarea rows={8} value={draft.description ?? ''} onChange={(e) => change({ ...draft, description: e.target.value })} />
++            </label>
++          ) : (
++            <label className="grid gap-1.5">
++              Title
++              <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
++            </label>
++          )
++        }
+       </ResourceEditor>}
++      {place && readable && !action && (
++        <kit.Button variant="secondary" disabled={!next} onPress={() => void goNext()}>Next task</kit.Button>
++      )}
+     </kit.ScreenDialog>
+   );
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/src/places.ts apps/run-own-3/src/places.ts
+--- apps/authoring-own/src/places.ts	2026-10-31 11:18:57
++++ apps/run-own-3/src/places.ts	2026-10-31 11:30:59
+@@ -1,16 +1,18 @@
+-// The app's addresses: views, the task screen and its "Not today" action,
+-// the creation screen, legacy links and explicit not-found pages. The task's
+-// subject is base64url in the path, its source Context in the query.
++// The app's addresses: views (Zen, List, Settings), the task screen with its
++// "Not today" and notes actions, the creation screen, legacy links and
++// explicit not-found pages. The task's subject is base64url in the path, its
++// source Context in the query.
+ import type { AddressModel } from './sempods/router.tsx';
+ 
+ /** The app's path on the site. */
+ export const BASE = '/focus/';
+ 
+-export type View = 'zen' | 'list';
++export type View = 'zen' | 'list' | 'settings';
++export type TaskAction = 'postpone' | 'notes';
+ export type Place =
+   | { readonly kind: 'view'; readonly view: View }
+   /** `context`: the source Context the address names; never substituted. */
+-  | { readonly kind: 'task'; readonly id: string; readonly context?: string; readonly action?: 'postpone' }
++  | { readonly kind: 'task'; readonly id: string; readonly context?: string; readonly action?: TaskAction }
+   | { readonly kind: 'new' }
+   | { readonly kind: 'callback' }
+   | { readonly kind: 'not-found'; readonly reason: 'unknown' | 'invalid' };
+@@ -34,7 +36,7 @@
+ function format(place: Place): string {
+   switch (place.kind) {
+     case 'view':
+-      return BASE + (place.view === 'zen' ? '' : 'list');
++      return BASE + (place.view === 'zen' ? '' : place.view);
+     case 'task': {
+       const path = `${BASE}tasks/${place.id}${place.action ? '/' + place.action : ''}`;
+       return place.context ? `${path}?context=${encodeURIComponent(place.context)}` : path;
+@@ -63,16 +65,17 @@
+   if (path === 'callback') return { place: { kind: 'callback' }, canonical: here };
+   const context = query.get('context');
+   if (context !== null && !absolute(context)) return missing('invalid');
+-  const task = (id: string, action?: 'postpone') =>
++  const task = (id: string, action?: TaskAction) =>
+     decodeSubject(id) ? at({ kind: 'task', id, ...(context ? { context } : {}), ...(action ? { action } : {}) }) : missing('invalid');
+   const legacy = query.get('task');
+   if (path === '' && legacy !== null) return task(legacy);
+   if (path === '') return at({ kind: 'view', view: 'zen' });
+   if (path === 'list') return at({ kind: 'view', view: 'list' });
++  if (path === 'settings') return at({ kind: 'view', view: 'settings' });
+   // Literal addresses come before the task pattern.
+   if (path === 'tasks/add' || path === 'tasks/new') return at({ kind: 'new' });
+-  const match = /^tasks\/([^/]+)(?:\/(postpone))?$/.exec(path);
+-  if (match) return task(match[1]!, match[2] ? 'postpone' : undefined);
++  const match = /^tasks\/([^/]+)(?:\/(postpone|notes))?$/.exec(path);
++  if (match) return task(match[1]!, match[2] ? (match[2] as TaskAction) : undefined);
+   return missing(/^tasks\//.test(path) ? 'invalid' : 'unknown');
+ }
+ 

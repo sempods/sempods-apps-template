@@ -1,0 +1,145 @@
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-rr/routes.json apps/run-rr-2/routes.json
+--- apps/authoring-rr/routes.json	2026-10-31 11:20:36
++++ apps/run-rr-2/routes.json	2026-10-31 11:30:00
+@@ -1,4 +1,4 @@
+ {
+-  "routes": ["list", "tasks/add", "tasks/new"],
+-  "resources": ["tasks/:id", "tasks/:id/postpone"]
++  "routes": ["list", "settings", "tasks/add", "tasks/new"],
++  "resources": ["tasks/:id", "tasks/:id/postpone", "tasks/:id/notes"]
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-rr/src/App.tsx apps/run-rr-2/src/App.tsx
+--- apps/authoring-rr/src/App.tsx	2026-10-31 11:20:29
++++ apps/run-rr-2/src/App.tsx	2026-10-31 11:30:00
+@@ -1,5 +1,5 @@
+-// Focus: Zen and List views, a task screen and its "Not today" action as
+-// routes, the creation screen and not-found pages.
++// Focus: Zen and List views, a task screen with its "Not today" and notes
++// screens as routes, the settings and creation screens and not-found pages.
+ import { useEffect, useState } from 'react';
+ import { Link, Navigate, Outlet, RouterProvider, useMatch, useNavigate, useParams, useSearchParams } from 'react-router';
+ import { createBrowserRuntime } from '@sempods/app-sdk';
+@@ -31,6 +31,8 @@
+       { path: 'tasks/new', element: <Navigate to="/tasks/add" replace /> },
+       { path: 'tasks/:id', element: <TaskScreen /> },
+       { path: 'tasks/:id/postpone', element: <TaskScreen action="postpone" /> },
++      { path: 'tasks/:id/notes', element: <TaskScreen action="notes" /> },
++      { path: 'settings', element: <Settings /> },
+       { path: 'tasks/*', element: <NotFound reason="invalid" /> },
+       { path: 'callback', element: null },
+       { path: '*', element: <NotFound reason="unknown" /> },
+@@ -76,6 +78,7 @@
+                 ],
+               },
+               null,
++              { label: 'Settings', onSelect: () => void navigate('/settings') },
+               { label: messages.controls.dataAccess, onSelect: () => setManaging(true) },
+             ]}
+           />
+@@ -106,7 +109,10 @@
+         <ul className="divide-y divide-border">
+           {items.map((item) => (
+             <li key={item.iri}>
+-              <Link className="block py-3" to={taskPath(item.iri, context)}>{item.data.title}</Link>
++              <div className="flex items-center justify-between gap-4">
++                <Link className="block flex-1 py-3" to={taskPath(item.iri, context)}>{item.data.title}</Link>
++                <Link className="block py-3 text-sm" to={taskPath(item.iri, context, 'notes')}>Notes</Link>
++              </div>
+             </li>
+           ))}
+         </ul>
+@@ -143,6 +149,15 @@
+   );
+ }
+ 
++function Settings() {
++  const close = useClose('/');
++  return (
++    <kit.ScreenDialog title="Settings" closeLabel="Close" open onRequestClose={close}>
++      <p data-testid="settings">Nothing to set yet.</p>
++    </kit.ScreenDialog>
++  );
++}
++
+ function NotFound({ reason }: { readonly reason: 'unknown' | 'invalid' }) {
+   const navigate = useNavigate();
+   return (
+@@ -157,7 +172,7 @@
+  * address without one uses the selected Context. A named source the person
+  * cannot read is an explicit error.
+  */
+-function TaskScreen({ action }: { readonly action?: 'postpone' }) {
++function TaskScreen({ action }: { readonly action?: 'postpone' | 'notes' }) {
+   const { id = '' } = useParams();
+   const [query] = useSearchParams();
+   const named = query.get('context');
+@@ -168,6 +183,8 @@
+   const context = named ?? target?.contextIri ?? '';
+   const valid = !!decodeSubject(id) && validContext(named);
+   const subject = valid && readable ? decodeSubject(id) : null;
++  const navigate = useNavigate();
++  const list = useList(taskFields);
+   const edit = useContextEditor(taskFields);
+   const { open, close: closeEditor } = edit;
+   useEffect(() => {
+@@ -181,18 +198,40 @@
+   const leave = async () => {
+     if (!readable || (await edit.close())) close();
+   };
++  // The next open task after this one, wrapping around; none if this is the only one.
++  const openTasks = (list.data?.items ?? []).filter((item) => !item.data.done);
++  const at = openTasks.findIndex((item) => item.iri === subject);
++  const next = openTasks.length === 0 ? undefined : openTasks[(at + 1) % openTasks.length];
++  const hasNext = !!next && next.iri !== subject;
++  // Through the router, so the SDK asks before unsaved edits are lost.
++  const goNext = () => {
++    if (next && hasNext) void navigate(taskPath(next.iri, target?.contextIri), { replace: true });
++  };
++  const title = action === 'postpone' ? 'Not today' : action === 'notes' ? 'Notes' : 'Details';
+   return (
+-    <kit.ScreenDialog title={action === 'postpone' ? 'Not today' : 'Details'} closeLabel="Close" open onRequestClose={() => void leave()}>
++    <kit.ScreenDialog title={title} closeLabel="Close" open onRequestClose={() => void leave()}>
+       <p className="text-sm text-muted-foreground" data-testid="source">{context.split('/').pop()}</p>
+       {!readable && <p role="alert" data-testid="source-missing">The source of this task is not available to you.</p>}
+-      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title' }}>
+-        {(draft, change) => (
+-          <label className="grid gap-1.5">
+-            Title
+-            <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
+-          </label>
+-        )}
++      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title', description: 'Notes' }}>
++        {(draft, change) =>
++          action === 'notes' ? (
++            <label className="grid gap-1.5">
++              Notes
++              <textarea className="min-h-40" value={draft.description ?? ''} onChange={(e) => change({ ...draft, description: e.target.value })} />
++            </label>
++          ) : (
++            <label className="grid gap-1.5">
++              Title
++              <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
++            </label>
++          )
++        }
+       </ResourceEditor>}
++      {readable && !action && (
++        <div className="pt-4">
++          <kit.Button variant="secondary" disabled={!hasNext} onPress={goNext}>Next task</kit.Button>
++        </div>
++      )}
+     </kit.ScreenDialog>
+   );
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-rr/src/addresses.ts apps/run-rr-2/src/addresses.ts
+--- apps/authoring-rr/src/addresses.ts	2026-10-31 11:19:57
++++ apps/run-rr-2/src/addresses.ts	2026-10-31 11:30:00
+@@ -20,7 +20,7 @@
+ export const validContext = (value: string | null) => value === null || /^https?:\/\/[^\s]+$/.test(value);
+ 
+ /** The task screen's path, naming the source Context. */
+-export function taskPath(subject: string, context?: string, action?: 'postpone'): string {
++export function taskPath(subject: string, context?: string, action?: 'postpone' | 'notes'): string {
+   const path = `/tasks/${encodeSubject(subject)}${action ? '/' + action : ''}`;
+   return context ? `${path}?context=${encodeURIComponent(context)}` : path;
+ }

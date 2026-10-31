@@ -1,0 +1,86 @@
+[
+  {
+    "label": "run-own-1",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "29/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 76,
+    "failed": []
+  },
+  {
+    "label": "run-own-2",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "29/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 85,
+    "failed": []
+  },
+  {
+    "label": "run-own-3",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "29/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 105,
+    "failed": []
+  },
+  {
+    "label": "run-rr-1",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "28/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 77,
+    "failed": [
+      "matrix:repeated-back-discard"
+    ]
+  },
+  {
+    "label": "run-rr-2",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "28/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 64,
+    "failed": [
+      "matrix:repeated-back-discard"
+    ]
+  },
+  {
+    "label": "run-rr-3",
+    "notes": "5/5",
+    "settings": "2/2",
+    "next": "3/3",
+    "declared": "all",
+    "matrix": "28/29",
+    "nextBack": "leaves",
+    "bypass": 0,
+    "routerChanged": false,
+    "diffLines": 57,
+    "failed": [
+      "matrix:repeated-back-discard"
+    ]
+  }
+]

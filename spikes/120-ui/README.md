@@ -24,12 +24,17 @@ here ships: this folder is its own pnpm workspace, outside the template's
 - `apps/routing`: the routing spike for #114 ([write-up](../../docs/spikes/114-routing.md)),
   a Focus-like app under `/focus/` with the address model in `places.ts`
   and one adapter per router in `src/routers/` (`ROUTER=own|react-router|tanstack`).
+- `apps/authoring-own`, `apps/authoring-rr`: the bases of the routing
+  authoring test, the same app on the own router and on idiomatic React
+  Router, each with its `AUTHORING.md`; the runs' changes are in
+  `evidence/authoring/`.
 - `scripts/`: the evidence. `gate.mjs` (stage 1, `--browser=webkit` for
   WebKit), `interaction.mjs`, `roundtrip.mjs` (calendar-date persistence),
   `contrast.js` with `evidence.mjs` and its controls in
   `contrast-selftest.mjs` (stage 2), `sizes.mjs` and `notes-check.mjs`
   (stage 3), `routing-gate.mjs`, `routing-sizes.mjs` and
-  `route-contract.mjs` (routing spike), `prompt-copy.mjs` (isolated copies
+  `route-contract.mjs` (routing spike), `authoring-check.mjs` and
+  `authoring-summary.mjs` (routing authoring test), `prompt-copy.mjs` (isolated copies
   for the prompt runs),
   `sheets.mjs` (contact sheets), `final.sh` (all of it), and four
   `probe-*.mjs` scripts that isolate individual findings.

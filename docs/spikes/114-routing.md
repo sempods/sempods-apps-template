@@ -24,7 +24,10 @@ changes the starter. Evidence and scripts are in
    matrix in Chromium and WebKit. React Router fails one of its cases,
    TanStack Router three, one of them losing a draft without a question.
    This is evidence for these adapters on this matrix, not a general
-   ranking of the libraries.
+   ranking of the libraries. In an [authoring test](#authoring-test),
+   assistants extended the app equally well on the own router and on
+   idiomatic React Router; prior knowledge of the library gave no visible
+   advantage.
 3. **The source Context belongs to the address.** A resource address names
    its source (`?context=…`); the app edits that Context or shows an explicit
    error, never the currently selected one.
@@ -175,6 +178,83 @@ blocker handling; the spike did not try. If the own router's history code
 grows well beyond the correction above during implementation, compare it
 with the React Router adapter again on this matrix.
 
+## Authoring test
+
+Added on 2026-10-31 at the owner's request: the matrix shows robustness,
+but apps in the template are built by assistants. Does an assistant extend
+an app on the own router as well as on a router library it knows from many
+examples?
+
+**Setup.** Two bases with the same screens and the same matrix result as
+the adapters above (29/29 and 28/29):
+[authoring-own](../../spikes/120-ui/apps/authoring-own) uses the own router
+as a package API (`useNav(places)`, `nav.link`, `nav.go`, `nav.close`) with
+the app's address model in `places.ts`;
+[authoring-rr](../../spikes/120-ui/apps/authoring-rr) uses React Router
+idiomatically (a route tree, `<Link>`, `useNavigate`, `useParams`,
+`useSearchParams`), with a provided module that hands every navigation,
+links and `navigate()` included, to the SDK's leave question. In both, the
+provided router module is marked as not to be edited, `routes.json` stands
+for the declaration in `apps.json`, and an `AUTHORING.md` of the same
+structure and length explains addresses, navigation and screens.
+
+Six fresh agents, three per base (Sonnet 5.5 twice, Haiku 5.5 once), got
+the same three owner requests in German and only their own copy of the
+app, could run `tsc` and `vite build`, and had no browser:
+
+1. A notes screen per task at `tasks/<id>/notes`, editing the description,
+   linked from the list.
+2. A settings page at `settings`, from the menu.
+3. A "Next task" button in the task's details that switches to the next
+   open task, without losing unsaved edits.
+
+[authoring-check.mjs](../../spikes/120-ui/scripts/authoring-check.mjs)
+checks each run: ten behaviour checks in the browser (link, direct entry,
+saving to the named Context, Back with a dirty draft, Close, the menu
+route, Next task clean, keep and discard), the declaration through the
+generator rules (host and offline shell for the new addresses), history or
+`location` calls and blockers outside the provided module, changes to that
+module, and the 29-check matrix for regressions. A reference solution per
+base passed every check before the runs (`evidence/authoring/ref-*`).
+
+| Run | Notes | Settings | Next task | Declared | Matrix | Bypass | Router edited | Diff lines |
+|---|---|---|---|---|---|---|---|---|
+| own, Sonnet 1 | 5/5 | 2/2 | 3/3 | ✓ | 29/29 | 0 | no | 76 |
+| own, Sonnet 2 | 5/5 | 2/2 | 3/3 | ✓ | 29/29 | 0 | no | 85 |
+| own, Haiku | 5/5 | 2/2 | 3/3 | ✓ | 29/29 | 0 | no | 105 |
+| React Router, Sonnet 1 | 5/5 | 2/2 | 3/3 | ✓ | 28/29 | 0 | no | 77 |
+| React Router, Sonnet 2 | 5/5 | 2/2 | 3/3 | ✓ | 28/29 | 0 | no | 64 |
+| React Router, Haiku | 5/5 | 2/2 | 3/3 | ✓ | 28/29 | 0 | no | 57 |
+
+The one matrix failure in every React Router run is the base's
+(repeated Back, then discard); no run introduced a regression. The agents
+needed about the same effort on both bases (80 to 120 thousand tokens,
+70 to 170 seconds per run). Observations, the same on both bases:
+
+- Every run extended the declaration correctly; none touched the router
+  module or called the History API itself.
+- Every run switched "Next task" in place (`replace`), so Back after it
+  leaves the task screen; the request did not say, and the choice was
+  consistent.
+- Every run named the selected Context in the next task's address, not the
+  source the current address names. The instructions do not say which
+  Context a derived link names; the template's should.
+- Both Haiku runs additionally called `edit.close()` before switching:
+  redundant with the guard, harmless.
+- On the own router a new address means two edits in `places.ts` (`parse`
+  and `format`); on React Router one route entry. The diffs differ little.
+
+Limits: three runs per base; every request had a pattern to copy in the
+app (an action route, a menu item, a guarded switch); labels were given;
+both instructions were written for this test. Patterns the app does not
+show yet (nested layouts, loaders, state in the query) were not tested,
+and there a library's familiarity might weigh more. **Conclusion:** at this
+level the authoring risk does not separate the two; the assistants followed
+the app's existing code and its instructions, not prior knowledge of a
+library. The router recommendation stands; what it requires is that the
+own router ships as a documented package API with examples in the starter,
+like the provided module here, not as `routes.ts` copied into each app.
+
 ## What is protected, and what is not
 
 | Situation | Protected? |
@@ -203,10 +283,15 @@ with the React Router adapter again on this matrix.
   per literal route including subfolders, `_redirects` lines for the
   patterns only, a `returnTo` bounded to the app's path; tests over the 24
   addresses above.
-- Skeleton `routes.ts`: the declared patterns, the corrected decision
-  handling, `close()` with the opener in `history.state`, canonical
-  replacement only for known addresses; a recipe for the source Context in
-  resource addresses and an explicit error when it cannot be used.
+- The router as a package API (`useNav` over the app's address model, as in
+  the authoring test) instead of `routes.ts` copied into each app, so
+  corrections reach existing apps: the corrected decision handling,
+  `close()` with the opener in `history.state`, canonical replacement only
+  for known addresses. The app keeps its address model; the starter shows
+  a resource route, an action route and a menu route as examples, and a
+  recipe for the source Context in resource addresses (including which
+  Context a derived link names) and an explicit error when it cannot be
+  used.
 - Sign-in: explicit error pages wait until the person is connected.
 - Publishing instructions: the rewrite requirement for apps with resource
   patterns, and a deployment check on each host the template supports.

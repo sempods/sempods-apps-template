@@ -1,0 +1,221 @@
+{
+  "router": "base-own",
+  "browser": "chromium 156.0.8078.4",
+  "results": [
+    {
+      "id": "direct-entry-signed-out",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+      "pageErrors": []
+    },
+    {
+      "id": "source-signed-out",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/personal",
+      "pageErrors": []
+    },
+    {
+      "id": "invalid-legacy-signed-out",
+      "pass": true,
+      "path": "/focus/?task=!!!",
+      "pageErrors": []
+    },
+    {
+      "id": "direct-entry-signed-in",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x"
+    },
+    {
+      "id": "link-plain-click-in-place",
+      "pass": true,
+      "href": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http%3A%2F%2F127.0.0.1%3A49619%2Falice%2F_system%2Fcontexts%2Fwork",
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work",
+      "noReload": true
+    },
+    {
+      "id": "link-modified-click-new-tab",
+      "pass": true,
+      "newTab": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+      "stayed": "/focus/"
+    },
+    {
+      "id": "action-route",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x/postpone?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "close-returns-to-opener",
+      "pass": true,
+      "path": "/focus/list",
+      "historyLength": [
+        10,
+        10
+      ]
+    },
+    {
+      "id": "close-direct-entry-falls-back",
+      "pass": true,
+      "path": "/focus/",
+      "historyLength": [
+        10,
+        10
+      ]
+    },
+    {
+      "id": "back-dirty-stay",
+      "pass": true,
+      "asked": true,
+      "draftKept": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "back-dirty-discard",
+      "pass": true,
+      "asked": true,
+      "path": "/focus/"
+    },
+    {
+      "id": "back-forward-clean",
+      "pass": true,
+      "back": "/focus/",
+      "forward": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "legacy-query-link",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+      "historyLength": [
+        14,
+        15
+      ]
+    },
+    {
+      "id": "not-found-and-invalid",
+      "pass": true,
+      "unknown": "This address does not lead anywhere in Focus.",
+      "invalid": "This task link is not valid."
+    },
+    {
+      "id": "reload-keeps-resource",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "menu-switches-view",
+      "pass": true,
+      "path": "/focus/list"
+    },
+    {
+      "id": "pending-back-forward-discard",
+      "pass": true,
+      "shown": {
+        "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+        "dialog": true,
+        "consistent": true
+      },
+      "draft": "Call the plumber about the kitchen tap",
+      "afterBack": {
+        "path": "/focus/",
+        "consistent": true,
+        "asked": false
+      }
+    },
+    {
+      "id": "pending-back-forward-keep",
+      "pass": true,
+      "draftKept": true,
+      "shown": {
+        "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+        "consistent": true
+      },
+      "asksAgain": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "repeated-back-keep",
+      "pass": true,
+      "draftKept": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "repeated-back-discard",
+      "pass": true,
+      "shown": {
+        "path": "/focus/",
+        "consistent": true
+      },
+      "forward": {
+        "path": "/focus/list",
+        "consistent": true
+      }
+    },
+    {
+      "id": "multi-entry-traversal",
+      "pass": true,
+      "back": {
+        "path": "/focus/",
+        "consistent": true
+      },
+      "forward": {
+        "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x",
+        "consistent": true
+      }
+    },
+    {
+      "id": "reload-then-back",
+      "pass": true,
+      "back": {
+        "path": "/focus/",
+        "consistent": true
+      },
+      "forward": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/work"
+    },
+    {
+      "id": "back-out-of-document-observe",
+      "pass": null,
+      "beforeunloadPrompt": false,
+      "pathAfterBack": "/focus/",
+      "draftRestoredOnReturn": false
+    },
+    {
+      "id": "invalid-legacy-stays",
+      "pass": true,
+      "text": "This task link is not valid.",
+      "path": "/focus/?task=!!!"
+    },
+    {
+      "id": "creation-route-wins",
+      "pass": true,
+      "legacyBecomes": "/focus/tasks/add"
+    },
+    {
+      "id": "source-named-in-links",
+      "pass": true,
+      "href": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http%3A%2F%2F127.0.0.1%3A49619%2Falice%2F_system%2Fcontexts%2Fwork"
+    },
+    {
+      "id": "source-signed-in-read-and-write",
+      "pass": true,
+      "read": "Call the plumber (personal copy)",
+      "personalNow": "Personal copy, edited",
+      "workNow": "Call the plumber about the kitchen tap"
+    },
+    {
+      "id": "source-action-route",
+      "pass": true,
+      "read": "Call the plumber (personal copy)"
+    },
+    {
+      "id": "source-reload",
+      "pass": true,
+      "path": "/focus/tasks/aHR0cDovLzEyNy4wLjAuMTo0OTYxOS9hbGljZS90YXNrcy8x?context=http://127.0.0.1:49619/alice/_system/contexts/personal"
+    },
+    {
+      "id": "source-unavailable",
+      "pass": true,
+      "alert": true,
+      "editorShown": false
+    }
+  ],
+  "pageErrors": []
+}

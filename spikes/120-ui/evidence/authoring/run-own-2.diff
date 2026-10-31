@@ -1,0 +1,200 @@
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/routes.json apps/run-own-2/routes.json
+--- apps/authoring-own/routes.json	2026-10-31 11:20:35
++++ apps/run-own-2/routes.json	2026-10-31 11:29:58
+@@ -1,4 +1,4 @@
+ {
+-  "routes": ["list", "tasks/add", "tasks/new"],
+-  "resources": ["tasks/:id", "tasks/:id/postpone"]
++  "routes": ["list", "settings", "tasks/add", "tasks/new"],
++  "resources": ["tasks/:id", "tasks/:id/postpone", "tasks/:id/notes"]
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/src/App.tsx apps/run-own-2/src/App.tsx
+--- apps/authoring-own/src/App.tsx	2026-10-31 11:19:17
++++ apps/run-own-2/src/App.tsx	2026-10-31 11:30:16
+@@ -1,5 +1,6 @@
+-// Focus: Zen and List views, a task screen and its "Not today" action as
+-// addresses, the creation screen and not-found pages.
++// Focus: Zen and List views, a task screen with its "Not today" action and its
++// notes page, the settings page, the creation screen and not-found pages as
++// addresses.
+ import { useEffect, useState } from 'react';
+ import { createBrowserRuntime } from '@sempods/app-sdk';
+ import {
+@@ -17,7 +18,7 @@
+ import { kit } from '@sempods-spike/ui-aria';
+ import { taskFields } from '@spike/harness';
+ import { replaceUrl, useNav, type Nav } from './sempods/router.tsx';
+-import { BASE, decodeSubject, encodeSubject, places, returnAddress, type Place } from './places.ts';
++import { BASE, decodeSubject, encodeSubject, places, returnAddress, type Place, type TaskAction } from './places.ts';
+ 
+ const runtime = createBrowserRuntime({
+   identity: { kind: 'dynamic', name: 'Focus', redirectUri: location.origin + BASE + 'callback' },
+@@ -59,6 +60,7 @@
+                 ],
+               },
+               null,
++              { label: 'Settings', onSelect: () => nav.go({ kind: 'settings' }) },
+               { label: messages.controls.dataAccess, onSelect: () => setManaging(true) },
+             ]}
+           />
+@@ -68,6 +70,11 @@
+       <TargetScreen>
+         <Tasks nav={nav} view={view} />
+       </TargetScreen>
++      {nav.place.kind === 'settings' && connections.length > 0 && (
++        <kit.ScreenDialog title="Settings" closeLabel="Close" open onRequestClose={() => nav.close(ZEN)}>
++          <p>Nothing to set yet.</p>
++        </kit.ScreenDialog>
++      )}
+       {/* Signed out, sign-in stays usable: the error shows once connected. */}
+       {nav.place.kind === 'not-found' && connections.length > 0 && (
+         <kit.ScreenDialog title="Not found" closeLabel="Close" open onRequestClose={() => nav.go(ZEN, { replace: true })}>
+@@ -84,7 +91,7 @@
+   const items = (list.data?.items ?? []).filter((item) => !item.data.done);
+   const first = items[0];
+   // Links name the task's source Context.
+-  const taskPlace = (iri: string, action?: 'postpone'): Place => ({
++  const taskPlace = (iri: string, action?: TaskAction): Place => ({
+     kind: 'task',
+     id: encodeSubject(iri),
+     ...(target ? { context: target.contextIri } : {}),
+@@ -97,7 +104,10 @@
+         <ul className="divide-y divide-border">
+           {items.map((item) => (
+             <li key={item.iri}>
+-              <a className="block py-3" {...nav.link(taskPlace(item.iri))}>{item.data.title}</a>
++              <div className="flex items-center justify-between gap-4">
++                <a className="block flex-1 py-3" {...nav.link(taskPlace(item.iri))}>{item.data.title}</a>
++                <a className="py-3 text-sm underline" {...nav.link(taskPlace(item.iri, 'notes'))}>Notes</a>
++              </div>
+             </li>
+           ))}
+         </ul>
+@@ -111,7 +121,7 @@
+           </section>
+         )
+       )}
+-      {target && <TaskScreen nav={nav} selected={target.contextIri} />}
++      {target && <TaskScreen nav={nav} selected={target.contextIri} items={items} taskPlace={taskPlace} />}
+       {nav.place.kind === 'new' && (
+         <kit.ScreenDialog title="New task" closeLabel="Close" open onRequestClose={() => nav.close(ZEN)}>
+           <p data-testid="new-task">A new task would be written here.</p>
+@@ -126,7 +136,18 @@
+  * Context the address names; only an address without one uses the selected
+  * Context. A named source the person cannot read is an explicit error.
+  */
+-function TaskScreen({ nav, selected }: { readonly nav: Nav<Place>; readonly selected: string }) {
++function TaskScreen({
++  nav,
++  selected,
++  items,
++  taskPlace,
++}: {
++  readonly nav: Nav<Place>;
++  readonly selected: string;
++  /** The open tasks of the list, in order. */
++  readonly items: readonly { readonly iri: string }[];
++  readonly taskPlace: (iri: string) => Place;
++}) {
+   const place = nav.place.kind === 'task' ? nav.place : null;
+   const contexts = useContexts();
+   const readable = !place?.context || contexts.contexts.some((c) => c.iri === place.context);
+@@ -145,18 +166,35 @@
+   const leave = async () => {
+     if (!readable || (await edit.close())) nav.close(ZEN);
+   };
++  // The next open task of the list, after the one shown (wrapping around).
++  // Switching goes through nav, so the SDK asks before unsaved edits are lost.
++  const position = items.findIndex((item) => item.iri === subject);
++  const next = items.length > 0 && !(items.length === 1 && position === 0) ? items[(position + 1) % items.length] : undefined;
++  const title = place?.action === 'postpone' ? 'Not today' : place?.action === 'notes' ? 'Notes' : 'Details';
+   return (
+-    <kit.ScreenDialog title={place?.action === 'postpone' ? 'Not today' : 'Details'} closeLabel="Close" open={!!place} onRequestClose={() => void leave()}>
++    <kit.ScreenDialog title={title} closeLabel="Close" open={!!place} onRequestClose={() => void leave()}>
+       <p className="text-sm text-muted-foreground" data-testid="source">{context.split('/').pop()}</p>
+       {!readable && <p role="alert" data-testid="source-missing">The source of this task is not available to you.</p>}
+-      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title' }}>
+-        {(draft, change) => (
+-          <label className="grid gap-1.5">
+-            Title
+-            <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
+-          </label>
+-        )}
++      {readable && <ResourceEditor editor={editor} quiet onClose={() => void leave()} labels={{ title: 'Title', description: 'Notes' }}>
++        {(draft, change) =>
++          place?.action === 'notes' ? (
++            <label className="grid gap-1.5">
++              Notes
++              <textarea rows={8} value={draft.description ?? ''}onChange={(e) => change({ ...draft, description: e.target.value })} />
++            </label>
++          ) : (
++            <label className="grid gap-1.5">
++              Title
++              <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} />
++            </label>
++          )
++        }
+       </ResourceEditor>}
++      {readable && !place?.action && (
++        <div className="pt-4">
++          <kit.Button variant="secondary" disabled={!next} onPress={() => next && nav.go(taskPlace(next.iri), { replace: true })}>Next task</kit.Button>
++        </div>
++      )}
+     </kit.ScreenDialog>
+   );
+ }
+diff -ru -x node_modules -x dist -x *.tsbuildinfo apps/authoring-own/src/places.ts apps/run-own-2/src/places.ts
+--- apps/authoring-own/src/places.ts	2026-10-31 11:18:57
++++ apps/run-own-2/src/places.ts	2026-10-31 11:29:58
+@@ -1,5 +1,5 @@
+-// The app's addresses: views, the task screen and its "Not today" action,
+-// the creation screen, legacy links and explicit not-found pages. The task's
++// The app's addresses: views, the task screen with its "Not today" action and
++// its notes page, the settings page, the creation screen, legacy links and explicit not-found pages. The task's
+ // subject is base64url in the path, its source Context in the query.
+ import type { AddressModel } from './sempods/router.tsx';
+ 
+@@ -7,10 +7,12 @@
+ export const BASE = '/focus/';
+ 
+ export type View = 'zen' | 'list';
++export type TaskAction = 'postpone' | 'notes';
+ export type Place =
+   | { readonly kind: 'view'; readonly view: View }
+   /** `context`: the source Context the address names; never substituted. */
+-  | { readonly kind: 'task'; readonly id: string; readonly context?: string; readonly action?: 'postpone' }
++  | { readonly kind: 'task'; readonly id: string; readonly context?: string; readonly action?: TaskAction }
++  | { readonly kind: 'settings' }
+   | { readonly kind: 'new' }
+   | { readonly kind: 'callback' }
+   | { readonly kind: 'not-found'; readonly reason: 'unknown' | 'invalid' };
+@@ -39,6 +41,8 @@
+       const path = `${BASE}tasks/${place.id}${place.action ? '/' + place.action : ''}`;
+       return place.context ? `${path}?context=${encodeURIComponent(place.context)}` : path;
+     }
++    case 'settings':
++      return BASE + 'settings';
+     case 'new':
+       return BASE + 'tasks/add';
+     case 'callback':
+@@ -63,16 +67,17 @@
+   if (path === 'callback') return { place: { kind: 'callback' }, canonical: here };
+   const context = query.get('context');
+   if (context !== null && !absolute(context)) return missing('invalid');
+-  const task = (id: string, action?: 'postpone') =>
++  const task = (id: string, action?: TaskAction) =>
+     decodeSubject(id) ? at({ kind: 'task', id, ...(context ? { context } : {}), ...(action ? { action } : {}) }) : missing('invalid');
+   const legacy = query.get('task');
+   if (path === '' && legacy !== null) return task(legacy);
+   if (path === '') return at({ kind: 'view', view: 'zen' });
+   if (path === 'list') return at({ kind: 'view', view: 'list' });
+   // Literal addresses come before the task pattern.
++  if (path === 'settings') return at({ kind: 'settings' });
+   if (path === 'tasks/add' || path === 'tasks/new') return at({ kind: 'new' });
+-  const match = /^tasks\/([^/]+)(?:\/(postpone))?$/.exec(path);
+-  if (match) return task(match[1]!, match[2] ? 'postpone' : undefined);
++  const match = /^tasks\/([^/]+)(?:\/(postpone|notes))?$/.exec(path);
++  if (match) return task(match[1]!, match[2] as TaskAction | undefined);
+   return missing(/^tasks\//.test(path) ? 'invalid' : 'unknown');
+ }
+ 
