@@ -114,14 +114,16 @@ files alone do not:
 ```sh
 pnpm install --frozen-lockfile
 pnpm run check
+pnpm --filter @sempods/apps exec playwright install chromium
 pnpm run self-test
 ```
 
 `check` runs the script tests and the Markdown link check. `self-test` packs
 both packages, creates a repository with the creator, installs the packed
-tooling and creates, checks, configures and builds an app there, then migrates
-it to a later packed version with a manual case; it needs the npm registry. CI
-runs both.
+tooling and creates, checks, configures and builds an app there, runs
+`check:theme` on its theme and on a broken one, then migrates it to a later
+packed version with a manual case; it needs the npm registry and the Chromium
+of the tooling's Playwright. CI runs both.
 
 ## Try the app-building conversation
 

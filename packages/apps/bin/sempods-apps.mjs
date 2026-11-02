@@ -13,6 +13,7 @@ const COMMANDS = {
   'configure-site': 'record where the apps are published',
   'build-site': 'build all apps and the overview into site-dist/',
   check: "check the repository's apps",
+  'check-theme': "check the contrast of an app's theme in a browser",
   'sdk-update': 'move all apps to one SDK release',
   update: 'install a newer @sempods/apps and migrate to its starter',
   migrate: "apply the installed @sempods/apps' starter to this repository",

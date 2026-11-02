@@ -4,6 +4,160 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.9.0
+
+Prerelease `0.9.0-dev` for acceptance testing against SDK `0.7.0-dev.2`.
+
+### Changes
+
+SDK and UI kit:
+
+- New repositories use SDK 0.7.0-dev.2 (`@sempods/app-sdk`,
+  `@sempods/client-sdk`) and the UI kit `@sempods/app-ui` of the same
+  version, which is released with the SDK. `@sempods/apps` supports
+  `^0.7.0-dev.2` of all three. The UI kit is shadcn/ui (style aria-nova) on
+  React Aria for Tailwind CSS 4, with sempods adapters (`ScreenDialog`,
+  `HeaderMenu`, `DateChooser`, `ActionButton`/`ActionLink`/`ActionGroup`,
+  `ChipGroup`/`Chip`), the router `useNav` and a theme token contract with a
+  bridge to the SDK's tokens. Kit fixes reach apps through its version.
+- The UI kit joins the SDK in `update-policy.json` (`sdk`): the root declares
+  it, an app declares it when it uses it, and `check` requires one version
+  for all of them. `sdk-update` moves it with the SDK packages, adds it to a
+  root that lacks it, checks that the release supports the SDK and moves it
+  in an app only where the app declares it. `new-app` gives a new app the
+  root's version. The Dependabot SDK groups include it. `build-site`
+  publishes its licence notices with the apps that use it.
+- The migration never adds the UI kit to a root at an SDK version that has
+  none (before 0.7.0); its report says that `sdk-update` adds it.
+
+Skeleton:
+
+- Tailwind CSS 4 (`tailwindcss`, `@tailwindcss/vite`) and `@sempods/app-ui`.
+  `src/index.css` declares the layer order
+  `@layer theme, base, sempods, components, utilities;`, then imports
+  Tailwind, the UI kit's styles and the app's theme; `main.tsx` imports only
+  `index.css`. `vite.config.ts` adds the Tailwind plugin and raises Vite's
+  chunk warning to 1000 kB: React, the SDK and the UI kit come to about
+  570 kB minified (180 kB gzip) in one chunk.
+- The four themes in `src/themes/` set the palette roles of the theme
+  contract (`--background`, `--foreground`, `--card`, `--popover`,
+  `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`,
+  `--border`, `--input`, `--ring` with their foregrounds) in light and dark
+  mode, instead of the `--sempods-*` tokens, which the kit's bridge now sets.
+  Each passes `check:theme` in every action variant. Action variants switch
+  with `data-actions` and `data-secondary` on `<html>`. The icon takes the
+  theme's primary colour.
+- The copied kit in `src/ui/` and the router in `src/routes.ts` are gone.
+  `src/places.ts` is the app's address model (start page, a view per route,
+  an item per resource address with its source Context, the callback and an
+  explicit not-found place), and `App.tsx` routes with `useNav(places)`,
+  passes the kit's `replaceUrl` to the runtime, uses `HeaderMenu` for the
+  menu and shows a not-found page once the person is connected.
+- `src/examples/ListScreen.tsx` is rebuilt on the kit: each item has its own
+  address and opens in a `ScreenDialog` with the SDK's editor for the Context
+  the address names; closing returns to the opener and reloads the list
+  without waiting for it. The input of the bar at the bottom keeps its focus
+  while it adds several items: read-only while a creation is pending and
+  focused from the submit handler, also after a press on Add
+  (sempods/sempods-apps-template#113).
+- `src/examples/ContextSwitch.tsx` replaces `ui/ContextSwitch.tsx`, built on
+  the kit's menu parts.
+
+Addresses:
+
+- `routes` in `apps.json` takes literal addresses of up to four segments
+  (`tasks/add`); `build-site` writes their copies in subfolders.
+- `resources` (new) declares patterns with placeholders for one segment each
+  (`tasks/:id`, `tasks/:id/postpone`). The first segment is a word, so a
+  pattern never catches the callback or the app's files; patterns that name
+  the same addresses are refused. `build-site` writes `site-dist/_redirects`
+  with one rewrite per pattern to the app's page, for hosts that read it
+  (Netlify, Cloudflare Pages).
+- The PWA navigation allowlist covers the start page, every route and every
+  resource pattern, each with an optional query: Workbox matches path and
+  query, so the start page with a query and every resource address now open
+  offline.
+- Sign-in returns to the address it started from with its query when the app
+  declares it (start page, route or resource), otherwise to the start page.
+
+Tooling:
+
+- `pnpm run check:theme [<id>]` (new; `sempods-apps check-theme`) builds each
+  app that uses the UI kit, loads its stylesheet with the attributes of its
+  `<html>` in Chromium and runs the kit's role check under a light and a dark
+  preference, for every action variant. It prints one line per failing pair
+  with the variants, colours, ratio and roles to adjust, reports a scheme the
+  theme excludes as not sampled, prints the reports with `--json` and fails on
+  any contrast failure or checker error. Playwright is a dependency of
+  `@sempods/apps`; `--install-browser` installs its Chromium once.
+- `migrate` names every app that still has the kit copied in 0.8.0, with the
+  files that are as shipped and those the owner changed. It changes none of
+  them.
+
+Instructions:
+
+- The app workflow, the skill's visual check and the publish guide name the
+  kit's components and adapters, the theme contract and `check:theme`, the
+  address model with `routes` and `resources`, the source Context in resource
+  addresses and the rewrite requirement for resource patterns. A component
+  the kit lacks comes from `shadcn add` and is the app's own; copying a kit
+  component to change it is a recorded decision.
+
+### Upgrade notes
+
+1. After `migrate`, `check` reports the SDK as outside the supported range
+   and, at the root, the missing `@sempods/app-ui`. Run
+   `pnpm run sdk-update <version>` with the SDK release this tooling names
+   (now `0.7.0-dev.2`); it adds the UI kit to the root. Then follow the SDK's
+   `migration.md`, "From 0.6.0 to 0.7.0": its styles now sit in the cascade
+   layer `sempods`, so check the sign-in screen, the Pods & sharing dialog, an
+   editor and a confirmation with each app's real stylesheet.
+2. `pnpm run regenerate` (the migration runs it) widens the offline
+   allowlist to addresses with a query and keeps the query on sign-in. Apps
+   need nothing else for that.
+3. An app with the copied kit keeps working; `check` does not require the UI
+   kit. Move it to the package only when the owner agrees, as its own pull
+   request, with the migration report's note for that app at hand:
+   1. `pnpm add --dir apps/<id> @sempods/app-ui@<the SDK version>
+      lucide-react@1.65.0` and
+      `pnpm add --dir apps/<id> -D tailwindcss@4.3.3 @tailwindcss/vite@4.3.3`.
+   2. Add `tailwindcss()` from `@tailwindcss/vite` to the plugins in
+      `vite.config.ts`, as the skeleton does
+      (`node_modules/@sempods/apps/skeleton/app/vite.config.ts`).
+   3. Take the skeleton's `src/index.css`, with the app's theme name in its
+      import line, and import only it in `src/main.tsx`. Move the app's own
+      global rules into `@layer base` or into Tailwind classes; an unlayered
+      element rule overrides every SDK rule.
+   4. A theme the app kept as shipped: copy the skeleton's theme of the same
+      name. A changed theme: carry its colours over to the palette roles
+      (`--sempods-bg` → `--background`, `--sempods-text` → `--foreground`,
+      `--sempods-muted` → `--muted-foreground`, `--sempods-line` →
+      `--border`, `--sempods-accent` → `--primary` and `--ring`,
+      `--sempods-on-accent` → `--primary-foreground`), add the other roles
+      from the skeleton's theme, give `--input` 3:1 against the surfaces, and
+      run `pnpm run check:theme <id>` until it passes.
+   5. Replace `src/routes.ts` with the skeleton's `src/places.ts` and
+      `places.test.ts`: a route `r` becomes `{ kind: 'view', route: r }`, the
+      start page `{ kind: 'start' }`; `useRoute()` becomes `useNav(places)`
+      once in the frame, `go(r)` `nav.go(place)`, `link(r)`
+      `nav.link(place)`, and `replaceUrl` comes from `@sempods/app-ui`.
+      Declare an item screen's address under `resources` and open it with
+      `ScreenDialog`, as the list example does.
+   6. Replace each kit part: `Menu` with `HeaderMenu`, `Dialog` with
+      `ScreenDialog`, `Composer` with the bar of the list example, `Tabs` with
+      links (`nav.link`) or a View submenu of `HeaderMenu`, `ContextSwitch`
+      with the skeleton's `src/examples/ContextSwitch.tsx`, the icons with
+      `lucide-react`. Delete the files the note lists as shipped once nothing
+      imports them. A file the note lists as changed holds the owner's own
+      work: carry that change over into the new composition, or keep the file
+      as the app's own and record that under Decisions in `NOTES.md`; ask the
+      owner which.
+   7. Run `pnpm run check`, `pnpm run check:theme <id>` and the visual check,
+      including Back, Escape and Close with an unsaved edit, and record them
+      in the app's `NOTES.md`.
+4. Apps with resource patterns need a host that reads `_redirects`; check
+   each resource address as the publish guide's deployment check describes.
+
 ## 0.8.0
 
 ### Changes

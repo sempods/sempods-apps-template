@@ -22,6 +22,10 @@ const en = {
   newVersion:
     'A new version is ready. It is used once every window of this app has been closed.',
   menu: 'Menu',
+  notFound: 'Not found',
+  notFoundText: 'This address does not lead anywhere in this app.',
+  invalidLink: 'This link is not valid.',
+  toStart: 'To the start page',
 };
 
 export const texts: { readonly en: typeof en; readonly de: typeof en } = {
@@ -31,5 +35,9 @@ export const texts: { readonly en: typeof en; readonly de: typeof en } = {
     newVersion:
       'Eine neue Version ist bereit. Sie wird verwendet, sobald alle Fenster dieser App geschlossen sind.',
     menu: 'Menü',
+    notFound: 'Nicht gefunden',
+    notFoundText: 'Diese Adresse führt nirgendwohin in dieser App.',
+    invalidLink: 'Dieser Link ist ungültig.',
+    toStart: 'Zur Startseite',
   },
 };

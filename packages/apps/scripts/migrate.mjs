@@ -32,6 +32,7 @@ import {
   replaceFile,
 } from './lib/files.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
+import { copiedKit, kitNote } from './lib/kit.mjs';
 import {
   adoptPageHead,
   adoptPageTitle,
@@ -511,7 +512,8 @@ export function migrate(
 
 /**
  * The apps' part of a migration: files a release moves where that is
- * unambiguous, then the generated configuration.
+ * unambiguous, then the generated configuration. App code that needs a
+ * decision, such as a copied UI kit, stays as it is with a note.
  */
 function updateApps(root, report) {
   for (const app of appsOf(root)) {
@@ -519,6 +521,8 @@ function updateApps(root, report) {
     if (!existsSync(dir)) continue;
     const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
     report.updated.push(...new Set(changed));
+    const kit = copiedKit(dir);
+    if (kit) report.notes.push(kitNote(app.id, kit));
   }
   report.regenerated = regenerate(root);
 }
@@ -531,6 +535,7 @@ export function formatMigration(report) {
       `The shared files already match ${PACKAGE} ${report.to}; nothing to migrate.`,
       ...list('Updated', report.updated),
       ...list('Regenerated', report.regenerated),
+      ...list('Notes', report.notes),
     ].join('\n');
   const lines = [
     `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is open' : ' is complete'}.`,

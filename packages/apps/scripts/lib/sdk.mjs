@@ -1,8 +1,14 @@
-// The SDK packages every app uses, and how their exact versions compare.
-export const SDK = ['@sempods/app-sdk', '@sempods/client-sdk'];
+// The SDK packages, released together at one version, and how their exact
+// versions compare. The root declares all of them; every app declares the
+// first two and the UI kit when it uses it.
+export const SDK = ['@sempods/app-sdk', '@sempods/client-sdk', '@sempods/app-ui'];
+export const UI_KIT = '@sempods/app-ui';
+export const APP_SDK = SDK.filter((name) => name !== UI_KIT);
 
 /** The app-author reference the installed SDK ships, relative to the root. */
 export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
+/** The UI kit's reference: components, adapters, router and theme contract. */
+export const UI_REFERENCE = 'node_modules/@sempods/app-ui/README.md';
 
 // A failed SDK update can leave manifests, lockfile and installed packages at
 // the target already. sdk-update keeps this local checkpoint in the repository

@@ -26,7 +26,13 @@ import { migrationState } from './migrate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
-import { EXACT_VERSION, REFERENCE, SDK } from './lib/sdk.mjs';
+import {
+  APP_SDK,
+  EXACT_VERSION,
+  REFERENCE,
+  SDK,
+  UI_KIT,
+} from './lib/sdk.mjs';
 
 const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const BUILTIN = new Set(builtinModules);
@@ -106,10 +112,14 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       );
     versions.set(`${where} ${pkg}`, version);
   };
-  // The root installs the SDK too, so its shipped reference is there before any
-  // app; new-app gives a new app the root's version.
+  // The root installs the SDK and the UI kit too, so their shipped references
+  // are there before any app; new-app gives a new app the root's version.
   for (const pkg of SDK)
-    expect('root', pkg, rootManifest.devDependencies?.[pkg]);
+    if (pkg === UI_KIT && rootManifest.devDependencies?.[pkg] === undefined)
+      problems.push(
+        `root: package.json declares no ${pkg}; run pnpm run sdk-update <version>, which adds it at the SDK's version`,
+      );
+    else expect('root', pkg, rootManifest.devDependencies[pkg]);
 
   for (const app of manifest.apps) {
     const dir = join(appsDir, app.id);
@@ -123,7 +133,11 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       );
     problems.push(...pageProblems(dir, app.id));
     const pkg = readJson(join(dir, 'package.json'));
-    for (const sdk of SDK)
+    // The UI kit is optional: an app built before it keeps its own kit.
+    for (const sdk of [
+      ...APP_SDK,
+      ...(pkg.dependencies?.[UI_KIT] === undefined ? [] : [UI_KIT]),
+    ])
       expect(`apps/${app.id}`, sdk, pkg.dependencies?.[sdk]);
     const declared = new Set([
       ...Object.keys(pkg.dependencies ?? {}),

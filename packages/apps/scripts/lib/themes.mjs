@@ -1,6 +1,7 @@
 // The skeleton's themes: one CSS file per theme in src/themes/, which sets the
-// --sempods-* tokens in light and dark mode. An app imports one of them in its
-// src/main.tsx; its icon takes that theme's accent.
+// palette roles of the UI kit's theme contract (--primary, --background, …)
+// in light and dark mode. An app imports one of them in its src/index.css;
+// its icon takes that theme's primary colour.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ifPresent } from './json.mjs';
@@ -8,7 +9,12 @@ import { SKELETON } from './paths.mjs';
 
 export const DEFAULT_THEME = 'calm';
 const THEMES_DIR = join('src', 'themes');
-const IMPORT = /^import '\.\/themes\/([a-z-]+)\.css';$/m;
+// The import line in src/index.css; apps from before the UI kit import their
+// theme in src/main.tsx.
+const IMPORTS = [
+  ['index.css', /^@import '\.\/themes\/([a-z-]+)\.css';$/m],
+  ['main.tsx', /^import '\.\/themes\/([a-z-]+)\.css';$/m],
+];
 
 /** The theme names the skeleton ships, the default first. */
 export function themeNames(skeleton = SKELETON) {
@@ -19,37 +25,57 @@ export function themeNames(skeleton = SKELETON) {
   return [DEFAULT_THEME, ...names.filter((name) => name !== DEFAULT_THEME)];
 }
 
-/** A token's light and dark colour, from `--name: light-dark(#light, #dark)`. */
-export function tokenColours(css, token) {
+/**
+ * A custom property's light and dark colour, from
+ * `--name: light-dark(#light, #dark)`; undefined when the theme lacks it.
+ */
+export function tokenColours(css, property) {
   const match = css.match(
     new RegExp(
-      `--sempods-${token}:\\s*light-dark\\((#[0-9a-f]{6}),\\s*(#[0-9a-f]{6})\\)`,
+      `(?:^|[\\s;{])--${property}:\\s*light-dark\\((#[0-9a-f]{6}),\\s*(#[0-9a-f]{6})\\)`,
       'i',
     ),
   );
-  if (!match) throw new Error(`the theme sets no --sempods-${token}`);
-  return { light: match[1].toLowerCase(), dark: match[2].toLowerCase() };
+  return match
+    ? { light: match[1].toLowerCase(), dark: match[2].toLowerCase() }
+    : undefined;
 }
 
 /**
- * The icon's colours for a theme file: the accent as the square and the text
- * on the accent as the letter, in light and dark mode.
+ * The icon's colours for a theme file: the primary role as the square and the
+ * text on it as the letter, in light and dark mode. A theme from before the UI
+ * kit gives its --sempods-accent tokens instead.
  */
 export function iconColours(css) {
-  const accent = tokenColours(css, 'accent');
-  const on = tokenColours(css, 'on-accent');
+  const pair = (background, letter) => {
+    const square = tokenColours(css, background);
+    const text = tokenColours(css, letter);
+    return square && text ? { square, text } : undefined;
+  };
+  const found =
+    pair('primary', 'primary-foreground') ??
+    pair('sempods-accent', 'sempods-on-accent');
+  if (!found)
+    throw new Error(
+      'the theme sets no --primary and --primary-foreground in light-dark(#light, #dark)',
+    );
+  const { square, text } = found;
   return {
-    light: { background: accent.light, letter: on.light },
-    dark: { background: accent.dark, letter: on.dark },
+    light: { background: square.light, letter: text.light },
+    dark: { background: square.dark, letter: text.dark },
   };
 }
 
-/** The theme an app imports in src/main.tsx, if it imports one of these. */
+/** The theme an app imports, if it imports one of these. */
 export function appTheme(appDir) {
-  const main = ifPresent(() =>
-    readFileSync(join(appDir, 'src', 'main.tsx'), 'utf8'),
-  );
-  return main?.match(IMPORT)?.[1];
+  for (const [file, pattern] of IMPORTS) {
+    const source = ifPresent(() =>
+      readFileSync(join(appDir, 'src', file), 'utf8'),
+    );
+    const name = source?.match(pattern)?.[1];
+    if (name) return name;
+  }
+  return undefined;
 }
 
 /** The CSS of a theme file in an app or in the skeleton. */

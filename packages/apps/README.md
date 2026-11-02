@@ -11,17 +11,19 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 `sempods-apps create <directory>` of the same version. The repository's root
 `package.json` runs the other commands through `sempods-apps <command>`:
 
-- `pnpm run new-app <id>` creates `apps/<id>` with the root's SDK version.
+- `pnpm run new-app <id>` creates `apps/<id>` with the root's SDK version,
+  built with the UI kit `@sempods/app-ui`.
 - `pnpm run icon <id>` draws an app's monogram icon again in its theme's
-  accent.
+  primary colour.
 - `pnpm run dev <id>` starts that app.
 - `pnpm run regenerate` rewrites every app's generated configuration from
   `apps.json`, for example after a tooling update.
 - `pnpm run configure-site --production <origin>` records where the apps are
   published and regenerates their configuration.
 - `pnpm run build-site` builds all apps and the overview into one static site,
-  `site-dist/`.
-- `pnpm run sdk-update <version>` moves all apps to one SDK release.
+  `site-dist/`, with `_redirects` rewrites for the apps' resource addresses.
+- `pnpm run sdk-update <version>` moves all apps to one SDK release: the SDK
+  packages and the UI kit.
 - `pnpm run update [<version>]` checks that Node and pnpm suit the target
   version, installs it and runs its `migrate`. `pnpm run migrate` applies the
   installed version's starter to the repository from `.sempods-baseline.json`.
@@ -31,13 +33,18 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 - `pnpm run check` checks all apps; `--standalone all` also installs, lints,
   builds and tests each app on its own. It reports an SDK version outside the
   range this package supports (its `peerDependencies`).
+- `pnpm run check:theme [<id>]` checks the contrast of each app's theme in
+  light and dark mode and every action variant, in Chromium through
+  Playwright; `--json` prints the reports, and `--install-browser` installs
+  the browser once.
 
 Contents:
 
 - `instructions/`: the setup procedure, the app workflow, the visual check and
   the publish guide; `skills/` holds the skill entries that route to them.
-- `skeleton/app/`: what a new app starts from, with its themes, UI kit and
-  list example. Files named `*.generated.ts` in
+- `skeleton/app/`: what a new app starts from: Tailwind CSS 4 and
+  `@sempods/app-ui`, its themes, its address model and the list and context
+  switch examples. Files named `*.generated.ts` in
   an app are written from `apps.json`; do not edit them. `check` reports any
   difference, and `regenerate` rewrites them.
 - `shared/`: the starter of this release, its files stored by content hash in

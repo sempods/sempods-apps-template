@@ -31,5 +31,5 @@
   },
   "seed": ["apps.json", "apps/.gitkeep"],
   "rootManifest": "package.json",
-  "sdk": ["@sempods/app-sdk", "@sempods/client-sdk"]
+  "sdk": ["@sempods/app-sdk", "@sempods/client-sdk", "@sempods/app-ui"]
 }

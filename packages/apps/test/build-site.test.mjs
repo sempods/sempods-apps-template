@@ -39,7 +39,7 @@ describe('build-site', () => {
     createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
     createApp(root, { id: 'notes', title: 'Notes', language: 'en', pwa: false });
     // The SDK's notices, as the installed package ships them.
-    for (const name of ['app-sdk', 'client-sdk']) {
+    for (const name of ['app-sdk', 'client-sdk', 'app-ui']) {
       const dir = join(root, 'node_modules', '@sempods', name);
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, 'LICENSE'), `${name} licence\n`);
@@ -84,12 +84,20 @@ describe('build-site', () => {
       '@context': 'https://www.w3.org/ns/did/v1',
       id: 'did:web:preview.apps.pages.dev:konsum',
     });
-    for (const name of ['app-sdk', 'client-sdk'])
+    for (const name of ['app-sdk', 'client-sdk', 'app-ui'])
       for (const file of ['LICENSE', 'NOTICE'])
         assert.equal(
           read(`notes/licenses/${name}/${file}`),
           `${name} ${file === 'LICENSE' ? 'licence' : 'notice'}\n`,
         );
+    // Only the packages an app declares: an app without the UI kit.
+    const pkg = join(root, 'apps', 'notes', 'package.json');
+    const manifest = JSON.parse(readFileSync(pkg, 'utf8'));
+    delete manifest.dependencies['@sempods/app-ui'];
+    writeFileSync(pkg, JSON.stringify(manifest));
+    buildSite(root, { profile: 'preview', build });
+    assert.equal(exists('notes/licenses/app-ui'), false);
+    assert.equal(exists('konsum/licenses/app-ui/LICENSE'), true);
     // The local build stays where vite preview serves it.
     assert.equal(existsSync(join(root, 'apps', 'konsum', 'dist')), false);
   });
@@ -106,20 +114,48 @@ describe('build-site', () => {
   it('serves each route from a file at its path, without rewrites', () => {
     const file = join(root, 'apps.json');
     const manifest = JSON.parse(readFileSync(file, 'utf8'));
-    manifest.apps[0].routes = ['open', 'bought'];
+    manifest.apps[0].routes = ['open', 'bought', 'tasks/add'];
     writeFileSync(file, JSON.stringify(manifest));
     regenerate(root);
     configureSite(root, { production: 'https://apps.example.org' });
     buildSite(root, { build });
-    for (const route of ['open', 'bought'])
+    for (const route of ['open', 'bought', 'tasks/add'])
       assert.equal(read(`konsum/${route}.html`), read('konsum/index.html'));
     assert.equal(exists('notes/open.html'), false);
+    // Literal routes need no rewrite.
+    assert.equal(exists('_redirects'), false);
     // A file of the app at a route's path would answer instead of the page.
     mkdirSync(join(root, 'apps', 'konsum', 'public', 'bought'));
     assert.throws(
       () => buildSite(root, { build }),
       /route bought collides with bought/,
     );
+  });
+
+  it('rewrites exactly the resource addresses to the app page', () => {
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.apps[0].routes = ['tasks/add'];
+    manifest.apps[0].resources = ['tasks/:id', 'tasks/:id/postpone'];
+    manifest.apps[1].resources = ['pages/:page'];
+    writeFileSync(file, JSON.stringify(manifest));
+    regenerate(root);
+    configureSite(root, { production: 'https://apps.example.org' });
+    const { rewrites } = buildSite(root, { build });
+    const lines = [
+      '/konsum/tasks/:id /konsum/index.html 200',
+      '/konsum/tasks/:id/postpone /konsum/index.html 200',
+      '/notes/pages/:page /notes/index.html 200',
+    ];
+    assert.deepEqual(rewrites, lines);
+    assert.deepEqual(
+      read('_redirects')
+        .split('\n')
+        .filter((line) => line && !line.startsWith('#')),
+      lines,
+    );
+    // The literal route keeps its file, which the host serves first.
+    assert.equal(read('konsum/tasks/add.html'), read('konsum/index.html'));
   });
 
   it('lists every app on the overview from apps.json and its icon', () => {

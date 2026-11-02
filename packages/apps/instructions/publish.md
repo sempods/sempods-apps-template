@@ -40,8 +40,10 @@ pnpm run build-site --profile preview  # the fixed preview address
 It builds every app into `site-dist/<id>/` with the published identity and
 writes the overview, `did.json` per app (`/<id>/did.json`, needed by some
 Pods), the SDK's licence notices, `<id>/callback.html` for each callback,
-`<id>/<route>.html` for each route an app lists in `apps.json` and a top-level
-`404.html` for unknown paths. The layout is the same for every host.
+`<id>/<route>.html` for each route an app lists in `apps.json` (in subfolders
+for a route such as `tasks/add`), a top-level `404.html` for unknown paths,
+and `_redirects` when an app declares resource patterns. The layout is the
+same for every host.
 `site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.
@@ -65,6 +67,10 @@ Every host, whatever it is:
   `/<id>/callback?code=…&state=…` with a first response of `200`, without a
   redirect (`Location` header), with path and query unchanged. The SDK
   recognises the callback only at its exact path;
+- for an app with `resources` in `apps.json`, applies the rewrites in
+  `site-dist/_redirects`: each resource address, such as
+  `/<id>/tasks/<id>`, answers with the app's page and `200`, after the
+  published files;
 - answers `/<id>/did.json` with the JSON document, not with an app page;
 - does not rewrite every path to an `index.html`, which would also replace
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
@@ -74,15 +80,20 @@ Every host, whatever it is:
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
-Do not add rewrite rules for `/<id>/*`: the files already answer every path,
-and a rule can replace them. The SDK's `deployment.md` shows such a rewrite
-for a single app on its own site; this layout replaces it with a file per
-route.
+Do not add rewrite rules of your own, and none for `/<id>/*`: the files
+already answer every path, the generated `_redirects` answers exactly the
+declared resource addresses, and a wider rule can replace scripts, `sw.js` and
+`did.json`. The SDK's `deployment.md` shows such a rewrite for a single app on
+its own site; this layout replaces it with a file per route and a rewrite per
+resource pattern. Apps with routes only need no rewrite on any host; apps
+with resource patterns need a host that reads `_redirects`: Netlify or
+Cloudflare Pages.
 
 ### Netlify (tested)
 
 Netlify serves `/<id>/callback` from `callback.html` with `200` and the query
-intact, and `404.html` for unknown paths; it needs no `_redirects`. Write this
+intact, and `404.html` for unknown paths, and applies the generated
+`_redirects`; write no rules of your own. Write this
 `netlify.toml` in the repository root when the owner asks for Netlify (the
 starter ships none):
 
@@ -105,8 +116,9 @@ for the `preview` branch: its address is `https://preview--<site>.netlify.app`.
 
 ### Cloudflare Pages (not tested by sempods apps)
 
-Pages serves `<id>/callback.html` at `/<id>/callback`. Without the top-level
-`404.html` it would serve the overview for every unknown path.
+Pages serves `<id>/callback.html` at `/<id>/callback` and reads the generated
+`_redirects`. Without the top-level `404.html` it would serve the overview
+for every unknown path.
 
 In the project's build settings: build command `pnpm run build-site`, build
 output directory `site-dist`. For the fixed preview address, set the variable
@@ -118,7 +130,9 @@ addresses (`https://<hash>.<project>.pages.dev`) have no working sign-in.
 
 The layout suits hosts that serve `/<path>` from `<path>.html`. Cloudflare
 Workers static assets do this by default, but the tooling has no recipe yet
-for their asset and deploy configuration. For any other host, check the requirements above before
+for their asset and deploy configuration. A host without `_redirects`
+support, such as GitHub Pages, serves apps with routes only; resource
+addresses there show the not-found page. For any other host, check the requirements above before
 the first sign-in.
 
 ### Secrets
@@ -138,7 +152,11 @@ SDK's `deployment.md`.
    - `curl -s 'https://<host>/<id>/did.json'` returns the JSON with
      `"id": "did:web:<host>:<id>"`;
    - each route, `curl -s -o /dev/null -D - 'https://<host>/<id>/<route>'`,
-     returns `200` and no `Location`.
+     returns `200` and no `Location`;
+   - for each resource pattern, one address with an identifier, for example
+     `curl -s -o /dev/null -D - 'https://<host>/<id>/tasks/abc?context=x'`,
+     returns `200` and no `Location`, and `/<id>/did.json` still returns the
+     JSON.
 2. In a fresh browser profile, the owner signs in to each app on the
    published site, grants only the intended context, saves something and
    reloads. Never ask for credentials or tokens.

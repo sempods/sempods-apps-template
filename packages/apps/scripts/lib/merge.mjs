@@ -125,13 +125,21 @@ export function mergeManifest(
       );
     }
     // The SDK sits where the release puts it; elsewhere only if the release
-    // declares it nowhere in this manifest.
+    // declares it nowhere in this manifest. A package of it that this
+    // manifest lacks waits for sdk-update: it may not exist at this version.
     if (field.endsWith('ependencies'))
       for (const key of sdk) {
         const declared = DEPENDENCY_FIELDS.some(
           (f) => theirs[f]?.[key] !== undefined,
         );
-        if (
+        const ownDeclared = DEPENDENCY_FIELDS.some(
+          (f) => ours[f]?.[key] !== undefined,
+        );
+        if (declared && theirs[field]?.[key] !== undefined && !ownDeclared)
+          notes.push(
+            `${where} ${field}.${key}: not added; pnpm run sdk-update <version> adds it with the SDK`,
+          );
+        else if (
           declared
             ? theirs[field]?.[key] !== undefined
             : target[key] !== undefined

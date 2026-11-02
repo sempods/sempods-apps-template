@@ -101,8 +101,8 @@ it. Commit the change in the owner's normal commit/PR flow. It takes effect
 once it reaches the default branch; record it as pending until then. To turn
 the PRs off again, restore the entry between the markers.
 
-With the opt-in, Dependabot opens one PR that moves both SDK packages in the
-root and every app, and a separate PR for `@sempods/apps`. An SDK PR follows
+With the opt-in, Dependabot opens one PR that moves the SDK packages and the
+UI kit in the root and every app, and a separate PR for `@sempods/apps`. An SDK PR follows
 [Update the SDK](app-workflow.md#update-the-sdk); a tooling PR follows the
 [update skill](../skills/update/SKILL.md). Security updates are separate: the
 repository's security settings enable them, and they reach the sempods
