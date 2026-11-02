@@ -151,7 +151,7 @@ export async function inspectBuild(browser, { outDir, kitDir, basePath }) {
   });
   // Fonts, images and anything else outside the page stay unloaded.
   await page.route(
-    (url) => !url.href.startsWith(ORIGIN),
+    (url) => url.origin !== ORIGIN,
     (route) => route.abort(),
   );
   try {
