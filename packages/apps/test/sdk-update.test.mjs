@@ -21,6 +21,7 @@ import {
   EXACT_VERSION,
   PENDING_UPDATE,
   SDK,
+  UI_KIT,
 } from '../scripts/lib/sdk.mjs';
 
 describe('sdk-update (offline registry and pnpm fixtures)', () => {
@@ -35,7 +36,12 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     files.map((file) => readFileSync(join(root, file), 'utf8'));
   const registry = (name, version) => ({
     version: version === 'latest' ? '0.3.0' : version,
-    ...(name === SDK[0] ? { dependencies: { [SDK[1]]: '0.3.0' } } : {}),
+    ...(name === SDK[0]
+      ? { dependencies: { [SDK[1]]: version === 'latest' ? '0.3.0' : version } }
+      : {}),
+    ...(name === UI_KIT
+      ? { peerDependencies: { [SDK[0]]: `~${version}` } }
+      : {}),
   });
   const LOCK = 'pnpm-lock.yaml';
   const installFixture = (version = '0.3.0') => {
@@ -71,13 +77,20 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     for (const [index, file] of files.entries()) {
       mkdirSync(dirname(join(root, file)), { recursive: true });
       const section = index === 0 ? 'devDependencies' : 'dependencies';
+      // The root lacks the UI kit, as before 0.7.0; app one uses it, app
+      // two keeps a kit of its own.
       writeFileSync(
         join(root, file),
         JSON.stringify({
           name: `owner-${index}`,
           scripts: { custom: 'owner command' },
           metadata: { owner: true },
-          [section]: { [SDK[0]]: '0.2.0', [SDK[1]]: '0.2.0', other: '1.2.3' },
+          [section]: {
+            [SDK[0]]: '0.2.0',
+            [SDK[1]]: '0.2.0',
+            ...(index === 1 ? { [UI_KIT]: '0.2.0' } : {}),
+            other: '1.2.3',
+          },
           [index === 0 ? 'dependencies' : 'devDependencies']: {
             unrelated: '2.0.0',
           },
@@ -99,6 +112,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     assert.deepEqual(calls, [
       [SDK[0], 'latest'],
       [SDK[1], '0.3.0'],
+      [UI_KIT, '0.3.0'],
     ]);
     assert.match(plan.migration, /blob\/v0\.3\.0\/docs\/migration\.md$/);
     assert.match(plan.release, /releases\/tag\/v0\.3\.0$/);
@@ -138,12 +152,23 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     for (const [i, file] of files.entries()) {
       const section = i === 0 ? 'devDependencies' : 'dependencies';
       const result = json(file);
-      for (const name of SDK) {
+      // The root gains the UI kit; an app moves it only if it declares it.
+      const moved = i === 2 ? SDK.filter((name) => name !== UI_KIT) : SDK;
+      assert.equal(result[section][UI_KIT], i === 2 ? undefined : '0.3.0');
+      for (const name of moved) {
         assert.equal(result[section][name], '0.3.0');
-        result[section][name] = originals[i][section][name];
+        if (originals[i][section][name])
+          result[section][name] = originals[i][section][name];
+        else delete result[section][name];
       }
       assert.deepEqual(result, originals[i]);
     }
+    assert.deepEqual(Object.keys(json(files[0]).devDependencies), [
+      SDK[0],
+      UI_KIT,
+      SDK[1],
+      'other',
+    ]);
     assert.equal(readFileSync(join(root, 'apps.json'), 'utf8'), apps);
     assert.equal(
       readFileSync(join(root, LOCK), 'utf8'),
@@ -310,6 +335,24 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     }
     assert.deepEqual(snapshot(), before);
   });
+  it('requires a UI kit that supports the same SDK release', () => {
+    const before = snapshot();
+    for (const peer of [undefined, '~0.2.0'])
+      assert.throws(
+        () =>
+          planUpdate(root, '0.3.0', {
+            lookup: (name, version) =>
+              name === UI_KIT
+                ? {
+                    version,
+                    ...(peer ? { peerDependencies: { [SDK[0]]: peer } } : {}),
+                  }
+                : registry(name, version),
+          }),
+        /@sempods\/app-ui@0\.3\.0 must support @sempods\/app-sdk@0\.3\.0/,
+      );
+    assert.deepEqual(snapshot(), before);
+  });
   it('preflights every manifest before writing', () => {
     writeFileSync(join(root, files[2]), '{}');
     const before = snapshot();
@@ -320,10 +363,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     assert.deepEqual(snapshot(), before);
   });
   it('requires an explicit downgrade flag, including prerelease precedence', () => {
-    const lookup = (name) => ({
-      version: '0.1.0',
-      ...(name === SDK[0] ? { dependencies: { [SDK[1]]: '0.1.0' } } : {}),
-    });
+    const lookup = (name) => registry(name, '0.1.0');
     assert.throws(
       () => planUpdate(root, '0.1.0', { lookup }),
       /requires --allow-downgrade/,
@@ -372,7 +412,7 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
           run: (args) => runs.push(args),
           installed: () => false,
         }),
-      /does not have both SDK packages at 0\.3\.0 with node_modules\/@sempods\/app-sdk\/docs\/ai-app-builder\.md/,
+      /does not have @sempods\/app-sdk, @sempods\/client-sdk, @sempods\/app-ui at 0\.3\.0 with node_modules\/@sempods\/app-sdk\/docs\/ai-app-builder\.md/,
     );
     assert.deepEqual(runs, [['install', '--no-frozen-lockfile']]);
   });

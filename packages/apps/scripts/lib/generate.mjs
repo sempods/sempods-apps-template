@@ -3,7 +3,12 @@
 // apps.json, so tooling updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
+import {
+  AUTO,
+  fillPlaceholders,
+  SITE_PROFILES,
+  siteIdentity,
+} from './apps.mjs';
 import { escapeHtml } from './html.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
@@ -34,28 +39,57 @@ const ${name}: BrowserRuntimeOptions = {
     clientId: ${json(clientId)},
     redirectUri: ${json(redirectUri)},
   },
-  ${RETURN_TO[Boolean(app.routes?.length)]},
+  returnTo: returnPath,
 };
 `;
 }
 
-// With routes, sign-in returns to the route it started from: the runtime
-// calls returnPath when each sign-in starts.
-const RETURN_TO = {
-  false: 'returnTo: app.basePath',
-  true: 'returnTo: returnPath',
-};
+// One placeholder of a resource pattern matches one segment of these
+// characters, for example a base64url-encoded IRI.
+const PLACEHOLDER_SOURCE = '[A-Za-z0-9_-]+';
 
-const RETURN_PATH = `
-// The page sign-in returns to: the current route, otherwise the start page.
+/**
+ * The paths an app answers as a regular expression source, without the
+ * slashes of a literal: the start page, each route and each resource
+ * pattern, with or without a trailing slash, and an optional query when
+ * `query` is set. Route and pattern segments need no escaping but the slash.
+ */
+function addressSource(app, { query = false } = {}) {
+  const alternatives = [
+    ...(app.routes ?? []),
+    ...(app.resources ?? []).map((pattern) =>
+      fillPlaceholders(pattern, PLACEHOLDER_SOURCE),
+    ),
+  ].map((address) => address.replaceAll('/', '\\/'));
+  const rest = alternatives.length
+    ? `(?:(?:${alternatives.join('|')})\\/?)?`
+    : '';
+  return `^${app.path.replaceAll('/', '\\/')}${rest}${query ? '(?:\\?[^#]*)?' : ''}$`;
+}
+
+const RETURN_PATH = (app) => `
+// The addresses the app declares in apps.json: the start page, its routes and
+// its resource patterns.
+const ADDRESS = /${addressSource(app)}/;
+
+// The query parameters of the sign-in callback; the SDK refuses a return
+// address that carries one.
+const RESERVED = ['code', 'state', 'error', 'iss', 'response'];
+
+// The address sign-in returns to: the current one with its query when the app
+// declares it, otherwise the start page. Never the callback or another app.
+// The runtime calls it when each sign-in starts; the callback's parameters
+// are dropped, the rest of the query stays.
 function returnPath(): string {
-  const routes: readonly string[] = app.routes;
-  const route = location.pathname
-    .slice(app.basePath.length)
-    .replace(/\\/$/, '');
-  return location.pathname.startsWith(app.basePath) && routes.includes(route)
-    ? app.basePath + route
-    : app.basePath;
+  const { pathname, search } = location;
+  if (!ADDRESS.test(pathname)) return app.basePath;
+  const path =
+    pathname === app.basePath ? pathname : pathname.replace(/\\/$/, '');
+  const query = new URLSearchParams(search);
+  if (!RESERVED.some((key) => query.has(key))) return path + search;
+  for (const key of RESERVED) query.delete(key);
+  const rest = query.toString();
+  return rest ? path + '?' + rest : path;
 }
 `;
 
@@ -82,8 +116,9 @@ export const app = {
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
   routes: ${json(app.routes ?? [])},
+  resources: ${json(app.resources ?? [])},
 } as const;
-${app.routes?.length ? RETURN_PATH : ''}
+${RETURN_PATH(app)}
 // Local development: a dynamic identity, local HTTP only.
 const local: BrowserRuntimeOptions = {
   identity: {
@@ -95,7 +130,7 @@ const local: BrowserRuntimeOptions = {
       return \`\${location.origin}${app.path}callback\`;
     },
   },
-  ${RETURN_TO[Boolean(app.routes?.length)]},
+  returnTo: returnPath,
   development: 'loopback-http',
 };
 ${published.map((name) => publishedProfile(name, site[name], app)).join('')}
@@ -124,12 +159,6 @@ export const runtimeOptions: BrowserRuntimeOptions =
 /** Vite base path, development server, page title and PWA settings. */
 export function viteSource(app) {
   const p = app.path;
-  // The start page and every route, with or without a trailing slash, as the
-  // app's router accepts them; route names need no escaping.
-  const routes = app.routes?.length
-    ? `((${app.routes.join('|')})\\/?)?`
-    : '';
-  const escaped = p.replaceAll('/', '\\/');
   const pwa = app.pwa
     ? `{
     // The app registers its worker itself (src/main.tsx) and never takes over
@@ -155,10 +184,11 @@ ${app.description ? `      description: ${json(app.description)},\n` : ''}${app.
       // Precache the built shell only; nothing is cached at runtime.
       globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
       runtimeCaching: [],
-      // Serve the cached shell only for this app's start page and routes. The
-      // callback, Pod and login pages always go to the network.
+      // Serve the cached shell only for this app's start page, routes and
+      // resource patterns, with any query. The callback, Pod and login pages
+      // always go to the network.
       navigateFallback: ${json(`${p}index.html`)},
-      navigateFallbackAllowlist: [/^${escaped}${routes}$/],
+      navigateFallbackAllowlist: [/${addressSource(app, { query: true })}/],
       skipWaiting: false,
       clientsClaim: false,
       cleanupOutdatedCaches: true,

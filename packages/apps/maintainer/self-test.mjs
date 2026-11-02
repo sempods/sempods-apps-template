@@ -3,12 +3,13 @@
 // @sempods/apps and @sempods/create-apps, check what the tarball contains,
 // create a repository with the creator, install the tooling from its tarball,
 // then create an app, refuse a rerun, check it including a standalone
-// install/build, regenerate, configure a site, build it and assert the
-// profile each build mode selects. Finally an update: the owner customizes the
+// install/build, check its theme in a browser (and a broken one), regenerate,
+// configure a site, build it and assert the profile each build mode selects. Finally an update: the owner customizes the
 // repository, a later version changes the starter, and migrate applies it
 // from the recorded baseline. Source-workspace tests alone can miss a
 // file the package forgets to ship or a dependency only this repository
-// provides. Needs the npm registry.
+// provides. Needs the npm registry and Playwright's Chromium
+// (pnpm --filter @sempods/apps exec playwright install chromium).
 // Usage: pnpm run self-test
 import { spawnSync } from 'node:child_process';
 import {
@@ -41,6 +42,8 @@ const REQUIRED = [
   'package.json',
   'bin/sempods-apps.mjs',
   'scripts/check.mjs',
+  'scripts/check-theme.mjs',
+  'scripts/lib/kit.mjs',
   'scripts/create.mjs',
   'scripts/lib/paths.mjs',
   'skeleton/app/package.json',
@@ -119,6 +122,42 @@ it('selects the profile of the build mode', () => {
 });
 `;
 
+/**
+ * Checks the app's theme in a browser, then a theme whose muted text is
+ * unreadable: the command must fail and name the role.
+ */
+function themeCheck(repo) {
+  pnpmRun(repo, 'check:theme', FIXTURE);
+  const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'calm.css');
+  const original = readFileSync(theme, 'utf8');
+  const broken = original.replace(
+    /--muted-foreground: light-dark\([^)]*\)/,
+    '--muted-foreground: light-dark(#f4f4f5, #a1a7b0)',
+  );
+  if (broken === original) throw new Error('the calm theme sets no muted text');
+  writeFileSync(theme, broken);
+  try {
+    const result = pnpm(['run', 'check:theme', FIXTURE], {
+      cwd: repo,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
+    if (
+      result.status !== 1 ||
+      !/✗ apps\/self-test light:[\s\S]*Adjust muted-foreground/.test(
+        result.stdout,
+      ) ||
+      !/✓ apps\/self-test dark/.test(result.stdout)
+    )
+      throw new Error(
+        `check:theme did not fail on unreadable muted text:\n${result.stdout}${result.stderr}`,
+      );
+  } finally {
+    writeFileSync(theme, original);
+  }
+  console.log('✓ theme check in light and dark, and a failing control');
+}
+
 /** Configures a site, builds it for real and checks the profiles. */
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
@@ -146,6 +185,7 @@ function publish(repo) {
     `${FIXTURE}/sw.js`,
     `${FIXTURE}/manifest.webmanifest`,
     `${FIXTURE}/licenses/app-sdk/NOTICE`,
+    `${FIXTURE}/licenses/app-ui/NOTICE`,
   ])
     if (!existsSync(join(site, file)))
       throw new Error(`build-site wrote no ${file}`);
@@ -383,6 +423,7 @@ try {
   if (readFileSync(join(repo, 'apps.json'), 'utf8') !== before)
     throw new Error('a refused rerun changed apps.json');
   pnpmRun(repo, 'check', '--standalone', FIXTURE);
+  themeCheck(repo);
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);

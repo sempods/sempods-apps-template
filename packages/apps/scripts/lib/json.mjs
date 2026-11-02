@@ -5,6 +5,12 @@ import { replaceFile } from './files.mjs';
 /** Two-space indentation and a final newline. */
 export const formatJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
+/** An object's entries sorted by key, as package managers keep dependency lists. */
+export const sortedKeys = (object) =>
+  Object.fromEntries(
+    Object.entries(object).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+
 export function writeJson(path, value) {
   writeFileSync(path, formatJson(value));
 }

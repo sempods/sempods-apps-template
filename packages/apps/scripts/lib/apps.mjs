@@ -49,7 +49,8 @@ export function invalidId(id) {
   return undefined;
 }
 
-// Routes answer as <id>/<route>.html next to the app's own build output.
+// Routes answer as <id>/<route>.html next to the app's own build output; their
+// first segment must not be one of the app's own paths.
 const ROUTE_RESERVED = new Set([
   'assets',
   'callback',
@@ -57,6 +58,118 @@ const ROUTE_RESERVED = new Set([
   'index',
   'licenses',
 ]);
+// A route has at most this many segments, a resource pattern as well.
+const MAX_SEGMENTS = 4;
+// A placeholder of a resource pattern: one segment, named like a variable.
+const PLACEHOLDER = /^:[a-z][a-zA-Z0-9]{0,39}$/;
+
+/** Why `segment` cannot be a literal path segment, otherwise undefined. */
+function invalidSegment(segment) {
+  if (!ID_PATTERN.test(segment) || segment.endsWith('-'))
+    return 'each segment is lowercase: a letter, then up to 39 letters, digits or hyphens';
+  // build-site writes <segment>.html and <segment>/, which Windows refuses for
+  // device names.
+  if (WINDOWS_DEVICES.has(segment))
+    return `"${segment}" is a reserved device name on Windows`;
+  return undefined;
+}
+
+/** Why the segments of a route or pattern are not usable, otherwise undefined. */
+function invalidSegments(value, { placeholders }) {
+  const segments = value.split('/');
+  if (segments.length > MAX_SEGMENTS)
+    return `at most ${MAX_SEGMENTS} segments`;
+  if (ROUTE_RESERVED.has(segments[0]))
+    return `"${segments[0]}" is reserved by the site layout`;
+  const names = new Set();
+  for (const [i, segment] of segments.entries()) {
+    if (placeholders && PLACEHOLDER.test(segment)) {
+      // A pattern starting with a placeholder would also catch the callback,
+      // assets and every other path of the app.
+      if (i === 0) return 'the first segment is a word, not a placeholder';
+      if (names.has(segment)) return `${segment} is used twice`;
+      names.add(segment);
+      continue;
+    }
+    const reason = invalidSegment(segment);
+    if (reason)
+      return placeholders
+        ? `${reason}, or a placeholder such as :id`
+        : reason;
+  }
+  if (placeholders && names.size === 0)
+    return 'a pattern has a placeholder such as :id; list an address without one under routes';
+  return undefined;
+}
+
+/**
+ * Returns a reason when `route` cannot name a route, otherwise undefined. A
+ * route is a literal address below the app's path: lowercase segments
+ * separated by "/", for example "bought" or "tasks/add".
+ */
+export function invalidRoute(route) {
+  if (typeof route !== 'string' || route === '')
+    return 'a route is text, such as "bought" or "tasks/add"';
+  return invalidSegments(route, { placeholders: false });
+}
+
+/**
+ * Returns a reason when `pattern` cannot name a resource address, otherwise
+ * undefined. A resource pattern has literal segments and placeholders for one
+ * segment each, for example "tasks/:id" or "tasks/:id/postpone"; it starts
+ * with a literal segment, so it never catches the callback or another path
+ * of the app.
+ */
+function invalidResource(pattern) {
+  if (typeof pattern !== 'string' || pattern === '')
+    return 'a resource pattern is text, such as "tasks/:id"';
+  return invalidSegments(pattern, { placeholders: true });
+}
+
+/** A resource pattern with each placeholder segment replaced. */
+export const fillPlaceholders = (pattern, replacement) =>
+  pattern
+    .split('/')
+    .map((segment) => (segment.startsWith(':') ? replacement : segment))
+    .join('/');
+
+/** A pattern's shape: the same addresses whatever its placeholders are called. */
+const shape = (pattern) => fillPlaceholders(pattern, ':');
+
+/** Lists the problems of one app's `routes` and `resources`. */
+function addressProblems(app) {
+  const problems = [];
+  const list = (key, invalid) => {
+    const values = app[key];
+    if (values === undefined) return [];
+    if (!Array.isArray(values)) {
+      problems.push(`${app.id}: ${key} must be a list`);
+      return [];
+    }
+    const name = key === 'routes' ? 'route' : 'resource';
+    const valid = [];
+    values.forEach((value, i) => {
+      const reason = invalid(value);
+      if (reason)
+        problems.push(`${app.id}: ${name} ${JSON.stringify(value)}: ${reason}`);
+      else if (values.indexOf(value) !== i)
+        problems.push(`${app.id}: ${name} ${value} is listed twice`);
+      else valid.push(value);
+    });
+    return valid;
+  };
+  list('routes', invalidRoute);
+  const shapes = new Map();
+  for (const pattern of list('resources', invalidResource)) {
+    const other = shapes.get(shape(pattern));
+    if (other !== undefined && other !== pattern)
+      problems.push(
+        `${app.id}: resources ${other} and ${pattern} name the same addresses`,
+      );
+    shapes.set(shape(pattern), pattern);
+  }
+  return problems;
+}
 
 /**
  * Returns a reason when `description` cannot describe an app, otherwise
@@ -69,22 +182,6 @@ export function invalidDescription(description) {
     return 'description must be text';
   if (description.trim().length > 120)
     return 'description must be one short sentence, at most 120 characters';
-  return undefined;
-}
-
-/** Returns a reason when `route` cannot name a route, otherwise undefined. */
-export function invalidRoute(route) {
-  if (
-    typeof route !== 'string' ||
-    !ID_PATTERN.test(route) ||
-    route.endsWith('-')
-  )
-    return 'a route is one lowercase segment: a letter, then up to 39 letters, digits or hyphens';
-  if (ROUTE_RESERVED.has(route))
-    return `"${route}" is reserved by the site layout`;
-  // build-site writes <route>.html, which Windows refuses for device names.
-  if (WINDOWS_DEVICES.has(route))
-    return `"${route}" is a reserved device name on Windows`;
   return undefined;
 }
 
@@ -195,16 +292,7 @@ export function validateApps(manifest) {
     ports.add(app.devPort);
     if (typeof app.pwa !== 'boolean')
       problems.push(`${app.id}: pwa must be true or false`);
-    if (app.routes !== undefined && !Array.isArray(app.routes))
-      problems.push(`${app.id}: routes must be a list`);
-    else if (app.routes)
-      app.routes.forEach((route, i) => {
-        const reason = invalidRoute(route);
-        if (reason)
-          problems.push(`${app.id}: route ${JSON.stringify(route)}: ${reason}`);
-        else if (app.routes.indexOf(route) !== i)
-          problems.push(`${app.id}: route ${route} is listed twice`);
-      });
+    problems.push(...addressProblems(app));
   }
   return problems;
 }

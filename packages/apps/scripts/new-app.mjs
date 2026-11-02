@@ -33,7 +33,7 @@ import {
   themeCss,
   themeNames,
 } from './lib/themes.mjs';
-import { readJson, writeJson } from './lib/json.mjs';
+import { readJson, sortedKeys, writeJson } from './lib/json.mjs';
 import { repositoryRoot, SKELETON } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { EXACT_VERSION, SDK } from './lib/sdk.mjs';
@@ -130,12 +130,7 @@ export function createApp(
     writeAppIcons(appDir, app.title, iconColours(themeCss(appDir, theme)));
     const pkgFile = join(appDir, 'package.json');
     const pkg = readJson(pkgFile);
-    // Package managers keep dependency lists sorted.
-    pkg.dependencies = Object.fromEntries(
-      Object.entries({ ...pkg.dependencies, ...sdk }).sort(([a], [b]) =>
-        a < b ? -1 : a > b ? 1 : 0,
-      ),
-    );
+    pkg.dependencies = sortedKeys({ ...pkg.dependencies, ...sdk });
     writeJson(pkgFile, pkg);
     writeGenerated(appDir, app, manifest.site);
     writeApps(root, { ...manifest, apps: [...manifest.apps, app] });

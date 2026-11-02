@@ -81,7 +81,7 @@ describe('apps.json', () => {
   it('accepts a valid manifest', () => {
     assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
   });
-  it('accepts routes as distinct lowercase segments', () => {
+  it('accepts routes as distinct lowercase addresses', () => {
     const app = (routes) => ({
       id: 'konsum',
       title: 'Konsum',
@@ -93,14 +93,39 @@ describe('apps.json', () => {
     });
     const problems = (routes) =>
       validateApps({ schemaVersion: 1, apps: [app(routes)] });
-    assert.deepEqual(problems(['open', 'bought']), []);
+    assert.deepEqual(problems(['open', 'bought', 'tasks/add']), []);
     assert.deepEqual(problems(undefined), []);
     assert.match(problems('bought').join(), /routes must be a list/);
-    assert.match(problems(['Bought']).join(), /one lowercase segment/);
-    assert.match(problems(['a/b']).join(), /one lowercase segment/);
+    for (const route of ['Bought', 'a//b', '/a', 'a/', 'tasks/:id', ''])
+      assert.match(problems([route]).join(), /segment is lowercase|is text/);
+    assert.match(problems(['a/b/c/d/e']).join(), /at most 4 segments/);
     assert.match(problems(['callback']).join(), /reserved/);
+    assert.match(problems(['assets/x']).join(), /reserved/);
     assert.match(problems(['nul']).join(), /device name on Windows/);
+    assert.match(problems(['x/com1']).join(), /device name on Windows/);
     assert.match(problems(['open', 'open']).join(), /listed twice/);
+  });
+  it('accepts resource patterns that start with a word', () => {
+    const problems = (resources, routes) =>
+      validateApps({
+        schemaVersion: 1,
+        apps: [{ ...app, resources, ...(routes ? { routes } : {}) }],
+      });
+    assert.deepEqual(
+      problems(['tasks/:id', 'tasks/:id/postpone'], ['tasks/add']),
+      [],
+    );
+    assert.match(problems('tasks/:id').join(), /resources must be a list/);
+    assert.match(problems([':id']).join(), /first segment is a word/);
+    assert.match(problems(['tasks']).join(), /list an address without one under routes/);
+    assert.match(problems(['tasks/:id/:id']).join(), /:id is used twice/);
+    assert.match(problems(['tasks/:Id-1']).join(), /placeholder such as :id/);
+    assert.match(problems(['callback/:id']).join(), /reserved/);
+    assert.match(
+      problems(['tasks/:id', 'tasks/:key']).join(),
+      /tasks\/:id and tasks\/:key name the same addresses/,
+    );
+    assert.match(problems(['tasks/:id', 'tasks/:id']).join(), /listed twice/);
   });
 
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
@@ -190,7 +215,11 @@ describe('generated configuration', () => {
     assert.match(vite, /export const base = "\/demo\/"/);
     assert.match(vite, /port: 5180/);
     assert.match(vite, /scope: "\/demo\/"/);
-    assert.match(vite, /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\$\/\]/);
+    // The start page, with any query: Workbox matches path and query.
+    assert.match(
+      vite,
+      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\?:\\\?\[\^#\]\*\)\?\$\/\]/,
+    );
     assert.match(vite, /skipWaiting: false/);
   });
   it('reads location only when the callback is used', async () => {
@@ -200,8 +229,15 @@ describe('generated configuration', () => {
       const file = join(dir, 'sempods.generated.mts');
       writeFileSync(file, generatedFiles(app)['src/sempods.generated.ts']);
       const { runtimeOptions } = await import(pathToFileURL(file).href);
-      assert.equal(runtimeOptions.returnTo, '/demo/');
+      assert.equal(typeof runtimeOptions.returnTo, 'function');
       assert.throws(() => runtimeOptions.identity.redirectUri, ReferenceError);
+      // An app without routes keeps the query of its start page.
+      globalThis.location = { pathname: '/demo/', search: '?filter=open' };
+      try {
+        assert.equal(runtimeOptions.returnTo(), '/demo/?filter=open');
+      } finally {
+        delete globalThis.location;
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -252,13 +288,41 @@ describe('generated configuration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  it('returns to the route a sign-in starts from and caches every route', async () => {
-    const routed = { ...app, routes: ['open', 'bought'] };
+  it('returns to the address a sign-in starts from and caches every declared one', async () => {
+    const routed = {
+      ...app,
+      routes: ['list', 'tasks/add'],
+      resources: ['tasks/:id', 'tasks/:id/postpone'],
+    };
     const files = generatedFiles(routed);
-    assert.match(
-      files['vite.sempods.generated.ts'],
-      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\(open\|bought\)\\\/\?\)\?\$\/\]/,
-    );
+    const source = files['vite.sempods.generated.ts'].match(
+      /navigateFallbackAllowlist: \[\/(.*)\/\]/,
+    )?.[1];
+    assert.ok(source, 'the allowlist is one regular expression');
+    const offline = new RegExp(source);
+    // Workbox matches path and query.
+    for (const address of [
+      '/demo/',
+      '/demo/?task=x',
+      '/demo/list',
+      '/demo/list/',
+      '/demo/tasks/add',
+      '/demo/tasks/aHR0cHM6Ly9leGFtcGxl',
+      '/demo/tasks/aHR0c_-1/postpone?context=https%3A%2F%2Fpod',
+    ])
+      assert.ok(offline.test(address), address);
+    for (const address of [
+      '/demo',
+      '/demo/callback?code=x&state=y',
+      '/demo/sw.js',
+      '/demo/assets/index.js',
+      '/demo/tasks',
+      '/demo/tasks/a.json',
+      '/demo/tasks/a/b',
+      '/demo/list#x',
+      '/other/list',
+    ])
+      assert.ok(!offline.test(address), address);
     const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
     try {
       const file = join(dir, 'sempods.generated.mts');
@@ -266,20 +330,34 @@ describe('generated configuration', () => {
       const { app: generated, runtimeOptions } = await import(
         pathToFileURL(file).href
       );
-      assert.deepEqual(generated.routes, ['open', 'bought']);
-      const returnTo = (pathname) => {
-        globalThis.location = { pathname };
+      assert.deepEqual(generated.routes, ['list', 'tasks/add']);
+      assert.deepEqual(generated.resources, ['tasks/:id', 'tasks/:id/postpone']);
+      const returnTo = (pathname, search = '') => {
+        globalThis.location = { pathname, search };
         try {
           return runtimeOptions.returnTo();
         } finally {
           delete globalThis.location;
         }
       };
-      assert.equal(returnTo('/demo/bought'), '/demo/bought');
-      assert.equal(returnTo('/demo/bought/'), '/demo/bought');
-      assert.equal(returnTo('/demo/'), '/demo/');
-      assert.equal(returnTo('/demo/callback'), '/demo/');
-      assert.equal(returnTo('/other/bought'), '/demo/');
+      assert.equal(returnTo('/demo/list'), '/demo/list');
+      assert.equal(returnTo('/demo/list/'), '/demo/list');
+      assert.equal(returnTo('/demo/tasks/add'), '/demo/tasks/add');
+      assert.equal(
+        returnTo('/demo/tasks/aHR0c/postpone', '?context=x'),
+        '/demo/tasks/aHR0c/postpone?context=x',
+      );
+      assert.equal(returnTo('/demo/', '?task=x'), '/demo/?task=x');
+      // The SDK refuses the callback's parameters in a return address.
+      assert.equal(
+        returnTo('/demo/list', '?state=open&filter=mine'),
+        '/demo/list?filter=mine',
+      );
+      assert.equal(returnTo('/demo/', '?code=x&iss=y'), '/demo/');
+      assert.equal(returnTo('/demo/callback', '?code=x'), '/demo/');
+      assert.equal(returnTo('/demo/unknown'), '/demo/');
+      assert.equal(returnTo('/demo/tasks/a.json'), '/demo/');
+      assert.equal(returnTo('/other/list'), '/demo/');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -401,7 +479,7 @@ describe('new-app', () => {
     );
     assert.match(
       readFileSync(join(dir, 'vite.config.ts'), 'utf8'),
-      /plugins: \[react\(\), pageTitle,/,
+      /plugins: \[\n\s+react\(\),\n\s+tailwindcss\(\),\n\s+pageTitle,/,
     );
     assert.deepEqual(staleGenerated(dir, app), []);
     assert.match(
@@ -653,6 +731,13 @@ describe('check', () => {
         staticProblems(root).join('\n'),
         /root: @sempods\/app-sdk must be an exact version/,
       );
+      // A root without dev dependencies is reported, not a crash.
+      writeFileSync(join(root, 'package.json'), JSON.stringify({}));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /root: @sempods\/app-sdk must be an exact version/,
+      );
+      // A root from before the UI kit: sdk-update adds it.
       writeFileSync(
         join(root, 'package.json'),
         JSON.stringify({
@@ -662,6 +747,10 @@ describe('check', () => {
           },
         }),
       );
+      assert.deepEqual(staticProblems(root), [
+        "root: package.json declares no @sempods/app-ui; run pnpm run sdk-update <version>, which adds it at the SDK's version",
+      ]);
+      writeFileSync(join(root, 'package.json'), JSON.stringify({ devDependencies: sdk }));
       assert.deepEqual(staticProblems(root), []);
       // An installed SDK without its shipped reference (before 0.3.0).
       const installed = join(root, 'node_modules', '@sempods', 'app-sdk');
@@ -690,6 +779,7 @@ describe('check', () => {
         JSON.stringify({
           devDependencies: {
             '@sempods/app-sdk': '99.0.0',
+            '@sempods/app-ui': '99.0.0',
             '@sempods/client-sdk': '99.0.0',
           },
         }),
@@ -697,6 +787,42 @@ describe('check', () => {
       assert.match(
         staticProblems(root).join('\n'),
         /@sempods\/app-sdk 99\.0\.0 is outside the range @sempods\/apps/,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the UI kit at the SDK version in the apps that use it', () => {
+    const root = tempRepository('sempods-check-');
+    try {
+      createApp(root, { id: 'demo' });
+      createApp(root, { id: 'old' });
+      const manifest = (id) => join(root, 'apps', id, 'package.json');
+      const edit = (id, change) => {
+        const pkg = JSON.parse(readFileSync(manifest(id), 'utf8'));
+        change(pkg.dependencies);
+        writeFileSync(manifest(id), JSON.stringify(pkg));
+      };
+      // An app from before the UI kit declares none and imports none.
+      edit('old', (deps) => delete deps['@sempods/app-ui']);
+      rmSync(join(root, 'apps', 'old', 'src', 'examples'), { recursive: true });
+      for (const file of ['App.tsx', 'places.ts'])
+        writeFileSync(join(root, 'apps', 'old', 'src', file), 'export {};\n');
+      assert.deepEqual(staticProblems(root), []);
+      edit('demo', (deps) => (deps['@sempods/app-ui'] = '9.9.9'));
+      assert.match(staticProblems(root).join('\n'), /SDK versions differ/);
+      edit('demo', (deps) => (deps['@sempods/app-ui'] = '^0.7.0'));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /apps\/demo: @sempods\/app-ui must be an exact version/,
+      );
+      // A manifest whose dependencies are null is reported too.
+      const pkg = JSON.parse(readFileSync(manifest('old'), 'utf8'));
+      writeFileSync(manifest('old'), JSON.stringify({ ...pkg, dependencies: null }));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /apps\/old: @sempods\/app-sdk must be an exact version/,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -891,22 +1017,43 @@ describe('themes', () => {
     assert.deepEqual(themeNames(), ['calm', 'fresh', 'playful', 'warm']);
   });
 
-  it('keeps text, muted text and actions readable in light and dark mode', () => {
+  // The rest states of the palette; check:theme checks every pair, hover
+  // and action variant in a browser.
+  it('keeps text, fields and focus readable in light and dark mode', () => {
+    const pairs = [
+      ['foreground', 'background', 4.5],
+      ['card-foreground', 'card', 4.5],
+      ['popover-foreground', 'popover', 4.5],
+      ['accent-foreground', 'accent', 4.5],
+      ['secondary-foreground', 'secondary', 4.5],
+      ['muted-foreground', 'background', 4.5],
+      ['muted-foreground', 'muted', 4.5],
+      ['muted-foreground', 'card', 4.5],
+      ['muted-foreground', 'popover', 4.5],
+      ['primary-foreground', 'primary', 4.5],
+      ['destructive', 'background', 4.5],
+      ['input', 'background', 3],
+      ['input', 'card', 3],
+      ['input', 'popover', 3],
+      ['ring', 'background', 3],
+      ['ring', 'popover', 3],
+    ];
     for (const name of themeNames()) {
       const css = themeCss(SKELETON, name);
-      const token = (t) => tokenColours(css, t);
-      for (const mode of ['light', 'dark']) {
-        const bg = token('bg')[mode];
-        for (const [fg, on] of [
-          ['text', bg],
-          ['muted', bg],
-          ['accent', bg],
-          ['on-accent', token('accent')[mode]],
-        ]) {
-          const ratio = contrast(token(fg)[mode], on);
-          assert.ok(ratio >= 4.5, `${name} ${mode} ${fg}: ${ratio.toFixed(2)}`);
+      const role = (r) =>
+        tokenColours(css, r) ??
+        tokenColours(
+          css,
+          css.match(new RegExp(`--${r}: var\\(--([a-z-]+)\\)`))?.[1] ?? r,
+        );
+      for (const mode of ['light', 'dark'])
+        for (const [fg, bg, minimum] of pairs) {
+          const ratio = contrast(role(fg)[mode], role(bg)[mode]);
+          assert.ok(
+            ratio >= minimum,
+            `${name} ${mode} ${fg} on ${bg}: ${ratio.toFixed(2)}`,
+          );
         }
-      }
     }
   });
 });
@@ -919,11 +1066,11 @@ describe('app theme and icon', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
   const file = (...path) => readFileSync(join(root, 'apps', ...path), 'utf8');
 
-  it('imports the chosen theme and draws the icon in its accent', () => {
+  it('imports the chosen theme and draws the icon in its primary colour', () => {
     createApp(root, { id: 'demo', title: 'Demo', theme: 'warm' });
     assert.match(
-      file('demo', 'src', 'main.tsx'),
-      /^import '\.\/themes\/warm\.css';$/m,
+      file('demo', 'src', 'index.css'),
+      /^@import '\.\/themes\/warm\.css';$/m,
     );
     const warm = iconColours(themeCss(SKELETON, 'warm'));
     assert.match(
@@ -931,7 +1078,7 @@ describe('app theme and icon', () => {
       new RegExp(`fill:${warm.light.background}`),
     );
     createApp(root, { id: 'plain', title: 'Plain' });
-    assert.match(file('plain', 'src', 'main.tsx'), /themes\/calm\.css/);
+    assert.match(file('plain', 'src', 'index.css'), /themes\/calm\.css/);
     assert.throws(
       () => createApp(root, { id: 'odd', theme: 'neon' }),
       /theme must be one of calm, fresh, playful, warm/,
@@ -940,11 +1087,8 @@ describe('app theme and icon', () => {
 
   it('draws the icon again after a theme change', () => {
     createApp(root, { id: 'demo', title: 'Demo' });
-    const main = join(root, 'apps', 'demo', 'src', 'main.tsx');
-    writeFileSync(
-      main,
-      file('demo', 'src', 'main.tsx').replace('calm', 'fresh'),
-    );
+    const css = join(root, 'apps', 'demo', 'src', 'index.css');
+    writeFileSync(css, file('demo', 'src', 'index.css').replace('calm', 'fresh'));
     assert.deepEqual(drawIcon(root, 'demo'), [
       'apps/demo/public/favicon.svg',
       'apps/demo/public/icon-192.png',
@@ -955,6 +1099,17 @@ describe('app theme and icon', () => {
       file('demo', 'public', 'favicon.svg'),
       new RegExp(`fill:${fresh.light.background}`),
     );
+    // An app from before the UI kit imports its theme in src/main.tsx, with
+    // its --sempods-* tokens.
+    writeFileSync(css, "@import 'tailwindcss';\n");
+    const main = join(root, 'apps', 'demo', 'src', 'main.tsx');
+    writeFileSync(main, "import './themes/old.css';\n");
+    writeFileSync(
+      join(root, 'apps', 'demo', 'src', 'themes', 'old.css'),
+      ':root {\n  --sempods-accent: light-dark(#176354, #7fd1bd);\n  --sempods-on-accent: light-dark(#ffffff, #0b2a23);\n}\n',
+    );
+    drawIcon(root, 'demo');
+    assert.match(file('demo', 'public', 'favicon.svg'), /fill:#176354/);
     writeFileSync(main, "import './index.css';\n");
     assert.throws(() => drawIcon(root, 'demo'), /imports no theme/);
     assert.throws(() => drawIcon(root, 'none'), /lists no app "none"/);

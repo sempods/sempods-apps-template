@@ -21,7 +21,7 @@ export function drawIcon(root, id) {
   const theme = appTheme(dir);
   if (!theme || !existsSync(join(dir, 'src', 'themes', `${theme}.css`)))
     throw new Error(
-      `apps/${id}/src/main.tsx imports no theme from src/themes/; import one as the skeleton does, then run this again`,
+      `apps/${id}/src/index.css imports no theme from src/themes/; import one as the skeleton does, then run this again`,
     );
   return writeAppIcons(dir, app.title, iconColours(themeCss(dir, theme))).map(
     (file) => `apps/${id}/${file}`,

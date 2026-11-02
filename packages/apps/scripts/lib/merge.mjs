@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { sortedKeys } from './json.mjs';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -125,13 +126,21 @@ export function mergeManifest(
       );
     }
     // The SDK sits where the release puts it; elsewhere only if the release
-    // declares it nowhere in this manifest.
+    // declares it nowhere in this manifest. A package of it that this
+    // manifest lacks waits for sdk-update: it may not exist at this version.
     if (field.endsWith('ependencies'))
       for (const key of sdk) {
         const declared = DEPENDENCY_FIELDS.some(
           (f) => theirs[f]?.[key] !== undefined,
         );
-        if (
+        const ownDeclared = DEPENDENCY_FIELDS.some(
+          (f) => ours[f]?.[key] !== undefined,
+        );
+        if (theirs[field]?.[key] !== undefined && !ownDeclared)
+          notes.push(
+            `${where} ${field}.${key}: not added; pnpm run sdk-update <version> adds it with the SDK`,
+          );
+        else if (
           declared
             ? theirs[field]?.[key] !== undefined
             : target[key] !== undefined
@@ -145,13 +154,7 @@ export function mergeManifest(
         }
       }
     // Package managers keep dependency lists sorted; scripts and the rest keep their order.
-    const ordered = field.endsWith('ependencies')
-      ? Object.fromEntries(
-          Object.entries(target).sort(([a], [b]) =>
-            a < b ? -1 : a > b ? 1 : 0,
-          ),
-        )
-      : target;
+    const ordered = field.endsWith('ependencies') ? sortedKeys(target) : target;
     if (Object.keys(ordered).length) result[field] = ordered;
     else delete result[field];
   }

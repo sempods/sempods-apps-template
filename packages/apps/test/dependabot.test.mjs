@@ -33,6 +33,7 @@ describe('Dependabot configuration', () => {
     const sdk = groups.slice(order[0], order[1]);
     assert.match(sdk, /'@sempods\/app-sdk'/);
     assert.match(sdk, /'@sempods\/client-sdk'/);
+    assert.match(sdk, /'@sempods\/app-ui'/);
     assert.match(groups.slice(order[1], order[2]), /'@sempods\/apps'/);
     assert.match(
       groups.slice(order[2]),
@@ -40,11 +41,11 @@ describe('Dependabot configuration', () => {
     );
   });
 
-  it('groups security updates of both SDK packages', () => {
+  it('groups security updates of the SDK packages and the UI kit', () => {
     const security = groups.slice(groups.indexOf('      sempods-sdk-security:'));
     assert.match(
       security,
-      /^ {6}sempods-sdk-security:\n {8}applies-to: 'security-updates'\n {8}patterns:\n {10}- '@sempods\/app-sdk'\n {10}- '@sempods\/client-sdk'\n/,
+      /^ {6}sempods-sdk-security:\n {8}applies-to: 'security-updates'\n {8}patterns:\n {10}- '@sempods\/app-sdk'\n {10}- '@sempods\/app-ui'\n {10}- '@sempods\/client-sdk'\n/,
     );
   });
 });

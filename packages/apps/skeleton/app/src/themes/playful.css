@@ -1,11 +1,25 @@
 /* Playful: violet and soft lilac, lively and friendly.
-   The --sempods-* tokens colour the app and the SDK components alike, in
-   light and dark mode; each pair keeps at least 4.5:1 contrast. */
+   Palette roles of the theme contract of @sempods/app-ui, in light and
+   dark mode. They colour the app's components and, through the kit's bridge,
+   the SDK's. Text pairs keep 4.5:1, field boundaries and the focus ring
+   3:1; pnpm run check:theme checks every pair in both modes. */
 :root {
-  --sempods-bg: light-dark(#ffffff, #14111c);
-  --sempods-text: light-dark(#241a3a, #ece6f8);
-  --sempods-muted: light-dark(#665e7c, #a49cbc);
-  --sempods-line: light-dark(#e9e4f3, #2e2742);
-  --sempods-accent: light-dark(#6a3bd2, #b59cff);
-  --sempods-on-accent: light-dark(#ffffff, #1b1036);
+  --background: light-dark(#ffffff, #14111c);
+  --foreground: light-dark(#241a3a, #ece6f8);
+  --card: light-dark(#ffffff, #1b1725);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(#ffffff, #1f1a2b);
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(#6a3bd2, #b59cff);
+  --primary-foreground: light-dark(#ffffff, #1b1036);
+  --secondary: light-dark(#efeafb, #282138);
+  --secondary-foreground: var(--foreground);
+  --muted: light-dark(#f5f2fc, #1e1929);
+  --muted-foreground: light-dark(#5f5776, #a49cbc);
+  --accent: light-dark(#efeafb, #2c2540);
+  --accent-foreground: var(--foreground);
+  --destructive: light-dark(#b42318, #ffbcb5);
+  --border: light-dark(#e9e4f3, #2e2742);
+  --input: light-dark(#7d7596, #6f6789);
+  --ring: light-dark(#6a3bd2, #b59cff);
 }

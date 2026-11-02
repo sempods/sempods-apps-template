@@ -14,13 +14,15 @@
     "configure-site": "sempods-apps configure-site",
     "build-site": "sempods-apps build-site",
     "check": "sempods-apps check",
+    "check:theme": "sempods-apps check-theme",
     "sdk-update": "sempods-apps sdk-update",
     "update": "sempods-apps update",
     "migrate": "sempods-apps migrate"
   },
   "devDependencies": {
-    "@sempods/app-sdk": "0.6.0",
+    "@sempods/app-sdk": "0.7.0-dev.2",
+    "@sempods/app-ui": "0.7.0-dev.2",
     "@sempods/apps": "0.0.0",
-    "@sempods/client-sdk": "0.6.0"
+    "@sempods/client-sdk": "0.7.0-dev.2"
   }
 }

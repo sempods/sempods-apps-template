@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // One SDK release for the root and every registered app: the manifests name
-// it, pnpm installs it, and the update counts only once node_modules has it
-// and check passes. Usage: pnpm run sdk-update <version|latest>
+// it for both SDK packages and the UI kit, pnpm installs it, and the update
+// counts only once node_modules has it and check passes.
+// Usage: pnpm run sdk-update <version|latest>
 import {
   existsSync,
   readFileSync,
@@ -11,17 +12,20 @@ import {
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import semver from 'semver';
 import { readApps } from './lib/apps.mjs';
-import { formatJson, ifPresent, readJson } from './lib/json.mjs';
+import { formatJson, ifPresent, readJson, sortedKeys } from './lib/json.mjs';
 import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import {
+  appSdk,
   compareVersions,
   EXACT_VERSION,
   PENDING_UPDATE,
   REFERENCE,
   SDK,
+  UI_KIT,
 } from './lib/sdk.mjs';
 
 
@@ -39,6 +43,7 @@ export function registryLookup(root, name, version) {
       `${name}@${version}`,
       'version',
       'dependencies',
+      'peerDependencies',
       '--json',
     ]);
   } catch (error) {
@@ -100,21 +105,37 @@ export function planUpdate(
     throw new Error(
       `${SDK[0]}@${version} must depend on exactly ${SDK[1]}@${version}; found ${JSON.stringify(app.dependencies?.[SDK[1]])}`,
     );
+  // The UI kit is released with the SDK, at the same version.
+  const kit = lookup(UI_KIT, version);
+  if (kit?.version !== version)
+    throw new Error(
+      `${UI_KIT}@${version} is missing or returned an unexpected version; the UI kit is released with the SDK since 0.7.0`,
+    );
+  const peer = kit.peerDependencies?.[SDK[0]];
+  if (!peer || !semver.satisfies(version, peer, { includePrerelease: true }))
+    throw new Error(
+      `${UI_KIT}@${version} must support ${SDK[0]}@${version}; it asks for ${JSON.stringify(peer)}`,
+    );
 
+  // The root declares every SDK package and gains the UI kit when it lacks
+  // it; an app moves only what it declares.
   const entries = [
-    ['package.json', 'devDependencies'],
+    ['package.json', 'devDependencies', true],
     ...readApps(root).apps.map(({ id }) => [
       `apps/${id}/package.json`,
       'dependencies',
+      false,
     ]),
   ];
   const changes = [];
-  for (const [file, section] of entries) {
+  for (const [file, section, isRoot] of entries) {
     const path = join(root, file);
     const original = readFileSync(path, 'utf8');
     const manifest = JSON.parse(original);
-    for (const name of SDK) {
+    const names = isRoot ? SDK : appSdk(manifest[section]);
+    for (const name of names) {
       const current = manifest[section]?.[name];
+      if (name === UI_KIT && current === undefined) continue;
       if (!EXACT_VERSION.test(current ?? ''))
         throw new Error(
           `${file}: ${section}.${name} must already be an exact semver`,
@@ -124,8 +145,9 @@ export function planUpdate(
           `${file}: downgrade from ${current} to ${version} requires --allow-downgrade`,
         );
     }
-    if (SDK.every((name) => manifest[section][name] === version)) continue;
-    for (const name of SDK) manifest[section][name] = version;
+    if (names.every((name) => manifest[section]?.[name] === version)) continue;
+    for (const name of names) manifest[section][name] = version;
+    manifest[section] = sortedKeys(manifest[section]);
     changes.push({
       path,
       original,
@@ -136,7 +158,7 @@ export function planUpdate(
 }
 
 
-/** Whether node_modules has both SDK packages at `version` and the reference. */
+/** Whether node_modules has the SDK packages at `version` and the reference. */
 export function installedStateComplete(root, version) {
   try {
     return (
@@ -187,7 +209,7 @@ export function applyUpdate(
   run(INSTALL);
   if (!installed())
     throw new Error(
-      `node_modules does not have both SDK packages at ${plan.version} with ${REFERENCE}; fix the cause and run the same command again`,
+      `node_modules does not have ${SDK.join(', ')} at ${plan.version} with ${REFERENCE}; fix the cause and run the same command again`,
     );
   run(['run', 'check']);
   rmSync(pending);

@@ -1,7 +1,7 @@
 name: Check
 # Checks the tooling package: script tests and Markdown links, then the
 # self-test: the packed packages create a starter repository, which creates,
-# checks, configures and builds an app.
+# checks (theme included), configures and builds an app.
 on:
   pull_request:
   push:
@@ -27,4 +27,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
+      # check:theme runs the theme check in the Chromium of the tooling's
+      # Playwright.
+      - run: pnpm --filter @sempods/apps exec playwright install --with-deps chromium
       - run: pnpm run self-test

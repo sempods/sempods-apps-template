@@ -34,7 +34,12 @@ instead.
    `pnpm run update <version>`.
 3. **Read the upgrade notes** for every version after the old one, including
    skipped ones, in `node_modules/@sempods/apps/CHANGELOG.md`. They name what
-   the migration cannot do alone, such as changes the owner's apps need.
+   the migration cannot do alone, such as changes the owner's apps need. The
+   migration report's notes name app code that waits for a decision, for
+   example an app that still has the copied UI kit: which of its files are as
+   shipped and which the owner changed. Propose such app changes to the owner
+   separately from the tooling update; never overwrite a file the owner
+   changed.
 4. **Decide the manual cases.** The migration applies only unambiguous
    changes. It lists everything else in `.sempods-migration/migration.json`,
    each with a reason, and leaves those files exactly as they are. Next to

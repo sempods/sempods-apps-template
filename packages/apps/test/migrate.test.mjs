@@ -147,7 +147,12 @@ describe('migrate', () => {
     assert.equal(manifest.scripts.mine, 'echo mine');
     assert.equal(manifest.devDependencies['left-pad'], '1.3.0');
     assert.equal(manifest.devDependencies['@sempods/apps'], '3.0.0');
-    assert.equal(manifest.devDependencies['@sempods/app-sdk'], '0.6.0');
+    assert.equal(
+      manifest.devDependencies['@sempods/app-sdk'],
+      readJson(join(TOOLING, 'starter', 'package.json')).devDependencies[
+        '@sempods/app-sdk'
+      ],
+    );
     assert.equal(read(repo, 'apps/demo/src/App.tsx'), appBefore);
     assert.equal(read(repo, 'apps/demo/NOTES.md'), notesBefore);
     assert.deepEqual(readBaseline(repo), {
@@ -160,6 +165,52 @@ describe('migrate', () => {
     assert.deepEqual(outstanding(repo, '3.0.0'), []);
     // A rerun has nothing left to do.
     assert.equal(migrateTo(repo, '3.0.0').unchanged, true);
+  });
+
+  it('adds no UI kit at an SDK version that has none, and names the copied kit', () => {
+    publish('2.0.0', v2);
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo' });
+    // A repository from before the UI kit: SDK 0.6.0, the kit copied into
+    // the app, one file of it as shipped and one changed by the owner.
+    editJson(repo, 'package.json', (manifest) => {
+      delete manifest.devDependencies['@sempods/app-ui'];
+      manifest.devDependencies['@sempods/app-sdk'] = '0.6.0';
+      manifest.devDependencies['@sempods/client-sdk'] = '0.6.0';
+    });
+    const app = join(repo, 'apps', 'demo');
+    mkdirSync(join(app, 'src', 'ui'));
+    cpSync(
+      join(TOOLING, 'test', 'fixtures', 'kit-0.8.0-dismiss.ts'),
+      join(app, 'src', 'ui', 'dismiss.ts'),
+    );
+    writeFileSync(join(app, 'src', 'ui', 'Menu.tsx'), '// The owner\'s menu.\n');
+    const menu = read(app, 'src/ui/Menu.tsx');
+    install(repo, '2.0.0');
+
+    const report = migrateTo(repo, '2.0.0');
+    const manifest = readJson(join(repo, 'package.json'));
+    assert.equal(manifest.devDependencies['@sempods/app-ui'], undefined);
+    assert.equal(manifest.devDependencies['@sempods/app-sdk'], '0.6.0');
+    const notes = formatMigration(report);
+    assert.match(
+      notes,
+      /package\.json devDependencies\.@sempods\/app-ui: not added; pnpm run sdk-update <version> adds it/,
+    );
+    assert.match(
+      notes,
+      /apps\/demo still has the UI kit and router copied in 0\.8\.0; it keeps working, nothing was changed\./,
+    );
+    assert.match(
+      notes,
+      /As shipped, to replace with the package: apps\/demo\/src\/ui\/dismiss\.ts\./,
+    );
+    assert.match(
+      notes,
+      /Changed in this app, the app's own until the owner replaces them: apps\/demo\/src\/ui\/Menu\.tsx\./,
+    );
+    assert.equal(read(app, 'src/ui/Menu.tsx'), menu);
+    assert.equal(existsSync(join(app, 'src', 'ui', 'dismiss.ts')), true);
   });
 
   // The owner and v2 both change the README title.
