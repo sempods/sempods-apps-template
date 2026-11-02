@@ -3,7 +3,12 @@
 // apps.json, so tooling updates reach existing apps.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AUTO, SITE_PROFILES, siteIdentity } from './apps.mjs';
+import {
+  AUTO,
+  fillPlaceholders,
+  SITE_PROFILES,
+  siteIdentity,
+} from './apps.mjs';
 import { escapeHtml } from './html.mjs';
 
 const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
@@ -49,16 +54,11 @@ const PLACEHOLDER_SOURCE = '[A-Za-z0-9_-]+';
  * pattern, with or without a trailing slash, and an optional query when
  * `query` is set. Route and pattern segments need no escaping but the slash.
  */
-export function addressSource(app, { query = false } = {}) {
+function addressSource(app, { query = false } = {}) {
   const alternatives = [
     ...(app.routes ?? []),
     ...(app.resources ?? []).map((pattern) =>
-      pattern
-        .split('/')
-        .map((segment) =>
-          segment.startsWith(':') ? PLACEHOLDER_SOURCE : segment,
-        )
-        .join('/'),
+      fillPlaceholders(pattern, PLACEHOLDER_SOURCE),
     ),
   ].map((address) => address.replaceAll('/', '\\/'));
   const rest = alternatives.length

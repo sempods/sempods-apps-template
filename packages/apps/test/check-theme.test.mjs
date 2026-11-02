@@ -61,7 +61,7 @@ describe('check-theme', () => {
     const page = checkPage([...attributes, ['title', 'a "b"']], sheets);
     assert.match(
       page,
-      /<html data-actions="inverted" data-secondary="outline" title="a &quot;b&quot;">/,
+      /<html data-actions="inverted" data-secondary="outline" title="a &#34;b&#34;">/,
     );
     assert.match(page, /<link rel="stylesheet" href="\/app\/assets\/index-1\.css">/);
     assert.match(page, /import \* as check from '\/theme-check\/index\.js'/);

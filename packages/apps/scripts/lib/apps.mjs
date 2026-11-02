@@ -120,18 +120,21 @@ export function invalidRoute(route) {
  * with a literal segment, so it never catches the callback or another path
  * of the app.
  */
-export function invalidResource(pattern) {
+function invalidResource(pattern) {
   if (typeof pattern !== 'string' || pattern === '')
     return 'a resource pattern is text, such as "tasks/:id"';
   return invalidSegments(pattern, { placeholders: true });
 }
 
-/** A pattern's shape: the same addresses whatever its placeholders are called. */
-const shape = (pattern) =>
+/** A resource pattern with each placeholder segment replaced. */
+export const fillPlaceholders = (pattern, replacement) =>
   pattern
     .split('/')
-    .map((segment) => (segment.startsWith(':') ? ':' : segment))
+    .map((segment) => (segment.startsWith(':') ? replacement : segment))
     .join('/');
+
+/** A pattern's shape: the same addresses whatever its placeholders are called. */
+const shape = (pattern) => fillPlaceholders(pattern, ':');
 
 /** Lists the problems of one app's `routes` and `resources`. */
 function addressProblems(app) {
@@ -143,15 +146,17 @@ function addressProblems(app) {
       problems.push(`${app.id}: ${key} must be a list`);
       return [];
     }
+    const name = key === 'routes' ? 'route' : 'resource';
+    const valid = [];
     values.forEach((value, i) => {
       const reason = invalid(value);
-      const name = key === 'routes' ? 'route' : 'resource';
       if (reason)
         problems.push(`${app.id}: ${name} ${JSON.stringify(value)}: ${reason}`);
       else if (values.indexOf(value) !== i)
         problems.push(`${app.id}: ${name} ${value} is listed twice`);
+      else valid.push(value);
     });
-    return values.filter((value) => !invalid(value));
+    return valid;
   };
   list('routes', invalidRoute);
   const shapes = new Map();

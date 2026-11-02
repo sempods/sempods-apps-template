@@ -69,6 +69,7 @@ function Frame() {
   const t = useMessages(texts);
   const header = connections.length > 0;
   const { place } = nav;
+  const toStart = () => nav.go({ kind: 'start' }, { replace: true });
   return (
     <main className="mx-auto max-w-3xl p-4">
       {header && (
@@ -112,13 +113,13 @@ function Frame() {
         <ScreenDialog
           title={t.notFound}
           open
-          onRequestClose={() => nav.go({ kind: 'start' }, { replace: true })}
+          onRequestClose={toStart}
         >
           <div className="grid gap-4">
             <p>{place.reason === 'invalid' ? t.invalidLink : t.notFoundText}</p>
             <ActionButton
               shape="pill"
-              onPress={() => nav.go({ kind: 'start' }, { replace: true })}
+              onPress={toStart}
             >
               {t.toStart}
             </ActionButton>

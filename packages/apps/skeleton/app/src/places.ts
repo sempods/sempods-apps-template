@@ -87,16 +87,16 @@ export function addressModel(config: {
       const here = pathname + search;
       // A known address in another form (a trailing slash) becomes its
       // canonical one. Its query stays, so a deep link keeps it through
-      // sign-in; an item's address carries its context first.
+      // sign-in; parameters the address sets itself come first.
       const known = (place: Place) => {
         const address = model.format(place);
-        if (place.kind !== 'item') return { place, canonical: address + search };
-        const rest = new URLSearchParams(search);
-        rest.delete('context');
-        const more = rest.toString();
-        if (!more) return { place, canonical: address };
-        const glue = address.includes('?') ? '&' : '?';
-        return { place, canonical: address + glue + more };
+        const own = address.split('?')[1];
+        if (own === undefined) return { place, canonical: address + search };
+        const set = new URLSearchParams(own);
+        const rest = new URLSearchParams(
+          [...new URLSearchParams(search)].filter(([key]) => !set.has(key)),
+        ).toString();
+        return { place, canonical: rest ? `${address}&${rest}` : address };
       };
       // An unknown or invalid address keeps itself, so its page shows the
       // address the person followed.
@@ -138,8 +138,8 @@ export function addressModel(config: {
  * `returnTo` is a function, as the generated one is; that is the site's
  * overview, so the app's start page takes its place.
  */
-export function inApp(url: string, basePath: string = app.basePath): string {
-  return url.startsWith(basePath) ? url : basePath;
+export function inApp(url: string): string {
+  return url.startsWith(app.basePath) ? url : app.basePath;
 }
 
 /** The app's address model; pass it to `useNav` once, in the frame. */

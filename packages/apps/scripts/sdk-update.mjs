@@ -14,11 +14,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import semver from 'semver';
 import { readApps } from './lib/apps.mjs';
-import { formatJson, ifPresent, readJson } from './lib/json.mjs';
+import { formatJson, ifPresent, readJson, sortedKeys } from './lib/json.mjs';
 import { migrationState } from './migrate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { INSTALL, pnpm, pnpmJson, scriptArgs } from './lib/pnpm.mjs';
 import {
+  appSdk,
   compareVersions,
   EXACT_VERSION,
   PENDING_UPDATE,
@@ -131,10 +132,7 @@ export function planUpdate(
     const path = join(root, file);
     const original = readFileSync(path, 'utf8');
     const manifest = JSON.parse(original);
-    const names = SDK.filter(
-      (name) =>
-        name !== UI_KIT || isRoot || manifest[section]?.[name] !== undefined,
-    );
+    const names = isRoot ? SDK : appSdk(manifest[section]);
     for (const name of names) {
       const current = manifest[section]?.[name];
       if (name === UI_KIT && current === undefined) continue;
@@ -148,14 +146,8 @@ export function planUpdate(
         );
     }
     if (names.every((name) => manifest[section]?.[name] === version)) continue;
-    manifest[section] ??= {};
     for (const name of names) manifest[section][name] = version;
-    // Package managers keep dependency lists sorted.
-    manifest[section] = Object.fromEntries(
-      Object.entries(manifest[section]).sort(([a], [b]) =>
-        a < b ? -1 : a > b ? 1 : 0,
-      ),
-    );
+    manifest[section] = sortedKeys(manifest[section]);
     changes.push({
       path,
       original,

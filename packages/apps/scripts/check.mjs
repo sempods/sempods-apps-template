@@ -27,7 +27,7 @@ import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import {
-  APP_SDK,
+  appSdk,
   EXACT_VERSION,
   REFERENCE,
   SDK,
@@ -134,10 +134,7 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
     problems.push(...pageProblems(dir, app.id));
     const pkg = readJson(join(dir, 'package.json'));
     // The UI kit is optional: an app built before it keeps its own kit.
-    for (const sdk of [
-      ...APP_SDK,
-      ...(pkg.dependencies?.[UI_KIT] === undefined ? [] : [UI_KIT]),
-    ])
+    for (const sdk of appSdk(pkg.dependencies))
       expect(`apps/${app.id}`, sdk, pkg.dependencies?.[sdk]);
     const declared = new Set([
       ...Object.keys(pkg.dependencies ?? {}),

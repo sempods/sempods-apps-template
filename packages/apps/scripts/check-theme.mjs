@@ -20,6 +20,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { escapeHtml } from './lib/html.mjs';
 import { readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -48,13 +49,10 @@ export function linkedStylesheets(html, basePath) {
     .map((href) => href.slice(basePath.length));
 }
 
-const escapeAttribute = (value) =>
-  value.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
-
 /** The check page: the app's stylesheets, its <html> attributes, the check. */
 export function checkPage(attributes, stylesheets) {
   const attrs = attributes
-    .map(([name, value]) => ` ${name}="${escapeAttribute(value)}"`)
+    .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
     .join('');
   const links = stylesheets
     .map((file) => `<link rel="stylesheet" href="/app/${file}">`)
@@ -273,7 +271,6 @@ export async function checkThemes(
     for (const app of selected) {
       const appDir = join(root, 'apps', app.id);
       const { dependencies = {} } = readJson(join(appDir, 'package.json'));
-      const kitDir = dependencies[UI_KIT] && installedKit(root, appDir);
       if (!dependencies[UI_KIT]) {
         skipped.push(
           `apps/${app.id} does not use ${UI_KIT}; its theme is not checked`,
@@ -281,6 +278,7 @@ export async function checkThemes(
         if (ids.length) results.push({ id: app.id, error: skipped.at(-1) });
         continue;
       }
+      const kitDir = installedKit(root, appDir);
       if (!kitDir) {
         results.push({
           id: app.id,
@@ -294,13 +292,10 @@ export async function checkThemes(
       const outDir = mkdtempSync(join(cache, 'sempods-theme-'));
       try {
         build(appDir, outDir);
+        const target = { outDir, kitDir, basePath: app.path };
         const reports = inspect
-          ? await inspect({ outDir, kitDir, basePath: app.path })
-          : await inspectBuild((browser ??= await start()), {
-              outDir,
-              kitDir,
-              basePath: app.path,
-            });
+          ? await inspect(target)
+          : await inspectBuild((browser ??= await start()), target);
         results.push({ id: app.id, reports });
       } catch (error) {
         if (error.message === MISSING_BROWSER) throw error;
@@ -339,13 +334,7 @@ async function main() {
           apps: results.map(({ id, error, reports }) => ({
             id,
             ...(error ? { error } : {}),
-            ...(reports
-              ? {
-                  schemes: Object.fromEntries(
-                    Object.entries(reports),
-                  ),
-                }
-              : {}),
+            ...(reports ? { schemes: reports } : {}),
           })),
           skipped,
         },

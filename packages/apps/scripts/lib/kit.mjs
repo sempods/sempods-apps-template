@@ -5,9 +5,8 @@
 // and which the owner changed, which stay the app's own until they replace
 // them deliberately.
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ifPresent } from './json.mjs';
+import { readText } from './files.mjs';
 
 // SHA-256 of each file as 0.8.0-dev.1 and 0.8.0 shipped it, with LF line
 // endings.
@@ -58,8 +57,8 @@ export function copiedKit(appDir) {
   const unchanged = [];
   const changed = [];
   for (const [file, hashes] of Object.entries(SHIPPED)) {
-    const text = ifPresent(() => readFileSync(join(appDir, file), 'utf8'));
-    if (text === undefined) continue;
+    const text = readText(join(appDir, file));
+    if (text === null) continue;
     (hashes.includes(sha256(text)) ? unchanged : changed).push(file);
   }
   return unchanged.length + changed.length > 0
