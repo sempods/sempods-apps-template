@@ -100,7 +100,8 @@ describe('places', () => {
     const runtime = createBrowserRuntime({
       ...runtimeOptions,
       location: () => callback.href,
-      locks: null,
+      // A free lock, so the runtime reads the empty store.
+      locks: { request: (name, _options, granted) => granted({ name }) },
       openStore: async () => ({
         read: async () => undefined,
         list: async () => ({ records: [], unreadable: [] }),
@@ -111,7 +112,8 @@ describe('places', () => {
       }),
       replaceUrl: (url) => seen.push(inApp(url)),
     });
-    await runtime.initialize().catch(() => undefined);
+    const report = await runtime.initialize();
+    expect(report).toMatchObject({ storage: 'durable', problem: 'attempt' });
     expect(seen).toEqual([app.basePath]);
     expect(inApp(`${app.basePath}bought?filter=open`)).toBe(
       `${app.basePath}bought?filter=open`,
