@@ -17,13 +17,17 @@ import {
   useNav,
 } from '@sempods/app-ui';
 import { NewVersionNotice } from './NewVersionNotice.tsx';
-import { places } from './places.ts';
+import { inApp, places } from './places.ts';
 import { app, runtimeOptions } from './sempods.generated.ts';
 import { texts, uiLocale } from './texts.ts';
 
 // One runtime for the app's lifetime, created outside rendering. Its return
-// after a sign-in goes through the router, which then shows that address.
-const runtime = createBrowserRuntime({ ...runtimeOptions, replaceUrl });
+// after a sign-in goes through the router, which then shows that address,
+// always one in the app.
+const runtime = createBrowserRuntime({
+  ...runtimeOptions,
+  replaceUrl: (url) => replaceUrl(inApp(url)),
+});
 
 // One UI language for the app's texts, the SDK components and the page.
 const { locale, language } = uiLocale(app.language, navigator.languages);

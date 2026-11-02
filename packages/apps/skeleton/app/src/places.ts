@@ -132,5 +132,15 @@ export function addressModel(config: {
   return model;
 }
 
+/**
+ * The address a sign-in callback returns to, kept in the app. A callback
+ * without a matching sign-in, for example an expired one, returns to `/` when
+ * `returnTo` is a function, as the generated one is; that is the site's
+ * overview, so the app's start page takes its place.
+ */
+export function inApp(url: string, basePath: string = app.basePath): string {
+  return url.startsWith(basePath) ? url : basePath;
+}
+
 /** The app's address model; pass it to `useNav` once, in the frame. */
 export const places = addressModel(app);

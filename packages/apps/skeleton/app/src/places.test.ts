@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { addressModel, decodeSubject, encodeSubject, ITEM } from './places.ts';
+import { createBrowserRuntime } from '@sempods/app-sdk';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  addressModel,
+  decodeSubject,
+  encodeSubject,
+  inApp,
+  ITEM,
+} from './places.ts';
+import { app, runtimeOptions } from './sempods.generated.ts';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('places', () => {
   const model = addressModel({
@@ -77,6 +87,35 @@ describe('places', () => {
       kind: 'not-found',
       reason: 'unknown',
     });
+  });
+
+  it('returns a callback without a matching sign-in to the start page', async () => {
+    // An expired sign-in in a browser with nothing saved: the runtime gets
+    // `/` and the app keeps the person in it.
+    const callback = new URL(
+      `http://127.0.0.1:5180${app.basePath}callback?code=unused&state=expired`,
+    );
+    vi.stubGlobal('location', callback);
+    const seen: string[] = [];
+    const runtime = createBrowserRuntime({
+      ...runtimeOptions,
+      location: () => callback.href,
+      locks: null,
+      openStore: async () => ({
+        read: async () => undefined,
+        list: async () => ({ records: [], unreadable: [] }),
+        commit: async () => {
+          throw new Error('nothing to commit');
+        },
+        close() {},
+      }),
+      replaceUrl: (url) => seen.push(inApp(url)),
+    });
+    await runtime.initialize().catch(() => undefined);
+    expect(seen).toEqual([app.basePath]);
+    expect(inApp(`${app.basePath}bought?filter=open`)).toBe(
+      `${app.basePath}bought?filter=open`,
+    );
   });
 
   it('encodes a subject as one path segment', () => {

@@ -51,8 +51,11 @@ Skeleton:
   `src/places.ts` is the app's address model (start page, a view per route,
   an item per resource address with its source Context, the callback and an
   explicit not-found place), and `App.tsx` routes with `useNav(places)`,
-  passes the kit's `replaceUrl` to the runtime, uses `HeaderMenu` for the
-  menu and shows a not-found page once the person is connected.
+  passes the kit's `replaceUrl` to the runtime through `inApp`, uses
+  `HeaderMenu` for the menu and shows a not-found page once the person is
+  connected. `inApp` keeps the return of a callback without a matching
+  sign-in, for example an expired one, in the app: the SDK returns such a
+  callback to `/`, the site's overview, when `returnTo` is a function.
 - `src/examples/ListScreen.tsx` is rebuilt on the kit: each item has its own
   address and opens in a `ScreenDialog` with the SDK's editor for the Context
   the address names; closing returns to the opener and reloads the list
@@ -81,7 +84,8 @@ Addresses:
   declares it (start page, route or resource), otherwise to the start page,
   also in an app without routes. It drops the callback's parameters (`code`,
   `state`, `error`, `iss`, `response`), which the SDK refuses in a return
-  address, and keeps the rest of the query.
+  address, and keeps the rest of the query. The generated `returnTo` is now a
+  function for every app.
 
 Tooling:
 
@@ -116,8 +120,12 @@ Instructions:
    layer `sempods`, so check the sign-in screen, the Pods & sharing dialog, an
    editor and a confirmation with each app's real stylesheet.
 2. `pnpm run regenerate` (the migration runs it) widens the offline
-   allowlist to addresses with a query and keeps the query on sign-in. Apps
-   need nothing else for that.
+   allowlist to addresses with a query and keeps the query on sign-in, also
+   in an app without routes. Its `returnTo` is then a function, so a
+   callback without a matching sign-in returns to `/`, the site's overview.
+   Keep it in the app where `App.tsx` creates the runtime:
+   `replaceUrl: (url) => replaceUrl(url.startsWith(app.basePath) ? url : app.basePath)`,
+   or `inApp` from the skeleton's `src/places.ts` once the app has it.
 3. An app with the copied kit keeps working; `check` does not require the UI
    kit. Move it to the package only when the owner agrees, as its own pull
    request, with the migration report's note for that app at hand:
@@ -143,7 +151,8 @@ Instructions:
       `places.test.ts`: a route `r` becomes `{ kind: 'view', route: r }`, the
       start page `{ kind: 'start' }`; `useRoute()` becomes `useNav(places)`
       once in the frame, `go(r)` `nav.go(place)`, `link(r)`
-      `nav.link(place)`, and `replaceUrl` comes from `@sempods/app-ui`.
+      `nav.link(place)`, and `replaceUrl` comes from `@sempods/app-ui`,
+      passed to the runtime through `inApp` as the skeleton's `App.tsx` does.
       Declare an item screen's address under `resources` and open it with
       `ScreenDialog`, as the list example does.
    6. Replace each kit part: `Menu` with `HeaderMenu`, `Dialog` with
