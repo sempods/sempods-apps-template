@@ -121,6 +121,8 @@ function fileFrom(root, prefix, path) {
   } catch {
     return undefined;
   }
+  // A null byte names no file; the file system would refuse it.
+  if (name.includes('\0')) return undefined;
   const file = resolve(root, name);
   return file.startsWith(root + sep) && isFile(file) ? file : undefined;
 }
@@ -214,10 +216,20 @@ export function failureGroups(failures) {
   }));
 }
 
+/** The variants a scheme skipped and why, for the end of its line. */
+function skippedNote(skips) {
+  if (skips.length === 0) return '';
+  const variants = skips.map((s) => `${s.variant.actions}/${s.variant.secondary}`);
+  const reasons = [...new Set(skips.map((s) => s.reason))];
+  return `; not sampled in ${[...new Set(variants)].join(', ')} (${reasons.join('; ')})`;
+}
+
 /**
  * Lines for the console and whether everything passed. A scheme the theme
  * excludes (a forced colour scheme) is reported as not sampled, not as
  * passing or failing: the kit's report has no samples and so no pass for it.
+ * Each app needs at least one scheme with samples; variants a sampled scheme
+ * skipped are named on its line.
  */
 export function summarize(results) {
   const lines = [];
@@ -228,6 +240,7 @@ export function summarize(results) {
       lines.push(`✗ apps/${id}: ${error}`);
       continue;
     }
+    let sampled = false;
     for (const scheme of SCHEMES) {
       const report = reports[scheme];
       const label = `apps/${id} ${scheme}`;
@@ -238,25 +251,34 @@ export function summarize(results) {
       }
       const failures = report.failures.filter((f) => f.scheme === scheme);
       const skips = report.skipped.filter((skip) => skip.scheme === scheme);
-      if (failures.length === 0 && skips.length > 0) {
-        lines.push(`– ${label}: not sampled (${skips[0].reason})`);
+      // The kit passes a scheme only with samples and no failure; without
+      // either, nothing was measured.
+      if (!report.pass && failures.length === 0) {
+        lines.push(
+          `– ${label}: not sampled (${skips[0]?.reason ?? 'no sample was taken'})`,
+        );
         continue;
       }
-      if (!report.pass) ok = false;
+      sampled = true;
       if (report.pass)
         lines.push(
-          `✓ ${label}: every role pair passes in every variant (the page uses ${report.active.actions}/${report.active.secondary})`,
+          `✓ ${label}: every role pair passes in every sampled variant (the page uses ${report.active.actions}/${report.active.secondary})${skippedNote(skips)}`,
         );
-      else if (failures.length === 0)
-        lines.push(`✗ ${label}: no sample was checked`);
       else {
+        ok = false;
         const groups = failureGroups(failures);
-        lines.push(`✗ ${label}: ${groups.length} pair(s) below the minimum`);
+        lines.push(
+          `✗ ${label}: ${groups.length} pair(s) below the minimum${skippedNote(skips)}`,
+        );
         for (const { failure: f, variants } of groups)
           lines.push(
             `    ${f.pair} on ${f.backdrop} (${f.state}): ${f.foreground.colour} on ${f.surface.colour}, ${f.ratio.toFixed(2)}:1, needs ${f.required}:1, in ${variants}. Adjust ${f.adjust.join(', ')}.`,
           );
       }
+    }
+    if (!sampled && SCHEMES.every((scheme) => !reports[scheme].error)) {
+      ok = false;
+      lines.push(`✗ apps/${id}: no colour scheme was sampled, so nothing was checked`);
     }
   }
   return { ok, lines };
@@ -360,7 +382,7 @@ async function main() {
     console.log(
       ok
         ? '\ncheck:theme passed. Check the screens visually as well.'
-        : '\ncheck:theme failed: change the roles named above in the theme, then run it again.',
+        : '\ncheck:theme failed: fix what is named above (a role, the colour scheme or the build), then run it again.',
     );
   }
   if (!ok) process.exitCode = 1;

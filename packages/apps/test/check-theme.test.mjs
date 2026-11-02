@@ -133,17 +133,45 @@ describe('check-theme', () => {
     ]);
     assert.equal(forced.ok, true);
     assert.match(forced.lines.join('\n'), /– apps\/demo dark: not sampled/);
+    // A theme that forces the other scheme under each preference: the kit
+    // samples nothing in either run, so nothing passed.
+    const unsampled = (scheme) => ({
+      pass: false,
+      active: variants[0],
+      failures: [],
+      skipped: variants.map((variant) => ({
+        variant,
+        scheme,
+        reason: `color-scheme is ${scheme === 'light' ? 'dark' : 'light'}`,
+      })),
+    });
     const empty = summarize([
+      { id: 'demo', reports: { light: unsampled('light'), dark: unsampled('dark') } },
+    ]);
+    assert.equal(empty.ok, false);
+    assert.match(empty.lines.join('\n'), /– apps\/demo light: not sampled/);
+    assert.match(
+      empty.lines.join('\n'),
+      /✗ apps\/demo: no colour scheme was sampled, so nothing was checked/,
+    );
+    // Variants a sampled scheme skipped are named, not hidden.
+    const partial = summarize([
       {
         id: 'demo',
         reports: {
-          light: passing('light'),
-          dark: { pass: false, active: variants[0], failures: [], skipped: [] },
+          light: {
+            ...passing('light'),
+            skipped: [{ variant: variants[4], scheme: 'light', reason: 'set by the page' }],
+          },
+          dark: passing('dark'),
         },
       },
     ]);
-    assert.equal(empty.ok, false);
-    assert.match(empty.lines.join('\n'), /✗ apps\/demo dark: no sample was checked/);
+    assert.equal(partial.ok, true);
+    assert.match(
+      partial.lines.join('\n'),
+      /✓ apps\/demo light: every role pair passes in every sampled variant .*; not sampled in inverted\/outline \(set by the page\)/,
+    );
 
     const broken = summarize([
       { id: 'demo', reports: { light: { error: 'Missing role' }, dark: passing('dark') } },
