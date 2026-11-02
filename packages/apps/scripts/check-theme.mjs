@@ -9,14 +9,14 @@
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
@@ -69,12 +69,14 @@ function installedKit(root, appDir) {
     .find((dir) => existsSync(join(dir, 'dist', 'theme-check', 'index.js')));
 }
 
-/** Builds the app into a temporary folder; returns it, or throws. */
+/** Builds the app into `outDir`, or throws. */
 function buildApp(appDir, outDir) {
+  // The output path is relative to the app, so no user directory name passes
+  // through the Windows shell (lib/pnpm.mjs).
   const result = pnpm(
     [
-      ...['exec', 'vite', 'build', '--outDir', outDir, '--emptyOutDir'],
-      ...['--logLevel', 'error'],
+      ...['exec', 'vite', 'build', '--outDir', relative(appDir, outDir)],
+      ...['--emptyOutDir', '--logLevel', 'error'],
     ],
     { cwd: appDir, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' },
   );
@@ -286,7 +288,10 @@ export async function checkThemes(
         });
         continue;
       }
-      const outDir = mkdtempSync(join(tmpdir(), `sempods-theme-${app.id}-`));
+      // Inside the app's node_modules, where builds leave nothing to commit.
+      const cache = join(appDir, 'node_modules', '.cache');
+      mkdirSync(cache, { recursive: true });
+      const outDir = mkdtempSync(join(cache, 'sempods-theme-'));
       try {
         build(appDir, outDir);
         const reports = inspect

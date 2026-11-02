@@ -58,7 +58,9 @@ function Frame() {
   // here, and pass `nav` to the screens that link or switch.
   const nav = useNav(places);
   const [managing, setManaging] = useState(false);
-  const { connections } = useAppState();
+  // `pod` is the active signed-in Pod; a saved connection that needs a new
+  // sign-in has none.
+  const { connections, pod } = useAppState();
   const { messages } = useSdkLocale();
   const t = useMessages(texts);
   const header = connections.length > 0;
@@ -100,9 +102,9 @@ function Frame() {
       <TargetScreen>
         <Start />
       </TargetScreen>
-      {/* An explicit page once the person is connected; a modal before that
-          would block sign-in. */}
-      {place.kind === 'not-found' && header && (
+      {/* An explicit page once the person is signed in; a modal before that
+          would cover the sign-in, and closing it would lose the link. */}
+      {place.kind === 'not-found' && pod && (
         <ScreenDialog
           title={t.notFound}
           open

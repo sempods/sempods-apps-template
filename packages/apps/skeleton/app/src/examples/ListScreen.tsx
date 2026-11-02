@@ -1,9 +1,10 @@
 // An example, not mounted: the default screen of a list app, built from the
 // SDK's quickstart screen with the UI kit (@sempods/app-ui). For a list app,
-// copy it next to App.tsx, render <ListScreen nav={nav} /> in place of
-// <Start />, declare the item address in apps.json (`"resources":
-// ["items/:id"]`) and run pnpm run regenerate; then rename the type, fields,
-// collection, address and texts to the app's own. Keep App.tsx's runtime,
+// copy it next to App.tsx, change its import of '../places.ts' to
+// './places.ts', render <ListScreen nav={nav} /> in place of <Start />,
+// declare the item address in apps.json (`"resources": ["items/:id"]`) and
+// run pnpm run regenerate; then rename the type, fields, collection, address
+// and texts to the app's own. Keep App.tsx's runtime,
 // provider and frame; take behaviour from the SDK's examples, never their
 // runtime, provider or styles.
 import { useEffect, useRef } from 'react';

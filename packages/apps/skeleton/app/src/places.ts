@@ -85,9 +85,12 @@ export function addressModel(config: {
     },
     parse(pathname, search) {
       const here = pathname + search;
+      // A known address in another form (a trailing slash) becomes its
+      // canonical one. Its query stays, so a deep link keeps it through
+      // sign-in; an item's address carries its own query.
       const known = (place: Place) => ({
         place,
-        canonical: model.format(place),
+        canonical: model.format(place) + (place.kind === 'item' ? '' : search),
       });
       // An unknown or invalid address keeps itself, so its page shows the
       // address the person followed.

@@ -210,7 +210,8 @@ SDK's quickstart screen built with the UI kit, with loading and failed reads
 as a link to the item's own address, which opens a `ResourceEditor` in a
 `ScreenDialog`, `RemoveButton`, open outcomes (`UpdateNotice`,
 `UnresolvedNotices`) and new items in a bar fixed at the bottom, which a list
-the person can only read does not show. Copy it next to `App.tsx`, render
+the person can only read does not show. Copy it next to `App.tsx`, change
+its import `../places.ts` to `./places.ts`, render
 `<ListScreen nav={nav} />` in place of `Start`, declare its item address in
 `apps.json` (`"resources": ["items/:id"]`, below) and rename the type, fields,
 collection, address and texts to the app's own. Keep `App.tsx`'s runtime from
@@ -337,7 +338,9 @@ does for items): the screen edits that Context, or shows the editor's
 `unavailable` problem, never the currently selected one. A link from a list
 names the Context the list reads; a link derived from an item screen, such as
 "next item" or an action of the same item, names the source the current
-address names. Leaving the document (Back past its first entry, a reload,
+address names. Show the not-found page only while a Pod is signed in
+(`useAppState().pod`), as `App.tsx` does: a modal before that would cover
+the sign-in. Leaving the document (Back past its first entry, a reload,
 closing the tab) is not a router move: the SDK's leave prompt covers it.
 
 ### Keep the configuration in apps.json

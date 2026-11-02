@@ -25,6 +25,13 @@ describe('places', () => {
     );
   });
 
+  it('keeps the query of a view while it normalises the address', () => {
+    expect(model.parse('/konsum/bought/', '?filter=open').canonical).toBe(
+      '/konsum/bought?filter=open',
+    );
+    expect(model.parse('/konsum/', '?task=x').canonical).toBe('/konsum/?task=x');
+  });
+
   it('keeps the source Context the address names', () => {
     const context = 'https://pod.example/contexts/home';
     const place = { kind: 'item', subject, context } as const;
