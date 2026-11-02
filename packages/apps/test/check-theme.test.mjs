@@ -93,9 +93,12 @@ describe('check-theme', () => {
             failures: variants.map((v) => failure(v)),
             skipped: [],
           },
-          // A theme that forces light mode: dark is not sampled.
+          // A theme that forces light mode: the kit samples nothing in dark
+          // and so reports no pass for it.
           dark: {
-            ...passing('dark'),
+            pass: false,
+            active: variants[0],
+            failures: [],
             skipped: [
               { variant: variants[0], scheme: 'dark', reason: 'color-scheme is light' },
             ],
@@ -111,6 +114,36 @@ describe('check-theme', () => {
       /muted text on background on background \(rest\): #d0d4da on #ffffff, 1\.49:1, needs 4\.5:1, in every variant\. Adjust muted-foreground, background\./,
     );
     assert.match(text, /– apps\/demo dark: not sampled \(color-scheme is light\)/);
+
+    const forced = summarize([
+      {
+        id: 'demo',
+        reports: {
+          light: passing('light'),
+          dark: {
+            pass: false,
+            active: variants[0],
+            failures: [],
+            skipped: [
+              { variant: variants[0], scheme: 'dark', reason: 'color-scheme is light' },
+            ],
+          },
+        },
+      },
+    ]);
+    assert.equal(forced.ok, true);
+    assert.match(forced.lines.join('\n'), /– apps\/demo dark: not sampled/);
+    const empty = summarize([
+      {
+        id: 'demo',
+        reports: {
+          light: passing('light'),
+          dark: { pass: false, active: variants[0], failures: [], skipped: [] },
+        },
+      },
+    ]);
+    assert.equal(empty.ok, false);
+    assert.match(empty.lines.join('\n'), /✗ apps\/demo dark: no sample was checked/);
 
     const broken = summarize([
       { id: 'demo', reports: { light: { error: 'Missing role' }, dark: passing('dark') } },

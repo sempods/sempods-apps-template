@@ -20,6 +20,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { readApps } from './lib/apps.mjs';
+import { isFile } from './lib/files.mjs';
 import { escapeHtml } from './lib/html.mjs';
 import { readJson } from './lib/json.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
@@ -114,8 +115,14 @@ export function installBrowser() {
 
 /** Serves `root` for requests below `prefix`, and nothing outside it. */
 function fileFrom(root, prefix, path) {
-  const file = resolve(root, decodeURIComponent(path.slice(prefix.length)));
-  return file.startsWith(root + sep) && existsSync(file) ? file : undefined;
+  let name;
+  try {
+    name = decodeURIComponent(path.slice(prefix.length));
+  } catch {
+    return undefined;
+  }
+  const file = resolve(root, name);
+  return file.startsWith(root + sep) && isFile(file) ? file : undefined;
 }
 
 const TYPES = { '.css': 'text/css', '.js': 'text/javascript' };
@@ -210,7 +217,7 @@ export function failureGroups(failures) {
 /**
  * Lines for the console and whether everything passed. A scheme the theme
  * excludes (a forced colour scheme) is reported as not sampled, not as
- * passing; the other preference's samples are skipped by design.
+ * passing or failing: the kit's report has no samples and so no pass for it.
  */
 export function summarize(results) {
   const lines = [];
@@ -231,13 +238,17 @@ export function summarize(results) {
       }
       const failures = report.failures.filter((f) => f.scheme === scheme);
       const skips = report.skipped.filter((skip) => skip.scheme === scheme);
-      if (!report.pass) ok = false;
-      if (report.pass && skips.length > 0)
+      if (failures.length === 0 && skips.length > 0) {
         lines.push(`– ${label}: not sampled (${skips[0].reason})`);
-      else if (report.pass)
+        continue;
+      }
+      if (!report.pass) ok = false;
+      if (report.pass)
         lines.push(
           `✓ ${label}: every role pair passes in every variant (the page uses ${report.active.actions}/${report.active.secondary})`,
         );
+      else if (failures.length === 0)
+        lines.push(`✗ ${label}: no sample was checked`);
       else {
         const groups = failureGroups(failures);
         lines.push(`✗ ${label}: ${groups.length} pair(s) below the minimum`);

@@ -119,7 +119,7 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       problems.push(
         `root: package.json declares no ${pkg}; run pnpm run sdk-update <version>, which adds it at the SDK's version`,
       );
-    else expect('root', pkg, rootManifest.devDependencies[pkg]);
+    else expect('root', pkg, rootManifest.devDependencies?.[pkg]);
 
   for (const app of manifest.apps) {
     const dir = join(appsDir, app.id);

@@ -731,6 +731,12 @@ describe('check', () => {
         staticProblems(root).join('\n'),
         /root: @sempods\/app-sdk must be an exact version/,
       );
+      // A root without dev dependencies is reported, not a crash.
+      writeFileSync(join(root, 'package.json'), JSON.stringify({}));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /root: @sempods\/app-sdk must be an exact version/,
+      );
       // A root from before the UI kit: sdk-update adds it.
       writeFileSync(
         join(root, 'package.json'),
@@ -810,6 +816,13 @@ describe('check', () => {
       assert.match(
         staticProblems(root).join('\n'),
         /apps\/demo: @sempods\/app-ui must be an exact version/,
+      );
+      // A manifest whose dependencies are null is reported too.
+      const pkg = JSON.parse(readFileSync(manifest('old'), 'utf8'));
+      writeFileSync(manifest('old'), JSON.stringify({ ...pkg, dependencies: null }));
+      assert.match(
+        staticProblems(root).join('\n'),
+        /apps\/old: @sempods\/app-sdk must be an exact version/,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

@@ -6,8 +6,8 @@ export const UI_KIT = '@sempods/app-ui';
 export const APP_SDK = SDK.filter((name) => name !== UI_KIT);
 
 /** The SDK packages an app declares: the UI kit only when it uses it. */
-export const appSdk = (dependencies = {}) =>
-  dependencies[UI_KIT] === undefined ? APP_SDK : SDK;
+export const appSdk = (dependencies) =>
+  dependencies?.[UI_KIT] === undefined ? APP_SDK : SDK;
 
 /** The app-author reference the installed SDK ships, relative to the root. */
 export const REFERENCE = 'node_modules/@sempods/app-sdk/docs/ai-app-builder.md';
