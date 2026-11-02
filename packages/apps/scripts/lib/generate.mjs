@@ -34,20 +34,10 @@ const ${name}: BrowserRuntimeOptions = {
     clientId: ${json(clientId)},
     redirectUri: ${json(redirectUri)},
   },
-  ${RETURN_TO[addressed(app)]},
+  returnTo: returnPath,
 };
 `;
 }
-
-// With routes or resources, sign-in returns to the address it started from:
-// the runtime calls returnPath when each sign-in starts.
-const RETURN_TO = {
-  false: 'returnTo: app.basePath',
-  true: 'returnTo: returnPath',
-};
-
-const addressed = (app) =>
-  Boolean(app.routes?.length || app.resources?.length);
 
 // One placeholder of a resource pattern matches one segment of these
 // characters, for example a base64url-encoded IRI.
@@ -82,14 +72,24 @@ const RETURN_PATH = (app) => `
 // its resource patterns.
 const ADDRESS = /${addressSource(app)}/;
 
+// The query parameters of the sign-in callback; the SDK refuses a return
+// address that carries one.
+const RESERVED = ['code', 'state', 'error', 'iss', 'response'];
+
 // The address sign-in returns to: the current one with its query when the app
 // declares it, otherwise the start page. Never the callback or another app.
+// The runtime calls it when each sign-in starts; the callback's parameters
+// are dropped, the rest of the query stays.
 function returnPath(): string {
   const { pathname, search } = location;
   if (!ADDRESS.test(pathname)) return app.basePath;
   const path =
     pathname === app.basePath ? pathname : pathname.replace(/\\/$/, '');
-  return path + search;
+  const query = new URLSearchParams(search);
+  if (!RESERVED.some((key) => query.has(key))) return path + search;
+  for (const key of RESERVED) query.delete(key);
+  const rest = query.toString();
+  return rest ? path + '?' + rest : path;
 }
 `;
 
@@ -118,7 +118,7 @@ export const app = {
   routes: ${json(app.routes ?? [])},
   resources: ${json(app.resources ?? [])},
 } as const;
-${addressed(app) ? RETURN_PATH(app) : ''}
+${RETURN_PATH(app)}
 // Local development: a dynamic identity, local HTTP only.
 const local: BrowserRuntimeOptions = {
   identity: {
@@ -130,7 +130,7 @@ const local: BrowserRuntimeOptions = {
       return \`\${location.origin}${app.path}callback\`;
     },
   },
-  ${RETURN_TO[addressed(app)]},
+  returnTo: returnPath,
   development: 'loopback-http',
 };
 ${published.map((name) => publishedProfile(name, site[name], app)).join('')}

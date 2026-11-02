@@ -78,7 +78,10 @@ Addresses:
   query, so the start page with a query and every resource address now open
   offline.
 - Sign-in returns to the address it started from with its query when the app
-  declares it (start page, route or resource), otherwise to the start page.
+  declares it (start page, route or resource), otherwise to the start page,
+  also in an app without routes. It drops the callback's parameters (`code`,
+  `state`, `error`, `iss`, `response`), which the SDK refuses in a return
+  address, and keeps the rest of the query.
 
 Tooling:
 

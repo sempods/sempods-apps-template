@@ -319,7 +319,9 @@ word). Declare every address in the app's `apps.json` entry and run
   `encodeSubject` from `places.ts`.
 
 The installed app then opens those addresses offline, and sign-in returns to
-the address it started from, query included. A literal route wins over a
+the address it started from, query included. Sign-in drops the parameters
+of its callback (`code`, `state`, `error`, `iss`, `response`), so the app's
+own query uses other names. A literal route wins over a
 pattern sharing its prefix (`tasks/add` before `tasks/:id`), so identifiers
 must never equal a literal.
 

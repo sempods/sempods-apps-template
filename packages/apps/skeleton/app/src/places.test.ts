@@ -32,6 +32,17 @@ describe('places', () => {
     expect(model.parse('/konsum/', '?task=x').canonical).toBe('/konsum/?task=x');
   });
 
+  it('keeps the rest of an item query after its context', () => {
+    const search = '?tab=history&context=urn%3Actx%3A1';
+    expect(model.parse(`/konsum/items/${id}/`, search)).toEqual({
+      place: { kind: 'item', subject, context: 'urn:ctx:1' },
+      canonical: `/konsum/items/${id}?context=urn%3Actx%3A1&tab=history`,
+    });
+    expect(model.parse(`/konsum/items/${id}`, '?tab=history').canonical).toBe(
+      `/konsum/items/${id}?tab=history`,
+    );
+  });
+
   it('keeps the source Context the address names', () => {
     const context = 'https://pod.example/contexts/home';
     const place = { kind: 'item', subject, context } as const;

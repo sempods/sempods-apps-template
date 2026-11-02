@@ -87,11 +87,17 @@ export function addressModel(config: {
       const here = pathname + search;
       // A known address in another form (a trailing slash) becomes its
       // canonical one. Its query stays, so a deep link keeps it through
-      // sign-in; an item's address carries its own query.
-      const known = (place: Place) => ({
-        place,
-        canonical: model.format(place) + (place.kind === 'item' ? '' : search),
-      });
+      // sign-in; an item's address carries its context first.
+      const known = (place: Place) => {
+        const address = model.format(place);
+        if (place.kind !== 'item') return { place, canonical: address + search };
+        const rest = new URLSearchParams(search);
+        rest.delete('context');
+        const more = rest.toString();
+        if (!more) return { place, canonical: address };
+        const glue = address.includes('?') ? '&' : '?';
+        return { place, canonical: address + glue + more };
+      };
       // An unknown or invalid address keeps itself, so its page shows the
       // address the person followed.
       const missing = (reason: 'unknown' | 'invalid') => ({

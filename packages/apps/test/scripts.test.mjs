@@ -229,8 +229,15 @@ describe('generated configuration', () => {
       const file = join(dir, 'sempods.generated.mts');
       writeFileSync(file, generatedFiles(app)['src/sempods.generated.ts']);
       const { runtimeOptions } = await import(pathToFileURL(file).href);
-      assert.equal(runtimeOptions.returnTo, '/demo/');
+      assert.equal(typeof runtimeOptions.returnTo, 'function');
       assert.throws(() => runtimeOptions.identity.redirectUri, ReferenceError);
+      // An app without routes keeps the query of its start page.
+      globalThis.location = { pathname: '/demo/', search: '?filter=open' };
+      try {
+        assert.equal(runtimeOptions.returnTo(), '/demo/?filter=open');
+      } finally {
+        delete globalThis.location;
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -341,6 +348,12 @@ describe('generated configuration', () => {
         '/demo/tasks/aHR0c/postpone?context=x',
       );
       assert.equal(returnTo('/demo/', '?task=x'), '/demo/?task=x');
+      // The SDK refuses the callback's parameters in a return address.
+      assert.equal(
+        returnTo('/demo/list', '?state=open&filter=mine'),
+        '/demo/list?filter=mine',
+      );
+      assert.equal(returnTo('/demo/', '?code=x&iss=y'), '/demo/');
       assert.equal(returnTo('/demo/callback', '?code=x'), '/demo/');
       assert.equal(returnTo('/demo/unknown'), '/demo/');
       assert.equal(returnTo('/demo/tasks/a.json'), '/demo/');
