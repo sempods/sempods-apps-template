@@ -100,24 +100,28 @@ export function CollectionScreen({ nav }: { readonly nav: Nav<Place> }) {
           onSubmit={(event) => {
             event.preventDefault();
             input.current?.focus();
-            void creation.create();
+            if (creation.canCreate) void creation.create();
           }}
         >
+          {/* Focus and pending typing as in ListScreen.tsx: not readOnly,
+              which closes a phone's keyboard. */}
           <Input
             ref={input}
             className="h-11 flex-1"
             aria-label={t.newNote}
             placeholder={t.newNote}
             value={creation.draft.name}
-            readOnly={creation.busy}
             disabled={!creation.canEdit && !creation.busy}
-            onChange={(event) => creation.change({ name: event.target.value })}
+            onChange={(event) => {
+              if (!creation.busy) creation.change({ name: event.target.value });
+            }}
           />
           <ActionButton
             type="submit"
             shape="round-sm"
             label={t.add}
             isDisabled={!creation.canCreate}
+            preventFocusOnPress
           >
             <PlusIcon />
           </ActionButton>
