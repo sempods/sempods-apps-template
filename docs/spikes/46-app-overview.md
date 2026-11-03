@@ -5,7 +5,51 @@ before any code. It answers how the site's overview
 (sempods/sempods-apps-template#46) becomes a good entry point "like an app
 store with app icons", against template 0.9.0-dev.1 (a4179c6) and SDK
 0.7.0-dev.2. No prototype was built; the evidence is the current code and
-the SDK's PWA guide. **Not decided yet.**
+the SDK's PWA guide. **Not decided yet, and deferred** (below).
+
+## Deferred
+
+On 2026-11-03 the owner deferred #46 until the app's public description is
+settled as a whole: the PWA manifest, `apps.json` and OAuth Client ID Metadata
+Documents. The proposals below stay as input for that decision; none of them
+should be built before it.
+
+The reason is one source for what describes an app. Its name, description
+and icon appear today in:
+
+- **`apps.json`**, the only source the owner edits for them (`title`,
+  `description`, `language`); the monogram icon is drawn from the title in
+  the colours of the app's theme;
+- **the generated PWA manifest** (`name`, `short_name`, `description`,
+  `lang`, `icons`), written by `regenerate`;
+- **the site overview**, whose cards `build-site` fills from `apps.json` and
+  the built `icon-192.png`;
+- **the sign-in identity.** A published app signs in as `did:web`, and
+  `build-site` writes a `did.json` with only its `@context` and `id`. Under
+  the current
+  auth contract the Pod fetches neither a DID document nor client metadata
+  for it ([deployment guide](https://github.com/sempods/sempods-typescript/blob/v0.7.0-dev.2/docs/deployment.md)).
+  Only local development registers a client dynamically, and there the SDK
+  sends the app's title as `client_name`.
+
+A Client ID Metadata Document would make the client ID a URL whose JSON
+names the app to the Pod, for example with `client_name`, `client_uri`,
+`logo_uri` and `redirect_uris`. The Pod could then show them on its consent
+screen. If sempods adopts that, the same name, description and icon would
+have a fourth published place, and the published one the Pod reads would
+matter most.
+
+Questions for that decision, which also shape this paper:
+
+- Does `apps.json` stay the one source, with manifest, overview and client
+  metadata generated from it?
+- Which icon is the app's public logo: the generated monogram, an owner
+  file, or the manifest's icon at a fixed size and address?
+- Is the description one sentence for every place, or does the consent
+  screen need its own wording?
+- Does a site-level title and introduction (proposal 1 below) belong next
+  to site-level metadata the Pod or the manifest might read, such as a
+  site name or an operator?
 
 ## Answer
 
@@ -109,6 +153,8 @@ time.
    any falls below 4.5:1.
 
 ## Open decisions for the owner
+
+These wait for the decision under [Deferred](#deferred).
 
 - Is a site title with one line of introduction enough branding for now?
 - Should the install hint appear at all, given that installed apps are still
