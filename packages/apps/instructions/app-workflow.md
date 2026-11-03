@@ -47,16 +47,16 @@ and reuse answers already given. Do not ask them to choose APIs or RDF terms.
 
 Design for the moment the app is for: what the person wants to see or do in
 the first seconds after opening it. Take that moment from the request's own
-words and examples. "Before we meet I want to know what Lea told me" puts
-her latest note first, not a form for new notes. The moment chooses what
+words and examples. "I never know which plant needs water" puts the plants
+due today first, not a form for logging a watering. The moment chooses what
 comes first; it adds no features. When the request allows two moments that
 lead to different first screens, ask one question that offers them in the
-person's words: "When you meet Lea again, do you want to look up what she
-told you, note something new quickly, or both?" A person who cannot
-describe their day can still answer that, and a correction ("rather find
-her by the trip, I forget names") is worth more than a question about
-style. The moment settles the first screen; the questions below about
-people and data still settle who reads and changes what.
+person's words: "In the morning, do you want to see which plants need water,
+note quickly that you watered one, or both?" A person who cannot describe
+their day can still answer that, and a correction ("rather by room, I don't
+know their names") is worth more than a question about style. The moment
+settles the first screen; the questions below about people and data still
+settle who reads and changes what.
 
 Propose a fitting layout, name, monogram and theme yourself. Offer "choose
 for me" with the calm theme; explain the other themes only if the owner
@@ -249,8 +249,8 @@ Each has an empty state with one line of help, and a collection or log the
 person can only read shows no input.
 
 Choose among them by the moment from the design conversation, not by the
-data's shape alone: notes about people are a collection, but before a
-conversation one person's latest note matters most. When no example fits
+data's shape alone: waterings are a log, but in the morning the plants
+due today matter most. When no example fits
 that moment, keep their behaviour and arrange the screen for it.
 
 Build further parts from the UI kit, `@sempods/app-ui`, as its reference
@@ -456,14 +456,18 @@ recovery (`migration.md`) when something fails.
 Use dedicated test contexts (one, or one per context the app's shape uses) and
 synthetic data; the user signs in themselves. Give the synthetic data the
 size the real data will have: the number the owner names or an MCP
-inspection counted, with long names and texts. Four people do not show
-what a directory of two thousand does to a phone screen. For the layout a
-local fixture of that size is enough; a few records in the test context
-cover the Pod.
+inspection counted, with long names and texts. When nobody knows it,
+choose an amount that takes the design to its limit, such as two thousand
+people in a directory or thirty open cases with long subjects, and record
+that assumption under Tested. Four rows do not show what two thousand do to
+a phone screen.
 Never request credentials, export browser storage or put tokens in notes/logs.
-Without a Pod you can work on the code, but only the sign-in screen can be
-seen: the app's own screens show once the user signs in to a test context.
-That is no claim of working login, reads or writes.
+Without a Pod the app itself shows only its sign-in screen; its own screens
+show once the user signs in to a test context. A local preview with
+synthetic data, a separate page in the app's development server that the
+build leaves out, still shows layout, search and Back at that size. Login,
+reads, writes and access need the test context, where a few records are
+enough. Neither result is a claim about the other.
 
 Tests live next to the code they test, as `src/<module>.test.ts`; the
 skeleton's `src/texts.test.ts` shows the pattern. Test the domain logic first,

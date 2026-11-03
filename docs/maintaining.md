@@ -133,9 +133,14 @@ request, such as "Help me keep track of what I need to do", and the shipped
 instructions. Observe whether it proposes a coherent screen for the moment
 the request describes, asks about consequential choices before generating
 the app and tests with as much synthetic data as the real data will have.
-Rerun a request from an earlier trial and compare the first drafts. Do not
-feed it the desired implementation or count a simulated owner as an
-independent user test.
+Rerun a request from an earlier trial and compare the first drafts; that
+shows a regression. Whether the instructions carry over shows only with a
+request their examples do not cover, such as "Complaints keep getting stuck
+with us": observe whether the assistant asks itself about handover,
+visibility and closing a case, and whether the owner's correction reaches
+the next draft. Do not feed it the desired implementation or count a
+simulated owner as an independent user test; a person without prompting
+experience is the stronger test of the start.
 
 Cover personal versus shared data and explain what a writer can change;
 existing records with optional, scoped MCP inspection and with that step

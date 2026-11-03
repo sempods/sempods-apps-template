@@ -26,14 +26,17 @@ take screenshots:
 - at 375px wide and at desktop width;
 - in light and in dark mode;
 - with real states: the empty list, a few items, as many items as the real
-  data will hold (the number the owner names or an MCP inspection counted)
-  with long names, an open item or dialog, and a notice (for example after a
-  refused change or with read-only access). A local fixture may provide the
-  many items.
+  data will hold (the size the [app workflow](app-workflow.md) has you
+  choose) with long names, an open item or dialog, and a notice (for example
+  after a refused change or with read-only access).
 
-Without a browser tool, or without a test context, say which states you could
-not see; do not describe them as checked. Without a Pod, only the sign-in
-screen is visible.
+The many items may come from a local preview with synthetic data instead of
+the test context: it shows layout, search and Back at that size, while
+sign-in, reads, writes and access need the test context. Without a Pod the
+app itself shows only its sign-in screen, so check the size in the preview
+and say that the Pod states are unchecked. Without a browser tool, or
+without a test context, say which states you could not see; do not describe
+them as checked.
 
 ## Checklist
 
