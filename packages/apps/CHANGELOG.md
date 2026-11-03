@@ -117,6 +117,10 @@ Instructions:
   addresses and the rewrite requirement for resource patterns. A component
   the kit lacks comes from `shadcn add` and is the app's own; copying a kit
   component to change it is a recorded decision.
+- The app workflow says where a screen goes after a write: only after a
+  confirmed result, back to where it was opened from, or for a creation in
+  place to the new item when the owner asks for that flow, with the list
+  reloading without being awaited (#114, #117).
 
 ### Upgrade notes
 

@@ -352,6 +352,29 @@ app does not declare in `apps.json` stays not found. Move with
 tab, and leave a screen with `nav.close(fallback)`, which returns to the
 in-app place that opened it, or after a direct entry to the fallback.
 
+A screen leaves after a write only once the SDK confirms it, and never waits
+for the list to read again. A creation screen at its own address
+(`"items/add"`) returns to where it was opened from by default. Replace it
+with the new item's screen only when the owner asks for that flow, in place,
+so Back does not return to an empty form:
+
+```tsx
+const submit = async () => {
+  const result = await creation.create();
+  // Any other result stays on the screen with its notice and the draft.
+  if (result.kind !== 'created') return;
+  nav.close({ kind: 'start' });
+  // Or, when asked for: nav.go({ kind: 'item', subject: result.iri }, { replace: true });
+  void list.reload();
+};
+```
+
+A confirmed creation resets the draft, so the next visit to the screen starts
+empty. An item screen leaves the same way: after a confirmed save or delete,
+or once the editor's guarded `close()` allows it, call `nav.close(…)` and
+reload the list without awaiting it, as the list example does. A slow read
+then never keeps an empty dialog open.
+
 A resource address names its source Context (`?context=…`, as `places.ts`
 does for items): the screen edits that Context, or shows the editor's
 `unavailable` problem, never the currently selected one. A link from a list
