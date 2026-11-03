@@ -43,8 +43,8 @@ Contents:
 - `instructions/`: the setup procedure, the app workflow, the visual check and
   the publish guide; `skills/` holds the skill entries that route to them.
 - `skeleton/app/`: what a new app starts from: Tailwind CSS 4 and
-  `@sempods/app-ui`, its themes, its address model and the list and context
-  switch examples. Files named `*.generated.ts` in
+  `@sempods/app-ui`, its themes, its address model and the list,
+  collection, log and context switch examples. Files named `*.generated.ts` in
   an app are written from `apps.json`; do not edit them. `check` reports any
   difference, and `regenerate` rewrites them.
 - `shared/`: the starter of this release, its files stored by content hash in
