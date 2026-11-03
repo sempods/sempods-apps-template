@@ -170,9 +170,13 @@ vocabulary's canonical IRIs (for example
 not automatically interchangeable: preserve them or agree an explicit
 mapping; do not silently rewrite or hide existing data. Choose a fixed text
 language or `language: null`, and the enum/flag values, compatible with the
-records the app should reuse. Record the vocabulary in `NOTES.md`, including
-the source of the mapping and why any extension is needed. Reuse the same
-subject for the same entity, preserve
+records the app should reuse. Store a point in time with `dateTime` and an
+explicit time zone and a calendar day with `date`, not as text such as
+`09:00`. A record that refers to another thing, such as a booking to its
+project, holds that thing's IRI (`iri`), not a copy of its name: a rename
+then reaches every record, and records can be counted per thing. Record the
+vocabulary in `NOTES.md`, including the source of the mapping and why any
+extension is needed. Reuse the same subject for the same entity, preserve
 unknown properties and language variants, and verify that an edit through
 another compatible view is visible without a copy or export.
 
