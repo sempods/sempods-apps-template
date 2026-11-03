@@ -169,8 +169,15 @@ export function viteSource(app) {
       id: ${json(p)},
       name: ${json(app.title)},
       short_name: ${json(app.title)},
-${app.description ? `      description: ${json(app.description)},\n` : ''}${app.language === AUTO ? '' : `      lang: ${json(app.language)},
-`}      start_url: ${json(p)},
+${app.description ? `      description: ${json(app.description)},\n` : ''}${
+        app.language === AUTO
+          ? `      // The app picks its language in the browser, so the manifest names
+      // none; undefined also replaces the plugin's default "en".
+      lang: undefined,
+`
+          : `      lang: ${json(app.language)},
+`
+      }      start_url: ${json(p)},
       scope: ${json(p)},
       display: 'standalone',
       background_color: '#ffffff',

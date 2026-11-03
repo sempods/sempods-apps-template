@@ -189,6 +189,13 @@ function publish(repo) {
   ])
     if (!existsSync(join(site, file)))
       throw new Error(`build-site wrote no ${file}`);
+  // The fixture's language is automatic: the built manifest names none,
+  // whatever the PWA plugin would default to.
+  const manifest = readJson(join(site, FIXTURE, 'manifest.webmanifest'));
+  if ('lang' in manifest)
+    throw new Error(
+      `the manifest of an app with language auto names ${JSON.stringify(manifest.lang)}`,
+    );
   const did = readJson(join(site, FIXTURE, 'did.json'));
   if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
     throw new Error(`unexpected did.json id ${did.id}`);

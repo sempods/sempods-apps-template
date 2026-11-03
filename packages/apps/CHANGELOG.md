@@ -94,12 +94,16 @@ Tooling:
   `<html>` in Chromium and runs the kit's role check under a light and a dark
   preference, for every action variant. It prints one line per failing pair
   with the variants, colours, ratio and roles to adjust, reports a scheme the
-  theme excludes as not sampled, prints the reports with `--json` and fails on
-  any contrast failure or checker error. Playwright is a dependency of
-  `@sempods/apps`; `--install-browser` installs its Chromium once.
+  theme excludes as not sampled and names variants a sampled scheme skipped,
+  prints the reports with `--json` and fails on any contrast failure, a
+  checker error or an app with no sampled scheme. Playwright is a dependency
+  of `@sempods/apps`; `--install-browser` installs its Chromium once.
 - `migrate` names every app that still has the kit copied in 0.8.0, with the
   files that are as shipped and those the owner changed. It changes none of
   them.
+- The web app manifest of an app with `"language": "auto"` names no `lang`;
+  before, the PWA plugin filled in `"en"`. `regenerate`, which the migration
+  runs, applies it (#112).
 
 Instructions:
 
