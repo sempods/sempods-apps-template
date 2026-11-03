@@ -56,6 +56,10 @@ Skeleton:
   connected. `inApp` keeps the return of a callback without a matching
   sign-in, for example an expired one, in the app: the SDK returns such a
   callback to `/`, the site's overview, when `returnTo` is a function.
+- New examples, unmounted like the list: `src/examples/CollectionScreen.tsx`
+  shows notes as cards that open in a `ScreenDialog`, and
+  `src/examples/LogScreen.tsx` groups entries by day, newest first, with a
+  `DateChooser` for the day of a new entry (#111).
 - `src/examples/ListScreen.tsx` is rebuilt on the kit: each item has its own
   address and opens in a `ScreenDialog` with the SDK's editor for the Context
   the address names; closing returns to the opener and reloads the list

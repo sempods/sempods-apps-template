@@ -220,6 +220,21 @@ SDK's quickstart and examples, never their runtime, provider, `TodoApp` or
 styles, which would add a second runtime, a wrong callback or clashing
 classes.
 
+Two more screens start the same way, with the same copy steps and item
+address:
+
+- `src/examples/CollectionScreen.tsx` for things the person keeps and reads
+  again, such as notes, recipes or ideas: cards with a title and the start
+  of their text, a title field above them as the primary action, and the
+  whole text in the item's dialog.
+- `src/examples/LogScreen.tsx` for things that happened on a day, such as
+  workouts, readings or expenses: entries grouped by day, newest first, and
+  a new entry for today unless the person picks another day with
+  `DateChooser`.
+
+Each has an empty state with one line of help, and a collection or log the
+person can only read shows no input.
+
 Build further parts from the UI kit, `@sempods/app-ui`, as its reference
 describes, and style them with Tailwind classes on the theme's roles
 (`bg-background`, `text-muted-foreground`, `border-input`):
