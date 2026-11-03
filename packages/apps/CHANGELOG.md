@@ -64,9 +64,11 @@ Skeleton:
   address and opens in a `ScreenDialog` with the SDK's editor for the Context
   the address names; closing returns to the opener and reloads the list
   without waiting for it. The input of the bar at the bottom keeps its focus
-  while it adds several items: read-only while a creation is pending and
-  focused from the submit handler, also after a press on Add
-  (sempods/sempods-apps-template#113).
+  and the phone's keyboard while it adds several items: it ignores typing
+  while a creation is pending instead of turning read-only, which closes a
+  phone's keyboard; Add has `preventFocusOnPress`, and the submit handler
+  focuses the input (sempods/sempods-apps-template#113). The collection and
+  log examples do the same.
 - `src/examples/ContextSwitch.tsx` replaces `ui/ContextSwitch.tsx`, built on
   the kit's menu parts. Its menu is as wide as the names need, up to 24rem and
   within the screen, and a long name without spaces wraps, as in the copied

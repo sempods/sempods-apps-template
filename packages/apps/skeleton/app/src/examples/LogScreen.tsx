@@ -124,18 +124,21 @@ export function LogScreen({ nav }: { readonly nav: Nav<Place> }) {
           onSubmit={(event) => {
             event.preventDefault();
             input.current?.focus();
-            void creation.create();
+            if (creation.canCreate) void creation.create();
           }}
         >
+          {/* Focus and pending typing as in ListScreen.tsx: not readOnly,
+              which closes a phone's keyboard. */}
           <Input
             ref={input}
             className="h-11 sm:flex-1"
             aria-label={t.newEntry}
             placeholder={t.newEntry}
             value={creation.draft.name}
-            readOnly={creation.busy}
             disabled={!creation.canEdit && !creation.busy}
-            onChange={(event) => creation.change({ name: event.target.value })}
+            onChange={(event) => {
+              if (!creation.busy) creation.change({ name: event.target.value });
+            }}
           />
           <div className="flex items-end gap-2">
             <DateChooser
@@ -150,6 +153,7 @@ export function LogScreen({ nav }: { readonly nav: Nav<Place> }) {
               shape="round-sm"
               label={t.add}
               isDisabled={!creation.canCreate}
+              preventFocusOnPress
             >
               <PlusIcon />
             </ActionButton>

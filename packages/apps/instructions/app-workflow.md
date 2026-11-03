@@ -319,10 +319,13 @@ Keep the screen consistent with the SDK's UI:
   `ResourceEditor`'s Delete asks by itself. Ask for other confirmations inside
   the page. Do not use `confirm()`, `alert()` or `prompt()`: embedded browsers
   and webviews may block them and silently answer "cancel".
-- An input that adds several items in a row keeps its focus: while a
-  creation is pending it is `readOnly={creation.busy}`, not disabled, and the
-  submit handler focuses it before it calls `create()`, as in the list
-  example. Only a confirmed creation empties it; a failure keeps the draft.
+- An input that adds several items in a row keeps its focus and the phone's
+  keyboard, as in the list example: while a creation is pending it ignores
+  typing in `onChange`, neither disabled nor `readOnly` (a phone closes its
+  keyboard when a focused field becomes read-only); the add button has
+  `preventFocusOnPress`; and the submit handler focuses the input before it
+  calls `create()`. Only a confirmed creation empties it; a failure keeps the
+  draft.
 - A `useList` view refreshes by itself after its own confirmed writes and
   when the page becomes visible again, and keeps its rows while it reloads.
   Reload it after an edit in another hook (a `ScreenDialog`'s editor) without

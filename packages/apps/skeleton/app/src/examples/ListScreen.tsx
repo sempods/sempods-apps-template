@@ -165,10 +165,10 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
             className="mx-auto flex max-w-3xl items-center gap-2"
             onSubmit={(event) => {
               event.preventDefault();
-              // The field keeps the focus, also after a press on Add, so the
-              // keyboard stays for the next item. Only this press moves it.
+              // The field keeps the focus, so the keyboard stays for the next
+              // item; Add never takes it (preventFocusOnPress below).
               input.current?.focus();
-              void creation.create();
+              if (creation.canCreate) void creation.create();
             }}
           >
             <Input
@@ -177,17 +177,20 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
               aria-label={t.newItem}
               placeholder={t.newItem}
               value={creation.draft.name}
-              // While a creation is pending the field stays focused and
-              // cannot change; a confirmed creation empties it.
-              readOnly={creation.busy}
+              // While a creation is pending the field ignores typing; a
+              // confirmed creation empties it. Not readOnly: a phone closes
+              // its keyboard when a focused field becomes read-only.
               disabled={!creation.canEdit && !creation.busy}
-              onChange={(event) => creation.change({ name: event.target.value })}
+              onChange={(event) => {
+                if (!creation.busy) creation.change({ name: event.target.value });
+              }}
             />
             <ActionButton
               type="submit"
               shape="round-sm"
               label={t.add}
               isDisabled={!creation.canCreate}
+              preventFocusOnPress
             >
               <PlusIcon />
             </ActionButton>
