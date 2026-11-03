@@ -123,6 +123,17 @@ Instructions:
   confirmed result, back to where it was opened from, or for a creation in
   place to the new item when the owner asks for that flow, with the list
   reloading without being awaited (#114, #117).
+- The app workflow designs a new app for the moment it is for, taken from
+  the request's own words and examples. When two moments lead to different
+  first screens, it asks one question that offers them. That moment, not
+  only the data's shape, chooses among the example screens. Tests and the
+  visual check use synthetic data as large as the real data, with long
+  names, or, when nobody knows that size, an amount chosen to take the
+  design to its limit and recorded as an assumption. A local preview with
+  synthetic data covers layout, search and Back at that size; sign-in,
+  reads, writes and access need the test context. At 375px the first screen
+  still shows what the app is for, and Back returns to the list with its
+  search and position.
 
 ### Upgrade notes
 

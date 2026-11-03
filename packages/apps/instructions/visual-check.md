@@ -25,12 +25,18 @@ take screenshots:
 
 - at 375px wide and at desktop width;
 - in light and in dark mode;
-- with real states: the empty list, a few items, an open item or dialog, and
-  a notice (for example after a refused change or with read-only access).
+- with real states: the empty list, a few items, as many items as the real
+  data will hold (the size the [app workflow](app-workflow.md) has you
+  choose) with long names, an open item or dialog, and a notice (for example
+  after a refused change or with read-only access).
 
-Without a browser tool, or without a test context, say which states you could
-not see; do not describe them as checked. Without a Pod, only the sign-in
-screen is visible.
+The many items may come from a local preview with synthetic data instead of
+the test context: it shows layout, search and Back at that size, while
+sign-in, reads, writes and access need the test context. Without a Pod the
+app itself shows only its sign-in screen, so check the size in the preview
+and say that the Pod states are unchecked. Without a browser tool, or
+without a test context, say which states you could not see; do not describe
+them as checked.
 
 ## Checklist
 
@@ -40,6 +46,9 @@ screen is visible.
 - Every control has a 44px touch target; checkboxes are wrapped in their
   label.
 - Nothing scrolls sideways at 375px.
+- At 375px, with as many items as the real data holds, the first screen
+  still shows what the app is for, and Back from an item returns to the
+  list as it was, with its search and position.
 - The empty state says in one friendly line what to do next.
 - The app does not repeat a message an SDK component already shows.
 - The app's icon and name are present in the header and on the sign-in
