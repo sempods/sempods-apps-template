@@ -130,9 +130,12 @@ of the tooling's Playwright. CI runs both.
 When changing app-building instructions, try the packed release in a separate
 owner repository. Use an assistant session with only the owner's vague
 request, such as "Help me keep track of what I need to do", and the shipped
-instructions. Observe whether it proposes a coherent screen and asks about
-consequential choices before generating the app. Do not feed it the desired
-implementation or count a simulated owner as an independent user test.
+instructions. Observe whether it proposes a coherent screen for the moment
+the request describes, asks about consequential choices before generating
+the app and tests with as much synthetic data as the real data will have.
+Rerun a request from an earlier trial and compare the first drafts. Do not
+feed it the desired implementation or count a simulated owner as an
+independent user test.
 
 Cover personal versus shared data and explain what a writer can change;
 existing records with optional, scoped MCP inspection and with that step

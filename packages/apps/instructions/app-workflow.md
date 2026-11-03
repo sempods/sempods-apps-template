@@ -45,6 +45,19 @@ Before creating the app, settle the people, data meaning and context choices
 below. Ask at most three short questions at a time, in the person's words,
 and reuse answers already given. Do not ask them to choose APIs or RDF terms.
 
+Design for the moment the app is for: what the person wants to see or do in
+the first seconds after opening it. Take that moment from the request's own
+words and examples. "Before we meet I want to know what Lea told me" puts
+her latest note first, not a form for new notes. The moment chooses what
+comes first; it adds no features. When the request allows two moments that
+lead to different first screens, ask one question that offers them in the
+person's words: "When you meet Lea again, do you want to look up what she
+told you, note something new quickly, or both?" A person who cannot
+describe their day can still answer that, and a correction ("rather find
+her by the trip, I forget names") is worth more than a question about
+style. The moment settles the first screen; the questions below about
+people and data still settle who reads and changes what.
+
 Propose a fitting layout, name, monogram and theme yourself. Offer "choose
 for me" with the calm theme; explain the other themes only if the owner
 wants a choice: fresh (teal), warm (terracotta on cream), playful (violet).
@@ -234,6 +247,11 @@ address:
 
 Each has an empty state with one line of help, and a collection or log the
 person can only read shows no input.
+
+Choose among them by the moment from the design conversation, not by the
+data's shape alone: notes about people are a collection, but before a
+conversation one person's latest note matters most. When no example fits
+that moment, keep their behaviour and arrange the screen for it.
 
 Build further parts from the UI kit, `@sempods/app-ui`, as its reference
 describes, and style them with Tailwind classes on the theme's roles
@@ -436,7 +454,12 @@ local-testing guide (`local-testing.md` in the installed SDK's `docs/`) for the
 actual Pod exercise, its section on apps that only read for such an app, and
 recovery (`migration.md`) when something fails.
 Use dedicated test contexts (one, or one per context the app's shape uses) and
-synthetic data; the user signs in themselves.
+synthetic data; the user signs in themselves. Give the synthetic data the
+size the real data will have: the number the owner names or an MCP
+inspection counted, with long names and texts. Four people do not show
+what a directory of two thousand does to a phone screen. For the layout a
+local fixture of that size is enough; a few records in the test context
+cover the Pod.
 Never request credentials, export browser storage or put tokens in notes/logs.
 Without a Pod you can work on the code, but only the sign-in screen can be
 seen: the app's own screens show once the user signs in to a test context.
