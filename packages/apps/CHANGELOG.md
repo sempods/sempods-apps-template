@@ -134,6 +134,12 @@ Instructions:
   reads, writes and access need the test context. At 375px the first screen
   still shows what the app is for, and Back returns to the list with its
   search and position.
+- The app workflow stores a point in time with `dateTime` and a calendar day
+  with `date`, not as text, and a reference to another thing as its IRI, not
+  a copy of its name.
+- The starter's `INIT.md` makes the first commit of a new repository hold
+  all files `create` wrote together with the lockfile. Before, it said only
+  to commit the lockfile, which left the starter untracked.
 
 ### Upgrade notes
 

@@ -28,7 +28,9 @@ pnpm install
 
 A repository that has committed `pnpm-lock.yaml` installs with
 `pnpm install --frozen-lockfile` instead. Commit the lockfile the first install
-writes.
+writes. In a new repository without a commit, that first commit holds all
+files `create` wrote together with the lockfile, before the first app; a
+commit of the lockfile alone leaves the starter untracked.
 
 ## Setup procedure
 
