@@ -367,7 +367,8 @@ describe('generated configuration', () => {
     const runtime = files['src/sempods.generated.ts'];
     assert.match(runtime, /^  language: "auto",$/m);
     assert.match(runtime, /import type \{ BrowserRuntimeOptions \} from/);
-    assert.doesNotMatch(files['vite.sempods.generated.ts'], /lang:/);
+    // The plugin's default "en" must not fill the gap.
+    assert.match(files['vite.sempods.generated.ts'], /^      lang: undefined,$/m);
     assert.match(
       generatedFiles(app)['vite.sempods.generated.ts'],
       /lang: "en",/,
