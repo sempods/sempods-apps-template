@@ -68,7 +68,12 @@ export function ContextSwitch({
           <span className="truncate">{selected.name}</span>
           <ChevronDownIcon />
         </Button>
-        <DropdownMenu placement="bottom start" className="min-w-56">
+        {/* As wide as the names need, within the screen; a long name without
+            spaces wraps instead of being cut off. */}
+        <DropdownMenu
+          placement="bottom start"
+          className="w-max min-w-56 max-w-[min(24rem,calc(100vw-2rem))]"
+        >
           {/* The contexts as checked choices; the actions below are not. */}
           <DropdownMenuGroup
             aria-label={label}
@@ -85,7 +90,7 @@ export function ContextSwitch({
                   if (context.iri !== selected.iri) void select(context.iri);
                 }}
               >
-                <span className="grid">
+                <span className="grid min-w-0 wrap-anywhere">
                   {context.name}
                   {/* The SDK's own words, as in its management dialog. */}
                   <span className="text-sm text-muted-foreground">
