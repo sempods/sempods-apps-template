@@ -68,7 +68,9 @@ Skeleton:
   focused from the submit handler, also after a press on Add
   (sempods/sempods-apps-template#113).
 - `src/examples/ContextSwitch.tsx` replaces `ui/ContextSwitch.tsx`, built on
-  the kit's menu parts.
+  the kit's menu parts. Its menu is as wide as the names need, up to 24rem and
+  within the screen, and a long name without spaces wraps, as in the copied
+  kit.
 
 Addresses:
 
