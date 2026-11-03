@@ -6,7 +6,7 @@ configuration choices and the SDK migration.
 
 ## 0.9.0
 
-Prerelease `0.9.0-dev.1` for acceptance testing against SDK `0.7.0-dev.2`.
+Prerelease `0.9.0-dev.2` for acceptance testing against SDK `0.7.0-dev.2`.
 
 ### Changes
 
