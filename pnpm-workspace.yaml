@@ -23,7 +23,10 @@ minimumReleaseAge: 0
 
 overrides:
   # The Markdown link check (unified-engine 11 and its npm config loader)
-  # still requests the deprecated glob 10; glob 13 replaces it in that tree.
-  unified-engine>glob: 13.0.6
-  '@npmcli/map-workspaces>glob': 13.0.6
-  '@npmcli/package-json>glob': 13.0.6
+  # still requests the deprecated glob 10 and minimatch 9; glob 14 and
+  # minimatch 11 replace them in that tree (GHSA-3g3m-2fjr-6pw4,
+  # GHSA-g3hv-75wg-m249).
+  unified-engine>glob: 14.0.3
+  '@npmcli/map-workspaces>glob': 14.0.3
+  '@npmcli/package-json>glob': 14.0.3
+  '@npmcli/map-workspaces>minimatch': 11.0.4
