@@ -142,6 +142,13 @@ Instructions:
 - The starter's `INIT.md` makes the first commit of a new repository hold
   all files `create` wrote together with the lockfile. Before, it said only
   to commit the lockfile, which left the starter untracked.
+- The publish guide walks the owner through a Netlify project: the name
+  first, then `configure-site`; "Other (configure manually)" instead of the
+  app folder Netlify detects, with build command and publish directory; the
+  "Powered by Netlify" badge off before the first visit; what the first
+  deploy's log shows. A host must inject nothing into the pages, because a
+  service worker keeps an injected page as it first cached it, and the
+  deployment check looks for scripts on the callback page.
 
 ### Upgrade notes
 

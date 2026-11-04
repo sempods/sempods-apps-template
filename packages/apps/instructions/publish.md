@@ -76,7 +76,12 @@ Every host, whatever it is:
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
 - keeps the browser's default referrer policy or a stricter one, loads no
   third-party resources on the callback route, and keeps full callback URLs
-  out of host and CDN logs.
+  out of host and CDN logs;
+- injects nothing into the pages, such as a badge or an analytics snippet:
+  injected code runs in the origin that holds the Pod sessions. Turn it off
+  before anyone opens the site, because an app's service worker keeps the
+  pages as it first cached them, injection included, until the app's own
+  files change.
 
 Build command `pnpm run build-site`, publish directory `site-dist`.
 
@@ -95,7 +100,8 @@ Netlify serves `/<id>/callback` from `callback.html` with `200` and the query
 intact, and `404.html` for unknown paths, and applies the generated
 `_redirects`; write no rules of your own. Write this
 `netlify.toml` in the repository root when the owner asks for Netlify (the
-starter ships none):
+starter ships none); without a preview address, leave out
+`[context.preview]`:
 
 ```toml
 [build]
@@ -111,8 +117,35 @@ starter ships none):
   command = "echo 'Deploy previews cannot sign in; push to the preview branch.' && exit 1"
 ```
 
-Connect the repository to a Netlify site. For a preview, enable branch deploys
-for the `preview` branch: its address is `https://preview--<site>.netlify.app`.
+The owner sets up the project in Netlify; walk them through it in this
+order:
+
+1. Agree the project name: the published origin is
+   `https://<name>.netlify.app`. Check that the name is free (`curl` answers
+   `404` for that address), run `configure-site` with it and push
+   `netlify.toml` and the regenerated files to the branch Netlify will build.
+2. In Netlify: Add new project → Import an existing project → the Git
+   provider and this repository, with that branch. Netlify detects the
+   workspace and offers an app folder (`apps/<id>`) under "Project to
+   deploy": choose "Other (configure manually)", so the base directory stays
+   the repository root, then enter build command `pnpm run build-site` and
+   publish directory `site-dist`. Functions directory and environment
+   variables stay empty.
+3. The new project takes the repository's name. If it differs from the
+   agreed name, rename it under Project configuration → General → Project
+   details before anyone signs in; another name is another origin, where the
+   SDK stops with a configuration error.
+4. Before anyone opens the site, turn off Project configuration → General →
+   "Powered by Netlify" badge (on by default for newer free projects): it
+   injects a script into every page, the callback included. Check that no
+   page still contains `/.netlify/scripts/hud`.
+5. In the first deploy's log, Node comes from `.node-version` and pnpm from
+   `packageManager` (through Corepack); nothing needs setting. Deploy previews
+   of pull requests fail on purpose, as `netlify.toml` says; the owner may
+   turn them off under Build & deploy → Branches and deploy contexts.
+
+For a preview, enable branch deploys for the `preview` branch: its address is
+`https://preview--<name>.netlify.app`.
 
 ### Cloudflare Pages (not tested by sempods apps)
 
@@ -156,7 +189,9 @@ SDK's `deployment.md`.
    - for each resource pattern, one address with an identifier, for example
      `curl -s -o /dev/null -D - 'https://<host>/<id>/tasks/abc?context=x'`,
      returns `200` and no `Location`, and `/<id>/did.json` still returns the
-     JSON.
+     JSON;
+   - the callback page, `curl -s 'https://<host>/<id>/callback?code=x&state=y'`,
+     loads no script but the app's own (`/<id>/assets/…`).
 2. In a fresh browser profile, the owner signs in to each app on the
    published site, grants only the intended context, saves something and
    reloads. Never ask for credentials or tokens.
