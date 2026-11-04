@@ -20,9 +20,9 @@
     "migrate": "sempods-apps migrate"
   },
   "devDependencies": {
-    "@sempods/app-sdk": "0.7.0-dev.2",
-    "@sempods/app-ui": "0.7.0-dev.2",
+    "@sempods/app-sdk": "0.7.0",
+    "@sempods/app-ui": "0.7.0",
     "@sempods/apps": "0.0.0",
-    "@sempods/client-sdk": "0.7.0-dev.2"
+    "@sempods/client-sdk": "0.7.0"
   }
 }

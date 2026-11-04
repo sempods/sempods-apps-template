@@ -6,16 +6,14 @@ configuration choices and the SDK migration.
 
 ## 0.9.0
 
-Prerelease `0.9.0-dev.3` for acceptance testing against SDK `0.7.0-dev.2`.
-
 ### Changes
 
 SDK and UI kit:
 
-- New repositories use SDK 0.7.0-dev.2 (`@sempods/app-sdk`,
+- New repositories use SDK 0.7.0 (`@sempods/app-sdk`,
   `@sempods/client-sdk`) and the UI kit `@sempods/app-ui` of the same
   version, which is released with the SDK. `@sempods/apps` supports
-  `^0.7.0-dev.2` of all three. The UI kit is shadcn/ui (style aria-nova) on
+  `^0.7.0` of all three. The UI kit is shadcn/ui (style aria-nova) on
   React Aria for Tailwind CSS 4, with sempods adapters (`ScreenDialog`,
   `HeaderMenu`, `DateChooser`, `ActionButton`/`ActionLink`/`ActionGroup`,
   `ChipGroup`/`Chip`), the router `useNav` and a theme token contract with a
@@ -155,7 +153,7 @@ Instructions:
 1. After `migrate`, `check` reports the SDK as outside the supported range
    and, at the root, the missing `@sempods/app-ui`. Run
    `pnpm run sdk-update <version>` with the SDK release this tooling names
-   (now `0.7.0-dev.2`); it adds the UI kit to the root. Then follow the SDK's
+   (now `0.7.0`); it adds the UI kit to the root. Then follow the SDK's
    `migration.md`, "From 0.6.0 to 0.7.0": its styles now sit in the cascade
    layer `sempods`, so check the sign-in screen, the Pods & sharing dialog, an
    editor and a confirmation with each app's real stylesheet.
