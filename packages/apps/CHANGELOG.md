@@ -6,7 +6,7 @@ configuration choices and the SDK migration.
 
 ## 0.10.0
 
-Prerelease `0.10.0-dev` for acceptance testing against SDK `0.8.0-dev.1`.
+Prerelease `0.10.0-dev` for acceptance testing against SDK `0.8.0-dev.2`.
 
 ### Changes
 
@@ -58,7 +58,7 @@ Instructions:
 
 1. After `migrate`, `check` reports the SDK as outside the supported range.
    Run `pnpm run sdk-update <version>` with the SDK release this tooling
-   names (now `0.8.0-dev.1`), then follow the SDK's `migration.md`, "From
+   names (now `0.8.0-dev.2`), then follow the SDK's `migration.md`, "From
    0.7.0 to 0.8.0", for each app. The steps that touch app code are
    decisions for the app, not rewrites the migration makes:
    - a custom `openStore` or a test double of it adds
