@@ -16,11 +16,11 @@
 // drafts and open edits. Test it with the system in the opposite mode, after
 // a reload, and with an unsaved edit open while the language changes.
 import { useEffect, useState } from 'react';
-import { resolveLocale, type Language } from '@sempods/app-sdk';
+import type { Language } from '@sempods/app-sdk';
 import { useMessages } from '@sempods/app-sdk/react';
 import type { HeaderMenuEntry } from '@sempods/app-ui';
 import { app } from '../sempods.generated.ts';
-import { uiLocale } from '../texts.ts';
+import { chosenLocale, uiLocale } from '../texts.ts';
 
 export type Appearance = 'system' | 'light' | 'dark';
 export type LanguageChoice = 'browser' | Language;
@@ -104,7 +104,7 @@ export function usePreferences() {
     preferences.language === 'browser'
       ? // The browser's language, also in an app created with a fixed one.
         uiLocale('auto', navigator.languages)
-      : resolveLocale(preferences.language, navigator.languages);
+      : chosenLocale(preferences.language, navigator.languages);
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);

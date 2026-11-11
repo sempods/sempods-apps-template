@@ -12,6 +12,26 @@ export function uiLocale(
   return resolveLocale(configured === 'auto' ? undefined : configured, browser);
 }
 
+/**
+ * A language the person chose, with the browser's region when the browser
+ * names that language: English on an en-GB browser formats dates as in
+ * Britain, German on de-AT as in Austria; otherwise the language's default.
+ */
+export function chosenLocale(
+  language: Language,
+  browser: readonly string[],
+): { readonly locale: string; readonly language: Language } {
+  const regional = browser.find((tag) => {
+    try {
+      return new Intl.Locale(tag).language === language;
+    } catch {
+      // Not a valid language tag: skip it.
+      return false;
+    }
+  });
+  return { locale: regional ?? language, language };
+}
+
 // The app's own texts in English and German, read in components with the
 // SDK's useMessages(texts); SDK components bring their own, and SDK texts are
 // reused where they fit (useSdkLocale().messages.controls). Both languages

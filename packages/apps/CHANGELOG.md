@@ -37,7 +37,9 @@ Skeleton:
   German, English) in the header's menu, stored on the device. It keeps the
   palette roles, Tailwind's `dark:` classes, menus and the browser's bar in
   one mode, and changes the language without remounting the runtime
-  (sempods/sempods-apps-template#142).
+  (sempods/sempods-apps-template#142). A chosen language keeps the
+  browser's region when it matches (English on en-GB formats as in Britain),
+  through the new `chosenLocale` in `src/texts.ts`.
 
 Instructions:
 
