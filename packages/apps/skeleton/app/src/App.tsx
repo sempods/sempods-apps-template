@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createBrowserRuntime } from '@sempods/app-sdk';
 import {
   AccessNotice,
@@ -53,8 +53,9 @@ export default function App({
 }
 
 // The app owns its layout: a header with the app's icon and name, its icon
-// actions and a menu; AppAccess beside the content for sign-in and recovery,
-// and as a dialog for managing Pods and sharing from the menu. An app that
+// actions and a menu. AppAccess shows sign-in as a gate above the content
+// while the app cannot work, outcomes as prompts that can be dismissed, and
+// management of Pods and sharing as a dialog from the menu. An app that
 // switches between contexts (lists) puts src/examples/ContextSwitch.tsx in
 // place of the h1.
 function Frame() {
@@ -62,8 +63,10 @@ function Frame() {
   // here, and pass `nav` to the screens that link or switch.
   const nav = useNav(places);
   const [managing, setManaging] = useState(false);
-  // `pod` is the active signed-in Pod; a saved connection that needs a new
-  // sign-in has none.
+  // The menu's button: closing Pods & sharing returns the focus there.
+  const menu = useRef<HTMLButtonElement>(null);
+  // `pod` is the active signed-in Pod; a remembered Pod after a sign-out has
+  // none. `connections` includes remembered Pods, so the header stays.
   const { connections, pod } = useAppState();
   const { messages } = useSdkLocale();
   const t = useMessages(texts);
@@ -82,6 +85,7 @@ function Frame() {
             {/* The app's own icon actions go here, as
                 <ActionButton variant="ghost" shape="round-sm" label="…">. */}
             <HeaderMenu
+              ref={menu}
               label={t.menu}
               items={[
                 {
@@ -102,6 +106,7 @@ function Frame() {
         headingLevel={header ? 2 : 1}
         open={managing}
         onClose={() => setManaging(false)}
+        focusTarget={menu}
       />
       <AccessNotice only="write" />
       <TargetScreen>

@@ -138,6 +138,20 @@ SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
 - **Write into several contexts** (a shared item with a private note): one
   `useCreation` per context with `context`, as the SDK's task-with-note recipe
   does; each part reports its own outcome.
+- **Public data first** (a catalogue or collection people read before they
+  sign in, if ever): `signIn: 'optional'` beside `...runtimeOptions` in
+  `App.tsx`'s `createBrowserRuntime`, or `signIn: 'none'` with a fixed Pod
+  (`preset`) for an app that never signs in (`browser-runtime.md`, "Apps
+  without sign-in"). Without a session a Pod shows only its public contexts,
+  and nothing can be changed.
+
+An app that reads from every connected Pod, such as an explorer or cards
+across Pods, reads each one with `usePodLoad(pod, …)`, bounds its reads with
+the runtime option `podReadLimit` instead of a queue of its own and searches
+with `pod.find`. The SDK's recipes `rdf-values.md` (values of any
+vocabulary), `resource-cards.md` (cards and pictures across Pods) and
+`public-rdf.md` (public data about an address no Pod describes), in the same
+`docs` directory, show how.
 
 Ask separately where new records go and where existing records are edited:
 "Should a change update the list the entry came from, or create a separate
@@ -215,11 +229,15 @@ Start from the skeleton's layout, so apps look and behave alike unless the
 owner asks otherwise: `AppAccess` beside `TargetScreen`, the SDK's components,
 and a header with the app's icon and name, the app's icon actions and a menu
 button (`HeaderMenu`) whose "Pods & sharing" opens `AppAccess` as a dialog
-(`open` with `onClose`); signing out is part of that dialog. The SDK owns
-connection, editing and recovery behavior; use the reference rather than
-rebuilding those facilities. The layout and the UI kit are the shared identity
-the SDK's `ai-app-builder.md` asks to keep; the visual direction, name and
-icon it asks to choose per app come from the design conversation.
+(`open` with `onClose`, and the menu's `ref` as `focusTarget`, so the focus
+returns to the menu button); signing out is part of that dialog. `AppAccess`
+shows sign-in as a gate above the content, lists Pods the person signed out
+of with **Sign in** and **Forget**, and shows outcomes as prompts that can be
+dismissed; the app adds no sign-in screen or loading panel of its own. The
+SDK owns connection, editing and recovery behavior; use the reference rather
+than rebuilding those facilities. The layout and the UI kit are the shared
+identity the SDK's `ai-app-builder.md` asks to keep; the visual direction,
+name and icon it asks to choose per app come from the design conversation.
 
 Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
 SDK's quickstart screen built with the UI kit, with loading and failed reads
@@ -264,6 +282,9 @@ describes, and style them with Tailwind classes on the theme's roles
 - `ScreenDialog` for an item or action screen that follows the address: full
   screen on phones, roomy on desktop. Close it through the SDK's guarded
   close (`editor.close()`, then `nav.close(…)`), as the list example does.
+  On phones it keeps clear of the notch and the home indicator by itself, so
+  add no `env(safe-area-inset-*)` inside it; a bar fixed outside it, as in
+  the list example, keeps its own.
 - `HeaderMenu` for the header's menu and an item's menu, with submenus of
   checked choices, for example a View submenu that switches views.
 - `ActionButton` and `ActionLink` for the app's own actions in the theme's
@@ -314,7 +335,9 @@ Keep the screen consistent with the SDK's UI:
   English.
 - Format dates and numbers with the SDK locale, `useSdkLocale().format`
   (`dateTime`, `dateOnly`, `number`), so they follow the app's language and
-  region instead of the browser default.
+  region instead of the browser default. A stored date the formatter cannot
+  show gives `undefined`: show it as stored,
+  `format.dateOnly(value) ?? value`, as the log example does.
 - Delete a row with the SDK's `RemoveButton`, which asks in its own dialog;
   `ResourceEditor`'s Delete asks by itself. Ask for other confirmations inside
   the page. Do not use `confirm()`, `alert()` or `prompt()`: embedded browsers
