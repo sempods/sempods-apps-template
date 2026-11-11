@@ -12,6 +12,7 @@ import {
 import {
   ActionButton,
   HeaderMenu,
+  I18nProvider,
   ScreenDialog,
   replaceUrl,
   useNav,
@@ -29,7 +30,8 @@ const runtime = createBrowserRuntime({
   replaceUrl: (url) => replaceUrl(inApp(url)),
 });
 
-// One UI language for the app's texts, the SDK components and the page.
+// One UI language for the app's texts, the SDK components, the UI kit's
+// controls and the page.
 const { locale, language } = uiLocale(app.language, navigator.languages);
 document.documentElement.lang = language;
 
@@ -46,8 +48,10 @@ export default function App({
 }) {
   return (
     <SempodsProvider runtime={runtime} language={language} locale={locale}>
-      <NewVersionNotice registration={registration} />
-      <Frame />
+      <I18nProvider locale={locale}>
+        <NewVersionNotice registration={registration} />
+        <Frame />
+      </I18nProvider>
     </SempodsProvider>
   );
 }

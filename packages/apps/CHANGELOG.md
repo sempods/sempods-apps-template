@@ -29,6 +29,15 @@ Skeleton:
   `undefined` instead of throwing.
 - The session store double in `src/places.test.ts` has `remove`, which
   `SessionStore` requires.
+- `App.tsx` wraps the frame in the UI kit's `I18nProvider` with the app's
+  locale, so the kit's controls (menus, selects, calendars) follow the app's
+  language and region, also when it differs from the browser's.
+- New example, unmounted: `src/examples/Preferences.tsx` lets the person
+  choose the appearance (system, light, dark) and the language (browser,
+  German, English) in the header's menu, stored on the device. It keeps the
+  palette roles, Tailwind's `dark:` classes, menus and the browser's bar in
+  one mode, and changes the language without remounting the runtime
+  (sempods/sempods-apps-template#142).
 
 Instructions:
 
@@ -37,6 +46,10 @@ Instructions:
   (`signIn: 'optional'` or `'none'`); reads from every connected Pod
   (`usePodLoad(pod, …)`, `podReadLimit`, `pod.find`); and the SDK's recipes
   for RDF values, resource cards and public RDF.
+- The app workflow names the UI kit's new menu options and recipes: choices
+  as a section of `HeaderMenu`, unavailable choices, a quiet menu on rows
+  (sempods/sempods-apps-template#116, #141, #145), and the preferences
+  example.
 - The visual check looks at the sign-in gate after signing out, at insets in
   a `ScreenDialog` and at the focus returning from Pods & sharing.
 
@@ -60,7 +73,13 @@ Instructions:
      goes; a bar fixed outside it keeps its own;
    - an app's own Pod menu or connection list built on `connections` or
      `usePodContexts()` now also lists remembered Pods: filter by
-     `session.kind` or offer **Sign in** and **Forget** for them.
+     `session.kind` or offer **Sign in** and **Forget** for them;
+   - an app that copied a menu for sections, unavailable choices or a quiet
+     row trigger, or composed its own nonmodal panel or search suggestions,
+     can move to the kit's `HeaderMenu` options and recipes when the owner
+     agrees; the copy keeps working.
+   - optional, as in the skeleton: wrap the frame in `App.tsx` in the UI
+     kit's `I18nProvider` with the app's `locale`.
 2. End-to-end tests find the sign-in controls in the gate
    (`[data-sempods-ui="gate"]`), see no initial loading panel, and in a German
    app find the compact `Dialog`'s close button as "Schließen".

@@ -285,8 +285,13 @@ describes, and style them with Tailwind classes on the theme's roles
   On phones it keeps clear of the notch and the home indicator by itself, so
   add no `env(safe-area-inset-*)` inside it; a bar fixed outside it, as in
   the list example, keeps its own.
-- `HeaderMenu` for the header's menu and an item's menu, with submenus of
-  checked choices, for example a View submenu that switches views.
+- `HeaderMenu` for the header's menu and an item's menu, with groups of
+  checked choices: two or three as a section of the menu
+  (`display: 'section'`), for example a View with Zen and List, more as a
+  submenu. `disabled` keeps an action or choice visible that is not available
+  now; `variant="ghost"` quiets the menu repeated on each row. The kit's
+  README has recipes for secondary actions on rows and a list menu with
+  unavailable choices.
 - `ActionButton` and `ActionLink` for the app's own actions in the theme's
   variants: one primary action per screen, other actions `secondary` or
   `ghost`, icons from `lucide-react` with a `label`; `ActionGroup` for a row
@@ -297,6 +302,11 @@ describes, and style them with Tailwind classes on the theme's roles
 - `src/examples/ContextSwitch.tsx` in place of the `<h1>` for an app that
   works in one of several contexts at a time, labelled in the person's words
   ("List", "Share more lists …").
+- `src/examples/Preferences.tsx` when the owner wants to choose light or dark
+  and the language in the app instead of following the device: two sections
+  in the header's menu, stored on the device. Its first lines say how to
+  wire it in; test it with the system in the opposite mode and with an
+  unsaved edit open while the language changes.
 
 A component the UI kit lacks can come from `shadcn add` (the CLI as a
 development dependency of the app); it is then the app's own code. Copying a
