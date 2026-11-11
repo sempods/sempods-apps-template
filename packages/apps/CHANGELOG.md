@@ -4,6 +4,92 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.10.0
+
+Prerelease `0.10.0-dev` for acceptance testing against SDK `0.8.0-dev.2`.
+
+### Changes
+
+SDK and UI kit:
+
+- New repositories use SDK and UI kit 0.8.0 (`@sempods/app-sdk`,
+  `@sempods/client-sdk`, `@sempods/app-ui`); `@sempods/apps` supports
+  `^0.8.0` of all three. `AppAccess` shows sign-in as a gate above the
+  content and outcomes as prompts that can be dismissed, keeps Pods the
+  person signed out of with **Sign in** and **Forget**, and shows no loading
+  panel at startup. The SDK's release notes and migration guide ship in the
+  installed package.
+
+Skeleton:
+
+- `App.tsx` passes the menu's `ref` to `AppAccess` as `focusTarget`, so
+  closing Pods & sharing returns the focus to the menu button.
+- `src/examples/LogScreen.tsx` shows a stored day the formatter cannot show
+  as stored (`format.dateOnly(day) ?? day`): the formatters return
+  `undefined` instead of throwing.
+- The session store double in `src/places.test.ts` has `remove`, which
+  `SessionStore` requires.
+- `App.tsx` wraps the frame in the UI kit's `I18nProvider` with the app's
+  locale, so the kit's controls (menus, selects, calendars) follow the app's
+  language and region, also when it differs from the browser's.
+- New example, unmounted: `src/examples/Preferences.tsx` lets the person
+  choose the appearance (system, light, dark) and the language (browser,
+  German, English) in the header's menu, stored on the device. It keeps the
+  palette roles, Tailwind's `dark:` classes, menus and the browser's bar in
+  one mode, and changes the language without remounting the runtime
+  (sempods/sempods-apps-template#142). A chosen language keeps the
+  browser's region when it matches (English on en-GB formats as in Britain),
+  through the new `chosenLocale` in `src/texts.ts`.
+
+Instructions:
+
+- The app workflow names the access gate, `focusTarget`, the safe-area
+  insets of `ScreenDialog` and the date fallback; apps on public data
+  (`signIn: 'optional'` or `'none'`); reads from every connected Pod
+  (`usePodLoad(pod, …)`, `podReadLimit`, `pod.find`); and the SDK's recipes
+  for RDF values, resource cards and public RDF.
+- The app workflow names the UI kit's new menu options and recipes: choices
+  as a section of `HeaderMenu`, unavailable choices, a quiet menu on rows
+  (sempods/sempods-apps-template#116, #141, #145), `WorkspacePanel` for a
+  nonmodal panel over a canvas (#143), `SuggestField` for a search or
+  address bar with suggestions (#144), and the preferences example.
+- The visual check looks at the sign-in gate after signing out, at insets in
+  a `ScreenDialog` and at the focus returning from Pods & sharing.
+
+### Upgrade notes
+
+1. After `migrate`, `check` reports the SDK as outside the supported range.
+   Run `pnpm run sdk-update <version>` with the SDK release this tooling
+   names (now `0.8.0-dev.2`), then follow the SDK's `migration.md`, "From
+   0.7.0 to 0.8.0", for each app. The steps that touch app code are
+   decisions for the app, not rewrites the migration makes:
+   - a custom `openStore` or a test double of it adds
+     `remove(id, expectedRevision)`; typed doubles of the runtime, the
+     snapshot, `Connection`, `useApp()` or `BoundPod` add the members the
+     guide lists;
+   - each `format.dateOnly(value)` and `format.dateTime(value)` that a
+     `try`/`catch` guarded, or that renders a stored value, becomes
+     `format.dateOnly(value) ?? value`;
+   - an app whose `HeaderMenu` opens `AppAccess` passes the menu's `ref` as
+     `focusTarget`, as the skeleton's `App.tsx` does;
+   - app CSS that adds `env(safe-area-inset-*)` inside a `ScreenDialog`
+     goes; a bar fixed outside it keeps its own;
+   - an app's own Pod menu or connection list built on `connections` or
+     `usePodContexts()` now also lists remembered Pods: filter by
+     `session.kind` or offer **Sign in** and **Forget** for them;
+   - an app that copied a menu for sections, unavailable choices or a quiet
+     row trigger, or composed its own nonmodal panel or search suggestions,
+     can move to the kit's `HeaderMenu` options and recipes when the owner
+     agrees; the copy keeps working.
+   - optional, as in the skeleton: wrap the frame in `App.tsx` in the UI
+     kit's `I18nProvider` with the app's `locale`.
+2. End-to-end tests find the sign-in controls in the gate
+   (`[data-sempods-ui="gate"]`), see no initial loading panel, and in a German
+   app find the compact `Dialog`'s close button as "Schließen".
+3. Check each app's sign-in, sign-out with a remembered Pod, **Forget** and
+   the focus after Pods & sharing at 375px and desktop width, in light and
+   dark mode, as the visual check describes.
+
 ## 0.9.0
 
 ### Changes

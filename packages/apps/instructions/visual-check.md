@@ -52,15 +52,16 @@ them as checked.
 - The empty state says in one friendly line what to do next.
 - The app does not repeat a message an SDK component already shows.
 - The app's icon and name are present in the header and on the sign-in
-  screen.
+  gate, also after signing out, when the gate lists the remembered Pod.
 - Text and controls keep their contrast in both modes; colours come from the
   app's theme roles, and `check:theme` passes.
 - A bar fixed at the bottom is not covered and leaves room for the content
-  above it.
+  above it; a `ScreenDialog` adds no safe-area inset of the app's own.
 - An item or action screen (`ScreenDialog`) fills the phone's screen and
   closes with Back, Escape and Close; with an unsaved edit, each asks first.
 - Menus, dialogs and the date chooser work by keyboard: arrows move, Escape
-  closes one level, and focus returns to what opened them.
+  closes one level, and focus returns to what opened them, also from Pods &
+  sharing to the menu button.
 
 ## Ask the owner
 

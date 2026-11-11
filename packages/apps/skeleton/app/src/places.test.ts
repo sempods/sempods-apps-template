@@ -108,6 +108,7 @@ describe('places', () => {
         commit: async () => {
           throw new Error('nothing to commit');
         },
+        remove: async () => ({ kind: 'removed' }),
         close() {},
       }),
       replaceUrl: (url) => seen.push(inApp(url)),

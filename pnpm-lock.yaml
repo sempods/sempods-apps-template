@@ -17,14 +17,14 @@ importers:
   packages/apps:
     dependencies:
       '@sempods/app-sdk':
-        specifier: ^0.7.0
-        version: 0.7.0(react@19.3.1)
+        specifier: ^0.8.0-dev.2
+        version: 0.8.0-dev.2(react@19.3.1)
       '@sempods/app-ui':
-        specifier: ^0.7.0
-        version: 0.7.0(@sempods/app-sdk@0.7.0(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
+        specifier: ^0.8.0-dev.2
+        version: 0.8.0-dev.2(@sempods/app-sdk@0.8.0-dev.2(react@19.3.1))(@sempods/client-sdk@0.8.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
       '@sempods/client-sdk':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^0.8.0-dev.2
+        version: 0.8.0-dev.2
       playwright:
         specifier: 1.65.0
         version: 1.65.0
@@ -105,8 +105,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
-  '@sempods/app-sdk@0.7.0':
-    resolution: {integrity: sha512-u2mUwJs7xWg0HlbG/eGjGFYaMPGi9wlh9HWmD8B4W8TNC5de5Um2LzlPa7jPC2+euu18eIaGpx1gqVhJcluFcg==}
+  '@sempods/app-sdk@0.8.0-dev.2':
+    resolution: {integrity: sha512-QALDTvOm0GjRxKcPAzWBtcFAXNQlv9X7CgiR91N1g3sL80PtseRVRAtkYS+vKiw5J9zo/toVh+7pdm7te5Y4hA==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
       react: ^19.0.0
@@ -114,17 +114,18 @@ packages:
       react:
         optional: true
 
-  '@sempods/app-ui@0.7.0':
-    resolution: {integrity: sha512-Dp6VfdUIBzWLjC9a3BJLXCnmKPExsaslNQfNueAenBG8X0uAY3cknrCU2oWu5srz76zht9Tr5Yw1L02or5ezJg==}
+  '@sempods/app-ui@0.8.0-dev.2':
+    resolution: {integrity: sha512-4FJmr0cvg+HLbfhANdrj52Mhkna72k+p0hAa2KpgxnF/Qx5UIceVVrBwzpE7UaCslATKWiVALg3uZvBywQFwpg==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
-      '@sempods/app-sdk': ~0.7.0
+      '@sempods/app-sdk': ~0.8.0-dev.2
+      '@sempods/client-sdk': ~0.8.0-dev.2
       react: ^19.0.0
       react-dom: ^19.0.0
       tailwindcss: ^4.1.0
 
-  '@sempods/client-sdk@0.7.0':
-    resolution: {integrity: sha512-L15FFvGwQnPn41YXlCIAA2tvIfUwmXegJEK6VBzhvDn6vumYIKaCXx7/4q6Oc98qphzkxfR+aQMFSOvMeN5Etg==}
+  '@sempods/client-sdk@0.8.0-dev.2':
+    resolution: {integrity: sha512-3htTvDYJ8zFsohGDUpDhpYHPVPNveb/OumIFXCIQK3S2onywjS1BoEviarGCdp50CmoG77VgdzWNrgFxuqzCPQ==}
     engines: {node: '>=24.15.0'}
 
   '@swc/helpers@0.5.23':
@@ -206,8 +207,8 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
-  cn@0.5.1:
-    resolution: {integrity: sha512-SA06SpzSWXRNrt/EQWnRpck9jEVDfVJonw8ZewiNR6pOC4U0SQ81tWaQ9/PKNPh/lWvjuY4CMlxpc8tJViiX6Q==}
+  cn@0.5.2:
+    resolution: {integrity: sha512-wm10E6iuJ37rALOw3D+3cfaXXZSLNMh2uxpQn3dNICqfJM59yXqgbA9/9Iiz155j5kYNLdK6WreNdW3NQtx3OQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -316,8 +317,8 @@ packages:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
 
-  lucide-react@1.65.0:
-    resolution: {integrity: sha512-roSdtzudEY39i2hn5LLjA8toYfhF2z4S10WSqZF4ubXpHlOmNTvaxMxZLdJfQDi6pEifQWX+cRmYihKSsvAxfA==}
+  lucide-react@1.70.0:
+    resolution: {integrity: sha512-gCTPPN1MlQUBtUgdsUv+0CAUj+X8hifRUiRBw4E5v7lvDIOIpx0EZezdGQMSimS8pKA6esvullJub4GYr0mCHA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -757,19 +758,20 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  '@sempods/app-sdk@0.7.0(react@19.3.1)':
+  '@sempods/app-sdk@0.8.0-dev.2(react@19.3.1)':
     dependencies:
-      '@sempods/client-sdk': 0.7.0
+      '@sempods/client-sdk': 0.8.0-dev.2
     optionalDependencies:
       react: 19.3.1
 
-  '@sempods/app-ui@0.7.0(@sempods/app-sdk@0.7.0(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
+  '@sempods/app-ui@0.8.0-dev.2(@sempods/app-sdk@0.8.0-dev.2(react@19.3.1))(@sempods/client-sdk@0.8.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
     dependencies:
       '@internationalized/date': 3.12.4
-      '@sempods/app-sdk': 0.7.0(react@19.3.1)
+      '@sempods/app-sdk': 0.8.0-dev.2(react@19.3.1)
+      '@sempods/client-sdk': 0.8.0-dev.2
       class-variance-authority: 0.7.1
-      cn: 0.5.1
-      lucide-react: 1.65.0(react@19.3.1)
+      cn: 0.5.2
+      lucide-react: 1.70.0(react@19.3.1)
       react: 19.3.1
       react-aria-components: 1.22.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react-dom: 19.3.1(react@19.3.1)
@@ -778,7 +780,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
-  '@sempods/client-sdk@0.7.0':
+  '@sempods/client-sdk@0.8.0-dev.2':
     dependencies:
       oauth4webapi: 3.8.8
 
@@ -848,7 +850,7 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  cn@0.5.1: {}
+  cn@0.5.2: {}
 
   concat-stream@2.0.0:
     dependencies:
@@ -934,7 +936,7 @@ snapshots:
 
   lru-cache@11.5.3: {}
 
-  lucide-react@1.65.0(react@19.3.1):
+  lucide-react@1.70.0(react@19.3.1):
     dependencies:
       react: 19.3.1
 

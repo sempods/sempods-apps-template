@@ -173,7 +173,8 @@ export function LogScreen({ nav }: { readonly nav: Nav<Place> }) {
         <section key={group.day} className="grid gap-1">
           {/* Below the header's h1, each day is an h2. */}
           <h2 className="text-sm font-semibold text-muted-foreground">
-            {format.dateOnly(group.day)}
+            {/* A stored value the formatter cannot show, as stored. */}
+            {format.dateOnly(group.day) ?? group.day}
           </h2>
           <ul className="divide-y">
             {group.items.map((item) => {
