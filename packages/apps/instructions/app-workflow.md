@@ -296,6 +296,9 @@ describes, and style them with Tailwind classes on the theme's roles
   variants: one primary action per screen, other actions `secondary` or
   `ghost`, icons from `lucide-react` with a `label`; `ActionGroup` for a row
   of them. `ActionLink` is an action with an address (`{...nav.link(place)}`).
+- `WorkspacePanel` for filters or details over a canvas or a map that stays
+  usable beside them, and `SuggestField` for a search or address bar with
+  suggestions the app finds as the person types.
 - `DateChooser` for the SDK's `date` field, `ChipGroup` and `Chip` for
   filters, and the shadcn components (`Input`, `Textarea`, `Select`,
   `DropdownMenu`, …) for the rest.

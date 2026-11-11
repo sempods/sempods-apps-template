@@ -48,8 +48,9 @@ Instructions:
   for RDF values, resource cards and public RDF.
 - The app workflow names the UI kit's new menu options and recipes: choices
   as a section of `HeaderMenu`, unavailable choices, a quiet menu on rows
-  (sempods/sempods-apps-template#116, #141, #145), and the preferences
-  example.
+  (sempods/sempods-apps-template#116, #141, #145), `WorkspacePanel` for a
+  nonmodal panel over a canvas (#143), `SuggestField` for a search or
+  address bar with suggestions (#144), and the preferences example.
 - The visual check looks at the sign-in gate after signing out, at insets in
   a `ScreenDialog` and at the focus returning from Pods & sharing.
 
