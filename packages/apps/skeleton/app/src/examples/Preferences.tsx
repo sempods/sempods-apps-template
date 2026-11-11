@@ -34,7 +34,12 @@ const KEY = `${app.id}:preferences`;
 const SYSTEM_DARK = '(prefers-color-scheme: dark)';
 
 function read(): Preferences {
-  const fallback: Preferences = { appearance: 'system', language: 'browser' };
+  // Until the person chooses, the language the app was created with: the
+  // browser's for "auto", else the fixed one.
+  const configured: string = app.language;
+  const language: LanguageChoice =
+    configured === 'de' || configured === 'en' ? configured : 'browser';
+  const fallback: Preferences = { appearance: 'system', language };
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!stored || typeof stored !== 'object') return fallback;
@@ -45,7 +50,7 @@ function read(): Preferences {
         : 'system',
       language: ['browser', 'de', 'en'].includes(language as string)
         ? (language as LanguageChoice)
-        : 'browser',
+        : fallback.language,
     };
   } catch {
     // Private mode or blocked storage: the defaults, every time.
@@ -97,7 +102,8 @@ export function usePreferences() {
   // it matches (de-AT stays de-AT), else that language's default.
   const { locale, language } =
     preferences.language === 'browser'
-      ? uiLocale(app.language, navigator.languages)
+      ? // The browser's language, also in an app created with a fixed one.
+        uiLocale('auto', navigator.languages)
       : resolveLocale(preferences.language, navigator.languages);
   useEffect(() => {
     document.documentElement.lang = language;
