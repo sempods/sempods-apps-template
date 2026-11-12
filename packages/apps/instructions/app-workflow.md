@@ -125,8 +125,12 @@ SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
 - **One context** (most apps): the skeleton as it is; `AppAccess` asks for
   the context once. A fixed context comes from `preset.contextIri` in the
   runtime options.
-- **Several contexts, one at a time** (lists to switch between): `useContexts`
-  with `src/examples/ContextSwitch.tsx` in place of the header's `<h1>`.
+- **Several contexts, one at a time** (lists to switch between): the SDK UI
+  kit's `ContextSwitch` in place of the header's `<h1>`; the skeleton's
+  `src/examples/ContextSwitch.tsx` re-exports it. Keep it outside `TargetScreen`
+  and keep `AppAccess` for sign-in and management. It groups by Pod and owns
+  labels, access icons, selection feedback and per-Pod recovery. Supply domain
+  words and the app icon; improve generic chooser UX in the SDK, not a local copy.
 - **Read all, write in one** (an overview): `contextSelection="on-demand"` on
   the provider, the SDK's Pod overview (`usePodList`) and `useCreation` for
   the context it writes to.
@@ -302,7 +306,8 @@ describes, and style them with Tailwind classes on the theme's roles
 - `DateChooser` for the SDK's `date` field, `ChipGroup` and `Chip` for
   filters, and the shadcn components (`Input`, `Textarea`, `Select`,
   `DropdownMenu`, …) for the rest.
-- `src/examples/ContextSwitch.tsx` in place of the `<h1>` for an app that
+- `ContextSwitch` from `@sempods/app-ui` (also re-exported by
+  `src/examples/ContextSwitch.tsx`) in place of the `<h1>` for an app that
   works in one of several contexts at a time, labelled in the person's words
   ("List", "Share more lists …").
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark

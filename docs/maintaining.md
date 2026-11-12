@@ -125,6 +125,18 @@ tooling and creates, checks, configures and builds an app there, runs
 packed version with a manual case; it needs the npm registry and the Chromium
 of the tooling's Playwright. CI runs both.
 
+### Validate an unreleased SDK together with the template
+
+For #155, build and pack client-sdk, app-sdk and app-ui from the SDK source,
+then run `pnpm run self-test --sdk-tarballs=/absolute/path/to/tarballs` here.
+The tarballs must match the starter's current SDK version. The check installs
+only those tarballs through overrides in its temporary owner repository and
+also renders the standard chooser in the generated app. It changes no owner
+checkout, registry or package pin. This is source-pair evidence, not evidence
+that published 0.8.0 contains the new adapter. Before releasing this candidate,
+update starter pins and peer ranges to the actual released SDK that contains
+#290, and rerun `pnpm run self-test` without overrides.
+
 ## Try the app-building conversation
 
 When changing app-building instructions, try the packed release in a separate

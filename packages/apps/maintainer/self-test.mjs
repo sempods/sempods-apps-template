@@ -23,7 +23,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
@@ -35,6 +35,11 @@ import {
 } from '../scripts/lib/shared.mjs';
 import { checkLinks } from './lib/links.mjs';
 
+// A source-pair check before the SDK is released. Overrides stay in the
+// temporary owner repository (also copied by its standalone check).
+const sdkTarballs = process.argv
+  .find((arg) => arg.startsWith('--sdk-tarballs='))
+  ?.slice('--sdk-tarballs='.length);
 const FIXTURE = 'self-test';
 const CREATOR = join(TOOLING, '..', 'create-apps');
 // Files the CLI needs at run time, and sources that must stay out.
@@ -399,6 +404,40 @@ try {
   const manifest = readJson(join(repo, 'package.json'));
   manifest.devDependencies['@sempods/apps'] = `file:${tooling}`;
   writeJson(join(repo, 'package.json'), manifest);
+  if (sdkTarballs) {
+    const directory = resolve(sdkTarballs);
+    const overrides = {};
+    for (const file of readdirSync(directory).filter((name) =>
+      name.endsWith('.tgz'),
+    )) {
+      const tarball = join(directory, file);
+      const pkg = JSON.parse(
+        run('tar', ['-xOf', tarball, 'package/package.json'], repo, true),
+      );
+      if (
+        ['@sempods/client-sdk', '@sempods/app-sdk', '@sempods/app-ui'].includes(
+          pkg.name,
+        )
+      ) {
+        if (pkg.version !== manifest.devDependencies[pkg.name])
+          throw new Error(
+            `SDK tarball version differs from starter: ${pkg.name}`,
+          );
+        overrides[pkg.name] = `file:${tarball}`;
+      }
+    }
+    if (Object.keys(overrides).length !== 3)
+      throw new Error('Provide one tarball for each SDK package.');
+    const workspace = join(repo, 'pnpm-workspace.yaml');
+    writeFileSync(
+      workspace,
+      readFileSync(workspace, 'utf8') +
+        '\noverrides:\n' +
+        Object.entries(overrides)
+          .map(([name, path]) => `  '${name}': ${JSON.stringify(path)}\n`)
+          .join(''),
+    );
+  }
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
   checkSnapshot(
     join(repo, 'node_modules', '@sempods', 'apps'),
@@ -409,6 +448,15 @@ try {
   // Verify the executable pnpm selects, not just the installed package
   // version: the tooling's TypeScript 6 must not shadow the app's compiler.
   const app = join(repo, 'apps', FIXTURE);
+  const appSource = join(app, 'src/App.tsx');
+  writeFileSync(
+    appSource,
+    "import { ContextSwitch } from './examples/ContextSwitch.tsx';\n" +
+      readFileSync(appSource, 'utf8').replace(
+        /<h1 className="flex items-center gap-2 text-2xl font-semibold">[\s\S]*?<\/h1>/,
+        '<ContextSwitch title={app.title} icon={icon} label="List" />',
+      ),
+  );
   const expected = readJson(join(app, 'package.json')).devDependencies
     .typescript;
   const compiler = pnpm(['exec', 'tsc', '--version'], {
