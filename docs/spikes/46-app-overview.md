@@ -343,8 +343,8 @@ description and publisher and one item per app, each with its IRI and its
 card fields, so the store needs one request for the list. The overview links
 it the same way. File names with a dot cannot collide with app IDs.
 
-`build-site` adds `client.json` and `app.jsonld` to the paths it reserves in
-an app's output, as it does for `did.json`.
+`build-site` adds `client.json`, `app.jsonld` and `build.json` to the paths it
+reserves in an app's output, as it does for `did.json`.
 
 ## The overview
 
@@ -426,11 +426,11 @@ The resulting levels a store entry can show:
 2. **Publisher confirmed** (automatic, **required for listing**). The
    catalog names a WebID as `publisher`. The publisher's Pod holds, in a
    public Context only they can write to, one record per app IRI with the
-   fingerprint of the build they published (a digest of `index.html`, which
-   references every hashed asset). The store computes the same fingerprint
-   from what the site serves and lists the build only when it matches a
-   confirmed one. Where the store finds the records from the WebID, and their
-   terms, are chosen with the store. A static link from the profile to the
+   fingerprint of the build they published (see [The build
+   fingerprint](#the-build-fingerprint)). The store computes the same
+   fingerprint from what the site serves and lists the build only when it
+   matches a confirmed one. Where the store finds the records from the WebID,
+   and their terms, are chosen with the store. A static link from the profile to the
    site is not enough: it proves an earlier claim, and after a takeover the
    old catalog can be served again with the link unchanged.
 3. **Build checked** (automatic, per build). The store inspects the published
@@ -458,6 +458,35 @@ Actions can carry an
 public source". This needs a deploy through Actions rather than the host's
 own build, so it stays optional.
 
+### The build fingerprint
+
+A hash in a file name is a naming convention, not an integrity check: a host
+can serve other JavaScript under an unchanged `index.html` and unchanged
+asset names. The fingerprint therefore covers the contents of the whole
+build:
+
+- `build-site` writes `/<id>/build.json`: every published file of the app
+  with its path and SHA-256 digest, the service worker, its precache
+  manifest, every chunk a dynamic `import()` can load, the manifest and the
+  icons included. The fingerprint is the digest of that list.
+- The store fetches `build.json` and **every file it lists**, compares each
+  digest with the content it received, and fails the check when a file
+  differs, is missing, or when `index.html`, the service worker or a script
+  references a same-origin file that the list lacks. It never trusts a file
+  name.
+- `store-check` computes the fingerprint from the local build and from the
+  published site, and confirms it only when both agree.
+
+What the store fetched is still only what the host served to the store.
+A host can serve other contents to visitors than to the store, and the
+store cannot rule that out by fetching. Browsers can: `build-site` adds
+[Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity)
+(`integrity`) to the scripts, stylesheets and `modulepreload` links in
+`index.html`, so a visitor's browser refuses a changed entry module or
+statically imported chunk. Chunks loaded by `import()` and the service
+worker script have no browser-enforced integrity today, which is one more
+reason why a trust level is not a safety guarantee.
+
 ### Trust is not safety
 
 A trust level says who publishes an app and what the store saw; it does not
@@ -473,17 +502,19 @@ level, and its texts say plainly that a listing is no security guarantee.
 the free name `my-apps.netlify.app`. The newcomer serves a valid catalog, so
 "domain verified" would pass. Worse, they get the same `did:web` identity,
 and later the same CIMD client ID, so a Pod may take them for the client a
-person already consented to. Two answers:
+person already consented to. The answers:
 
 - The store lists a build only when the publisher confirmed its fingerprint
   in their Pod. Replaying the old catalog and the old profile link does not
-  help a newcomer: any build they change has a fingerprint nobody
-  confirmed, and they cannot write to the original owner's Pod. A build that
+  help a newcomer: any file of the build they change, including JavaScript
+  behind an unchanged name, changes a fingerprint nobody confirmed, and
+  they cannot write to the original owner's Pod. A build that
   is not confirmed loses its trust levels at once, "Open" shows a warning,
   and the entry is hidden after a short grace period (proposal: seven days)
   that lets an owner who forgot to confirm catch up.
-- A newcomer who serves the owner's last confirmed build unchanged passes,
-  but runs only code the owner confirmed. The owner ends this by withdrawing
+- A newcomer who serves the owner's last confirmed build unchanged to the
+  store passes. To visitors they may serve something else where the browser
+  enforces no integrity (see [The build fingerprint](#the-build-fingerprint)). The owner ends this by withdrawing
   the confirmation in their Pod; the publish instructions tell owners to do
   so whenever they give up a host or a domain.
 - On the Pod side, sempods-kotlin#437 should consider how long consent to a
@@ -576,8 +607,8 @@ publication, as an optional step.
       assistant instructions; `regenerate` reads it.
    2. Manifest with `*_localized`, categories, theme colours and the owner
       icon.
-   3. `app.jsonld` and `apps.jsonld`, and the identifier check in
-      `build-site`.
+   3. `app.jsonld` and `apps.jsonld`, the identifier check in `build-site`,
+      `build.json` and Subresource Integrity in `index.html`.
    4. The overview: look, detail view, languages, install hint; `dev`
       without an ID.
    5. The declared kinds of data in `app.json`, and `store-check` with the
