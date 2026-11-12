@@ -15,7 +15,7 @@ configuration choices and the SDK migration.
 ### Upgrade notes
 
 - After updating the tooling, install its matching Chromium with
-  `pnpm exec playwright install chromium`. Keep normal locator clicks in
+  `pnpm run check:theme --install-browser`. Keep normal locator clicks in
   confirmation checks; do not bypass actionability with forced clicks.
 - App code and SDK versions are unchanged. A future Playwright update must
   pass the native-modal check in the packed self-test and the SDK browser gate.
