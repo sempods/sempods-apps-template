@@ -12,6 +12,7 @@
 // (pnpm --filter @sempods/apps exec playwright install chromium).
 // Usage: pnpm run self-test
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import {
   cpSync,
   existsSync,
@@ -19,6 +20,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -69,6 +71,38 @@ function run(command, args, cwd, capture = false) {
   return result.stdout;
 }
 const pnpmRun = (repo, ...args) => run('pnpm', ['run', ...args], repo);
+
+// Resolve the browser driver through the installed tarball, just as an owner
+// does. Native top-layer dialogs escape an inert ancestor; Playwright 1.65
+// incorrectly rejected ordinary clicks there (template #153 / SDK #264).
+async function nativeModalCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`
+      <main inert>
+        <dialog aria-label="Unsaved changes">
+          <form method="dialog"><button>Keep editing</button></form>
+        </dialog>
+      </main>
+    `);
+    await page.locator('dialog').evaluate((dialog) => dialog.showModal());
+    await page
+      .getByRole('button', { name: 'Keep editing', exact: true })
+      .click({ timeout: 5000 });
+    if (await page.locator('dialog').evaluate((dialog) => dialog.open))
+      throw new Error('the native confirmation did not close');
+    console.log(
+      '✓ installed Playwright clicks a native modal inside an inert ancestor',
+    );
+  } finally {
+    await browser.close();
+  }
+}
 
 function pack(dir, out) {
   const before = new Set(readdirSync(out));
@@ -400,6 +434,7 @@ try {
   manifest.devDependencies['@sempods/apps'] = `file:${tooling}`;
   writeJson(join(repo, 'package.json'), manifest);
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  await nativeModalCheck(repo);
   checkSnapshot(
     join(repo, 'node_modules', '@sempods', 'apps'),
     'installed snapshot',

@@ -125,6 +125,12 @@ tooling and creates, checks, configures and builds an app there, runs
 packed version with a manual case; it needs the npm registry and the Chromium
 of the tooling's Playwright. CI runs both.
 
+The self-test also uses the installed tooling's Playwright to click a native
+modal inside an inert ancestor. Keep Playwright at 1.64.1 while the SDK's
+[native-modal hold](https://github.com/sempods/sempods-typescript/issues/264)
+applies (#153); a later version must pass this check and the SDK browser gate
+without forced clicks.
+
 ## Try the app-building conversation
 
 When changing app-building instructions, try the packed release in a separate
