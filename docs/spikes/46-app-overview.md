@@ -40,10 +40,9 @@ of 2026-11-02 and sempods/sempods-kotlin#437. No prototype was built.
    `apps.sempods.org`, which lists and checks them but never hosts them:
    decentralised, yet trusted.
 6. **Trust comes from the origin and the publisher, not from app keys.** HTTPS
-   and DNS prove who serves an app; the store re-fetches what it lists; a
-   publisher is verified by a link in both directions between site and
-   WebID, which listing requires; a review vouches for the publisher, not for
-   every build. Apps hold no signing keys. The Pod's consent stays the
+   and DNS prove who serves an app; the store re-fetches what it lists; the
+   publisher confirms each published build in their own Pod, which listing
+   requires; a review vouches for the publisher, not for every build. Apps hold no signing keys. The Pod's consent stays the
    safety boundary, so the store shows which data an app asks for.
 7. **The store at `apps.sempods.org` is a Pod plus a sempods app.** It imports
    each site's catalog `/apps.jsonld`, keeps one record per app IRI with its
@@ -221,8 +220,9 @@ from `site`, which stays the published origins:
 }
 ```
 
-`publisher` is optional: the WebID of the person or team behind the site. It
-counts as verified only when the WebID links back (see [Trust](#trust)).
+`publisher` is optional: the WebID of the person or team behind the site. The
+store trusts it only for builds the publisher confirmed in their own Pod (see
+[Trust](#trust)); the overview shows it as stated.
 
 ## The generated formats
 
@@ -411,7 +411,8 @@ own domain? The formats in the request answer different parts of it:
 | Signed web bundles (Isolated Web Apps)       | The code was signed by a key, independent of hosting                | **Does not fit**: requires the `isolated-app://` scheme and offline bundles, not a hosted PWA                                                             |
 | An app signing its JSON (JWS, Data Integrity) | The same as the origin, unless the key is independent of hosting  | **Not now**: a key in the owner's CI adds a secret to manage and proves little more. Only useful if records travel without being re-fetched              |
 | DID Configuration (`did-configuration.json`) | Links a key-based DID to a domain                                  | Not needed: a `did:web` already is the domain                                                                                                            |
-| WebID ↔ site link                            | A known person or team publishes the site                          | **Yes**, as "verified publisher", without keys                                                                                                           |
+| WebID ↔ site link                            | A known person or team once claimed the site                       | Not enough alone: after a takeover, the old catalog and the unchanged link can be replayed                                                               |
+| Build confirmation in the publisher's Pod    | Whoever controls the WebID's Pod confirmed this build at this site | **Yes**, as "publisher confirmed", without keys: a Pod sign-in is the proof of control                                                                   |
 | A store-signed attestation                   | The store reviewed this app at this state                          | **Yes**, as the "certificate": signed by `did:web:apps.sempods.org`, not by the app                                                                       |
 
 The resulting levels a store entry can show:
@@ -422,10 +423,16 @@ The resulting levels a store entry can show:
    other and with the manifest. The store re-fetches on a schedule and
    removes an entry that fails repeatedly. Alone, this is not enough to be
    listed (see [Takeover and moves](#takeover-and-moves)).
-2. **Publisher verified** (automatic, **required for listing**). The catalog
-   names a WebID as `publisher`, and that WebID's public profile links back
-   to the site (the term is chosen with the store). A link in one direction
-   proves nothing.
+2. **Publisher confirmed** (automatic, **required for listing**). The
+   catalog names a WebID as `publisher`. The publisher's Pod holds, in a
+   public Context only they can write to, one record per app IRI with the
+   fingerprint of the build they published (a digest of `index.html`, which
+   references every hashed asset). The store computes the same fingerprint
+   from what the site serves and lists the build only when it matches a
+   confirmed one. Where the store finds the records from the WebID, and their
+   terms, are chosen with the store. A static link from the profile to the
+   site is not enough: it proves an earlier claim, and after a takeover the
+   old catalog can be served again with the link unchanged.
 3. **Build checked** (automatic, per build). The store inspects the published
    build as far as a static look allows: no scripts or styles from other
    origins, no network targets other than the Pod and the app's own origin
@@ -435,10 +442,9 @@ The resulting levels a store entry can show:
    publisher and their apps. The store signs a statement about the WebID and
    the site with `did:web:apps.sempods.org`. A vibe-coded app changes with
    every prompt, so a review of one build would almost always be stale; a
-   review of who publishes stays meaningful. The store may still record a
-   fingerprint it computed itself (a digest of `index.html`, which
-   references every hashed asset) and show "changed since review" for an app
-   it looked at closely.
+   review of who publishes stays meaningful. For an app it looked at
+   closely, the store may still show "changed since review" when the
+   fingerprint changes.
 
 Apps never hold keys; the only signing key is the store's. Name and logo stay
 self-asserted at every level, so the store, like a consent screen, shows the
@@ -469,9 +475,17 @@ the free name `my-apps.netlify.app`. The newcomer serves a valid catalog, so
 and later the same CIMD client ID, so a Pod may take them for the client a
 person already consented to. Two answers:
 
-- The store lists only publisher-verified sites. A newcomer cannot edit the
-  original owner's WebID profile, so the link back fails and the entry is
-  hidden at the next check.
+- The store lists a build only when the publisher confirmed its fingerprint
+  in their Pod. Replaying the old catalog and the old profile link does not
+  help a newcomer: any build they change has a fingerprint nobody
+  confirmed, and they cannot write to the original owner's Pod. A build that
+  is not confirmed loses its trust levels at once, "Open" shows a warning,
+  and the entry is hidden after a short grace period (proposal: seven days)
+  that lets an owner who forgot to confirm catch up.
+- A newcomer who serves the owner's last confirmed build unchanged passes,
+  but runs only code the owner confirmed. The owner ends this by withdrawing
+  the confirmation in their Pod; the publish instructions tell owners to do
+  so whenever they give up a host or a domain.
 - On the Pod side, sempods-kotlin#437 should consider how long consent to a
   client ID lasts and whether a changed client document (another `logo_uri`,
   other `redirect_uris`) asks again. This is input for the spec, not for
@@ -539,14 +553,18 @@ Submitting should be easy for someone who has never published anything:
    their host) on a durable HTTPS origin.
 2. `pnpm run store-check` in their repository checks locally what the store
    requires: the catalog and every `app.jsonld` on the published site, texts
-   and detail files in every UI language, an icon, a `publisher` WebID whose
-   profile links back, and that the published files match the local build.
-   It explains each failure in plain language.
-3. When everything passes, it prints a prefilled link to submit the site,
+   and detail files in every UI language, an icon, a `publisher` WebID, and
+   that the published files match the local build. It explains each failure
+   in plain language.
+3. It then asks the owner to sign in to their Pod in the browser and writes
+   the fingerprints of the published builds to the confirmation records. The
+   same step runs after every later deploy, so it belongs to the publish
+   routine, not only to the first submission.
+4. When everything passes, it prints a prefilled link to submit the site,
    first as an issue in the store's repository, later a form.
-4. The store's importer then checks the same things itself and lists the
-   site. Nothing in the owner's repository needs a key, a token or an
-   account at the store.
+5. The store's importer then checks the same things itself and lists the
+   site. Nothing in the owner's repository needs a key or a stored token,
+   and nobody needs an account at the store.
 
 The assistant's publish instructions mention the store only after a working
 publication, as an optional step.
@@ -563,14 +581,15 @@ publication, as an optional step.
    4. The overview: look, detail view, languages, install hint; `dev`
       without an ID.
    5. The declared kinds of data in `app.json`, and `store-check` with the
-      submission link, once the store's import format is fixed.
+      build confirmation in the owner's Pod and the submission link, once
+      the store's import format is fixed.
 2. **Sign-in by metadata document**, after sempods-kotlin#437 and the spec
    companion: `client.json` (may ship in phase 1), an identity kind in the
    SDK runtime, and a `configure-site` choice between `did:web` and the
    document. Switching changes the client identity, so it needs fresh sign-in
    and consent, and goes into the changelog as such.
 3. **The store**, its own repository: Pod, importer and UI with publisher
-   verification required for listing; then build checks, moves, publisher
+   confirmation required for listing; then build checks, moves, publisher
    reviews, terms and a report path. DNS delegation for
    `<name>.apps.sempods.org` only if sempods offers subdomains.
 
@@ -600,6 +619,8 @@ Taken by the owner on 2026-11-12:
    them.
 9. **Model**: anyone hosts their apps for free wherever they like; good apps
    can be submitted to the store, which lists but never hosts them. Listing
-   requires a verified publisher, reviews are per publisher, build checks are
-   automatic, and the store shows the kinds of data an app uses. The store
-   supports moves; a takeover loses the listing at the next check.
+   requires the publisher to confirm each build in their own Pod, reviews are
+   per publisher, build checks are automatic, and the store shows the kinds
+   of data an app uses. The store supports moves; after a takeover, a
+   changed build loses the listing, and the owner withdraws the
+   confirmation for the unchanged one.
