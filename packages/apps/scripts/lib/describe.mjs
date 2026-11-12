@@ -137,10 +137,41 @@ export function describedApps(root) {
   };
 }
 
+const legacyText = (value) =>
+  typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+
+/**
+ * Why an app.json that exists before the migration cannot take the place of
+ * apps.json's title and description, otherwise undefined. app.json was not
+ * reserved before schema 2, so it may hold something else entirely.
+ */
+function collision(file, path, title, description) {
+  let existing;
+  try {
+    existing = readJson(path);
+  } catch {
+    return `${file} already exists and is not a JSON file`;
+  }
+  if (validateDescription(existing, file).length > 0)
+    return `${file} already exists and is not an app description`;
+  const differs = [
+    ['title', title, existing.name],
+    ['description', description, existing.description],
+  ].filter(
+    ([, old, current]) =>
+      old !== undefined && old !== current?.trim(),
+  );
+  if (differs.length > 0)
+    return `${file} already exists with another ${differs.map(([key]) => key).join(' and ')} than apps.json`;
+  return undefined;
+}
+
 /**
  * Moves each app's title and description from a schema 1 apps.json into a new
  * apps/<id>/app.json and raises the schema version. Does nothing for any other
  * apps.json. Returns the changed files and notes for the owner's assistant.
+ * Throws, before it changes anything, when an app.json already exists and is
+ * not the same description, so neither text is lost.
  */
 export function adoptDescriptions(root) {
   const manifest = ifPresent(() => readJson(appsFile(root)));
@@ -150,9 +181,25 @@ export function adoptDescriptions(root) {
     !Array.isArray(manifest.apps)
   )
     return result;
+  const known = (entry) =>
+    entry !== null && typeof entry === 'object' && !invalidId(entry.id);
+  const collisions = manifest.apps.filter(known).flatMap((entry) => {
+    const path = join(appDir(root, entry.id), DESCRIPTION_FILE);
+    if (!existsSync(path)) return [];
+    const reason = collision(
+      `apps/${entry.id}/${DESCRIPTION_FILE}`,
+      path,
+      legacyText(entry.title),
+      legacyText(entry.description),
+    );
+    return reason ? [reason] : [];
+  });
+  if (collisions.length > 0)
+    throw new Error(
+      `${collisions.join('; ')}. From this version on, ${DESCRIPTION_FILE} holds an app's name and description. Move a file that holds something else elsewhere; where both hold texts, keep the right ones in ${DESCRIPTION_FILE} and remove title and description from that app in apps.json. Then run the same command again. apps.json was not changed.`,
+    );
   const apps = manifest.apps.map((entry) => {
-    if (entry === null || typeof entry !== 'object' || invalidId(entry.id))
-      return entry;
+    if (!known(entry)) return entry;
     const { title, description, ...rest } = entry;
     const dir = appDir(root, entry.id);
     const file = `apps/${entry.id}/${DESCRIPTION_FILE}`;
@@ -162,21 +209,14 @@ export function adoptDescriptions(root) {
       );
       return rest;
     }
-    if (existsSync(join(dir, DESCRIPTION_FILE))) {
-      result.notes.push(
-        `${file} already existed and was kept; apps.json's title and description for ${entry.id} were dropped`,
-      );
-      return rest;
-    }
+    // Checked above: the same texts are already there.
+    if (existsSync(join(dir, DESCRIPTION_FILE))) return rest;
     const lang = LANGUAGES.includes(entry.language) ? entry.language : 'en';
-    const name =
-      typeof title === 'string' && title.trim() !== '' ? title.trim() : entry.id;
+    const text = legacyText(description);
     writeDescription(dir, {
       lang,
-      name,
-      ...(typeof description === 'string' && description.trim() !== ''
-        ? { description: description.trim() }
-        : {}),
+      name: legacyText(title) ?? entry.id,
+      ...(text === undefined ? {} : { description: text }),
     });
     result.changed.push(file);
     if (entry.language === AUTO)

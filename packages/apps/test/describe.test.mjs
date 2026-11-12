@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { readApps, validateApps, validateCatalog } from '../scripts/lib/apps.mjs';
@@ -173,6 +173,29 @@ describe('texts of an app', () => {
       /details\.md:1: images must come from below/,
     );
     assert.equal(problems('[x][1]\n\n[1]: https://example.org\n'), '');
+    // The first definition of a label counts, as when the text is rendered.
+    assert.match(
+      problems('![x][shot]\n\n[shot]: https://example.org/a.png\n[shot]: /konsum/a.png\n'),
+      /images must come from below/,
+    );
+    assert.equal(
+      problems('![x][shot]\n\n[shot]: /konsum/a.png\n[Shot]: https://example.org/a.png\n'),
+      '',
+    );
+    // Image paths count where a browser resolves them.
+    for (const path of [
+      '/konsum/../other/a.png',
+      '/konsum/%2e%2e/other/a.png',
+      '/konsum/.%2E/other/a.png',
+      '/konsum\\..\\other/a.png',
+      '/konsum/..%2fother/a.png',
+      '//example.org/konsum/a.png',
+      '/\\example.org/konsum/a.png',
+      'konsum/a.png',
+      '/konsum/',
+    ])
+      assert.match(problems(`![x](${path})\n`), /images must come from below/, path);
+    assert.equal(problems('![x](/konsum/img/%2e/a%20b.png)\n'), '');
     assert.match(problems('x'.repeat(16 * 1024 + 1)), /larger than 16 KB/);
   });
 });
@@ -231,13 +254,36 @@ describe('moving descriptions out of apps.json', () => {
     // A second run finds schema 2 and changes nothing.
     assert.deepEqual(adoptDescriptions(root), { changed: [], notes: [] });
   });
-  it("keeps an app.json the owner already wrote", () => {
+  it('keeps an app.json that already holds the same texts', () => {
     mkdirSync(join(root, 'apps', 'konsum'), { recursive: true });
-    writeJson(join(root, 'apps', 'konsum', 'app.json'), { lang: 'de', name: 'Eigen' });
-    legacy([{ ...entry, title: 'Einkauf' }]);
-    const { changed, notes } = adoptDescriptions(root);
-    assert.deepEqual(changed, ['apps.json']);
-    assert.match(notes.join(), /already existed and was kept/);
-    assert.equal(readJson(join(root, 'apps', 'konsum', 'app.json')).name, 'Eigen');
+    const own = { lang: 'de', name: 'Einkauf', categories: ['shopping'] };
+    writeJson(join(root, 'apps', 'konsum', 'app.json'), own);
+    legacy([{ ...entry, title: ' Einkauf ' }]);
+    assert.deepEqual(adoptDescriptions(root), { changed: ['apps.json'], notes: [] });
+    assert.deepEqual(readJson(join(root, 'apps', 'konsum', 'app.json')), own);
+    assert.equal(readJson(join(root, 'apps.json')).schemaVersion, 2);
+  });
+  it('changes nothing while an existing app.json would lose a text', () => {
+    const file = join(root, 'apps', 'konsum', 'app.json');
+    const cases = [
+      [() => writeJson(file, { settings: { sort: 'name' } }), /is not an app description/],
+      [() => mkdirSync(file), /is not a JSON file/],
+      [() => writeFileSync(file, '{'), /is not a JSON file/],
+      [() => writeJson(file, { lang: 'de', name: 'Eigen', description: 'Was fehlt.' }), /another title than apps\.json/],
+      [
+        () => writeJson(file, { lang: 'de', name: 'Einkauf' }),
+        /another description than apps\.json/,
+      ],
+    ];
+    for (const [existing, reason] of cases) {
+      rmSync(join(root, 'apps'), { recursive: true, force: true });
+      mkdirSync(join(root, 'apps', 'konsum'), { recursive: true });
+      existing();
+      legacy([{ ...entry, title: 'Einkauf', description: 'Was fehlt.' }]);
+      const before = readFileSync(join(root, 'apps.json'), 'utf8');
+      assert.throws(() => adoptDescriptions(root), reason);
+      assert.throws(() => adoptDescriptions(root), /apps\.json was not changed/);
+      assert.equal(readFileSync(join(root, 'apps.json'), 'utf8'), before);
+    }
   });
 });

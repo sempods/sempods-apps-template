@@ -743,6 +743,27 @@ describe('migrate', () => {
     ]);
   });
 
+  it('keeps the texts of a schema 1 apps.json when app.json holds something else', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    const own = join(repo, 'apps', 'konsum', 'app.json');
+    editJson(repo, 'apps.json', (manifest) => {
+      manifest.schemaVersion = 1;
+      manifest.apps[0].title = 'Einkauf';
+    });
+    writeJson(own, { settings: { sort: 'name' } });
+    install(repo, '1.0.1');
+    assert.throws(() => migrateTo(repo, '1.0.1'), /apps\/konsum\/app\.json already exists and is not an app description/);
+    assert.equal(readJson(join(repo, 'apps.json')).apps[0].title, 'Einkauf');
+    assert.deepEqual(readJson(own), { settings: { sort: 'name' } });
+    // The owner moves the file; the same command then completes.
+    rmSync(own);
+    const report = migrateTo(repo, '1.0.1');
+    assert.equal(readJson(own).name, 'Einkauf');
+    assert.ok(report.updated.includes('apps.json'));
+  });
+
   it('does not bring back a seed file the owner deleted', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

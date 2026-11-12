@@ -44,7 +44,10 @@ Instructions:
    and `description` from `apps.json`. For an app whose `language` is
    `auto`, it takes the texts as English (`"lang": "en"`) and says so in its
    notes. Check each such `app.json` with the owner: if the name and
-   description are German, set `lang` to `de`.
+   description are German, set `lang` to `de`. If an app already has an
+   `app.json` that holds something else or other texts, `migrate` stops
+   before it changes `apps.json` and names the file; decide with the owner
+   which file or texts to keep, then run it again.
 2. `pnpm run check` then lists each app shown in both languages whose
    description lacks the other language. Add it as `description_localized`,
    in the owner's words or as a translation the owner confirms, and add

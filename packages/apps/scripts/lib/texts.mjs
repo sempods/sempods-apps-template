@@ -18,10 +18,32 @@ export const uiLanguages = (app) =>
 
 const DETAILS = /^details(?:\.([a-z]{2}))?\.md$/;
 
+// Image paths are resolved as a browser does, so dot segments, encoded ones
+// included, count where they lead.
+const BASE = 'https://app.invalid';
+
+/** Whether `url` is a path that a browser resolves to a file below `path`. */
+function below(url, path) {
+  if (!url.startsWith('/')) return false;
+  let resolved;
+  try {
+    resolved = new URL(url, `${BASE}/`);
+  } catch {
+    return false;
+  }
+  return (
+    resolved.origin === BASE &&
+    resolved.pathname.startsWith(path) &&
+    resolved.pathname.length > path.length &&
+    // A server may read an encoded slash as a separator.
+    !/%(?:2f|5c)/i.test(resolved.pathname)
+  );
+}
+
 /** Why `url` may not be a link target or image in a detail text. */
 function invalidTarget(url, { image }, app) {
   if (image)
-    return url.startsWith(app.path) && !url.includes('..')
+    return below(url, app.path)
       ? undefined
       : `images must come from below ${app.path}, such as ${app.path}screenshot.png`;
   return /^https:\/\/[^\s]+$/.test(url)
@@ -39,10 +61,12 @@ export function markdownProblems(text, app, where) {
     return [`${where} is larger than ${DETAILS_LIMIT / 1024} KB`];
   const tree = fromMarkdown(text);
   // A reference such as ![shot][1] takes its address from a definition, and
-  // only its use decides whether that address is a link or an image.
+  // only its use decides whether that address is a link or an image. As in
+  // CommonMark, the first definition of a label counts.
   const definitions = new Map();
   const collect = (node) => {
-    if (node.type === 'definition') definitions.set(node.identifier, node.url);
+    if (node.type === 'definition' && !definitions.has(node.identifier))
+      definitions.set(node.identifier, node.url);
     for (const child of node.children ?? []) collect(child);
   };
   collect(tree);
