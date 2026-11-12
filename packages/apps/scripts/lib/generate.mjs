@@ -170,6 +170,9 @@ const ABOUT_KEYS = [
   'categories',
 ];
 
+// The TypeScript type of the manifest's translation members, as written.
+const LOCALIZED_KEY = '`${string}_localized`';
+
 /** The web app manifest of a PWA, as TypeScript. */
 function manifestSource(app, colours) {
   const p = app.path;
@@ -183,7 +186,7 @@ function manifestSource(app, colours) {
 // translations (name_localized and the like, Chrome and Edge 148) are newer
 // than the plugin's types, hence the wider type.
 const manifest: Partial<ManifestOptions> &
-  Record<\`\${string}_localized\`, Record<string, string>> = {
+  Record<${LOCALIZED_KEY}, Record<string, string>> = {
   id: ${json(p)},
 ${about.join('\n')}
   start_url: ${json(p)},
