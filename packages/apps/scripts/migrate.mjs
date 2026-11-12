@@ -22,7 +22,12 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { readApps } from './lib/apps.mjs';
+import { appsFile, readApps } from './lib/apps.mjs';
+import {
+  adoptDescriptions,
+  describedApp,
+  DESCRIPTION_FILE,
+} from './lib/describe.mjs';
 import {
   isDirectory,
   isFile,
@@ -80,12 +85,21 @@ export function refuseUnfinishedSdkUpdate(root) {
     );
 }
 
-// A broken apps.json names no apps here; regenerating reports it later.
+// A broken apps.json names no apps here; regenerating reports it later. A
+// schema 1 apps.json, which this migration converts, still names its apps.
 function appsOf(root) {
   try {
     return readApps(root).apps;
   } catch {
-    return [];
+    let apps;
+    try {
+      apps = ifPresent(() => readJson(appsFile(root)))?.apps;
+    } catch {
+      apps = undefined;
+    }
+    return Array.isArray(apps)
+      ? apps.filter((app) => typeof app?.id === 'string')
+      : [];
   }
 }
 
@@ -104,7 +118,7 @@ export function linkedPaths(root, files = []) {
     BASELINE_FILE,
     MIGRATION_DIR,
     ...apps.flatMap(({ id }) =>
-      [...GENERATED_FILES, PAGE, VITE_CONFIG].map(
+      [...GENERATED_FILES, PAGE, VITE_CONFIG, DESCRIPTION_FILE].map(
         (file) => `apps/${id}/${file}`,
       ),
     ),
@@ -516,9 +530,20 @@ export function migrate(
  * decision, such as a copied UI kit, stays as it is with a note.
  */
 function updateApps(root, report) {
-  for (const app of appsOf(root)) {
-    const dir = join(root, 'apps', app.id);
+  // Schema 1 kept titles and descriptions in apps.json (before 0.11.0).
+  const descriptions = adoptDescriptions(root);
+  report.updated.push(...descriptions.changed);
+  report.notes.push(...descriptions.notes);
+  for (const entry of appsOf(root)) {
+    const dir = join(root, 'apps', entry.id);
     if (!existsSync(dir)) continue;
+    let app;
+    try {
+      app = describedApp(root, entry);
+    } catch (error) {
+      report.notes.push(error.message);
+      continue;
+    }
     const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
     report.updated.push(...new Set(changed));
     const kit = copiedKit(dir);

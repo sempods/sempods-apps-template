@@ -16,7 +16,8 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { AUTO, readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { AUTO, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { describedApps } from './lib/describe.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { ifPresent, readJson, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
@@ -102,7 +103,7 @@ function overviewEntry(app, outDir) {
 export function buildSite(root, { profile = 'production', build = appBuild } = {}) {
   if (!SITE_PROFILES.includes(profile))
     throw new Error(`The profile is one of ${SITE_PROFILES.join(', ')}.`);
-  const { apps, site } = readApps(root);
+  const { apps, site } = describedApps(root);
   if (!site?.[profile])
     throw new Error(
       `apps.json has no site.${profile}; run pnpm run configure-site first.`,
@@ -117,7 +118,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     const stale = staleGenerated(join(root, 'apps', app.id), app, site);
     if (stale.length > 0)
       throw new Error(
-        `apps/${app.id}/${stale[0]} does not match apps.json; run pnpm run configure-site to regenerate it.`,
+        `apps/${app.id}/${stale[0]} does not match apps.json or apps/${app.id}/app.json; run pnpm run regenerate.`,
       );
   }
 

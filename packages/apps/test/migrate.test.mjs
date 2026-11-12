@@ -703,6 +703,67 @@ describe('migrate', () => {
     assert.deepEqual(staticProblems(repo), []);
   });
 
+  it('moves titles and descriptions of a schema 1 apps.json into app.json', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, {
+      id: 'demo',
+      title: 'Demo',
+      description: 'A demo.',
+      language: 'auto',
+    });
+    createApp(repo, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    // The state an older tooling left: texts in apps.json, no app.json.
+    editJson(repo, 'apps.json', (manifest) => {
+      manifest.schemaVersion = 1;
+      for (const app of manifest.apps) {
+        const description = readJson(join(repo, 'apps', app.id, 'app.json'));
+        app.title = description.name;
+        if (description.description) app.description = description.description;
+        rmSync(join(repo, 'apps', app.id, 'app.json'));
+      }
+    });
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.deepEqual(report.updated, [
+      'apps/demo/app.json',
+      'apps/konsum/app.json',
+      'apps.json',
+    ]);
+    assert.match(report.notes.join(), /demo\/app\.json: the app follows/);
+    assert.deepEqual(report.regenerated, []);
+    assert.deepEqual(readJson(join(repo, 'apps', 'demo', 'app.json')), {
+      lang: 'en',
+      name: 'Demo',
+      description: 'A demo.',
+    });
+    // The note's remaining step: the description in German.
+    assert.deepEqual(staticProblems(repo), [
+      'apps/demo/app.json: description_localized.de is missing; the app is also shown in de',
+    ]);
+  });
+
+  it('keeps the texts of a schema 1 apps.json when app.json holds something else', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    const own = join(repo, 'apps', 'konsum', 'app.json');
+    editJson(repo, 'apps.json', (manifest) => {
+      manifest.schemaVersion = 1;
+      manifest.apps[0].title = 'Einkauf';
+    });
+    writeJson(own, { settings: { sort: 'name' } });
+    install(repo, '1.0.1');
+    assert.throws(() => migrateTo(repo, '1.0.1'), /apps\/konsum\/app\.json already exists and is not an app description/);
+    assert.equal(readJson(join(repo, 'apps.json')).apps[0].title, 'Einkauf');
+    assert.deepEqual(readJson(own), { settings: { sort: 'name' } });
+    // The owner moves the file; the same command then completes.
+    rmSync(own);
+    const report = migrateTo(repo, '1.0.1');
+    assert.equal(readJson(own).name, 'Einkauf');
+    assert.ok(report.updated.includes('apps.json'));
+  });
+
   it('does not bring back a seed file the owner deleted', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

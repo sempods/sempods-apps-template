@@ -4,6 +4,56 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.11.0
+
+### Changes
+
+App descriptions (sempods/sempods-apps-template#46, step 1):
+
+- Each app describes itself in its own file, `apps/<id>/app.json`, with the
+  field names of a web app manifest: `lang` (the language of its texts),
+  `name`, an optional `short_name`, `description` and `categories`, and
+  translations as `name_localized`, `short_name_localized` and
+  `description_localized`. An optional detail text in Markdown goes into
+  `details.md` and `details.<lang>.md` beside it.
+- `apps.json` has `schemaVersion: 2`. Its entries keep how an app runs (ID,
+  language, path, port, PWA, routes, resources) and no longer hold `title`
+  or `description`. An optional `catalog` names the site for its overview:
+  `lang`, `name`, `description`, their translations and a `publisher` WebID.
+- `new-app` writes `app.json` and takes `--text-language de|en`, the language
+  of `--title` and `--description`; `regenerate`, `icon`, `dev`,
+  `configure-site` and `build-site` read the name and description from
+  `app.json`. The generated configuration keeps its shape (`app.title`,
+  `app.description`), so app code is unchanged.
+- `check` reports a description missing in a language the app is shown in,
+  texts in a language the app is not shown in, a detail text missing for one
+  of its languages, and detail texts with raw HTML, a level-1 heading, a link
+  other than `https://`, an image from outside the app's path or more than
+  16 KB. Names need no translation.
+- `migrate` moves each app's title and description from a schema 1
+  `apps.json` into a new `app.json` and raises the schema version.
+
+Instructions:
+
+- The app workflow and the setup guide describe `app.json`, `details.md`,
+  `catalog` and `--text-language`.
+
+### Upgrade notes
+
+1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
+   and `description` from `apps.json`. For an app whose `language` is
+   `auto`, it takes the texts as English (`"lang": "en"`) and says so in its
+   notes. Check each such `app.json` with the owner: if the name and
+   description are German, set `lang` to `de`. If an app already has an
+   `app.json` that holds something else or other texts, `migrate` stops
+   before it changes `apps.json` and names the file; decide with the owner
+   which file or texts to keep, then run it again.
+2. `pnpm run check` then lists each app shown in both languages whose
+   description lacks the other language. Add it as `description_localized`,
+   in the owner's words or as a translation the owner confirms, and add
+   `name_localized` only when the name differs in that language.
+3. Nothing else changes for app code; the generated files stay the same.
+
 ## 0.10.1 (in preparation)
 
 ### Changes

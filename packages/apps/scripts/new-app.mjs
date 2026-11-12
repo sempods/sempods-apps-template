@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Creates apps/<id> from the skeleton with the root's SDK version and adds it
-// to apps.json.
+// Creates apps/<id> from the skeleton with the root's SDK version, writes its
+// description to apps/<id>/app.json and adds it to apps.json.
 // Usage: pnpm run new-app <id> [--title "<title>"] [--description "<text>"]
-//        [--language <auto|de|en>] [--theme <name>] [--no-pwa]
+//        [--language <auto|de|en>] [--text-language <de|en>]
+//        [--theme <name>] [--no-pwa]
 import {
   cpSync,
   existsSync,
@@ -20,10 +21,12 @@ import {
   AUTO,
   invalidDescription,
   invalidId,
+  LANGUAGES,
   nextDevPort,
   readApps,
   writeApps,
 } from './lib/apps.mjs';
+import { describedApp, writeDescription } from './lib/describe.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { escapeHtml } from './lib/html.mjs';
 import { writeAppIcons } from './lib/icon.mjs';
@@ -95,6 +98,7 @@ export function createApp(
     title = id,
     description,
     language = AUTO,
+    textLanguage = language === AUTO ? 'en' : language,
     theme = DEFAULT_THEME,
     pwa = true,
   },
@@ -109,23 +113,36 @@ export function createApp(
     throw new Error(`language must be one of ${APP_LANGUAGES.join(', ')}`);
   if (typeof title !== 'string' || title.trim() === '')
     throw new Error('the title must not be empty');
+  if (!LANGUAGES.includes(textLanguage))
+    throw new Error(
+      `the text language must be one of ${LANGUAGES.join(', ')}: the language of the title and description`,
+    );
+  if (language !== AUTO && textLanguage !== language)
+    throw new Error(
+      `the title and description of a ${language} app are written in ${language}`,
+    );
   const manifest = readApps(root);
   const appDir = join(root, 'apps', id);
   if (manifest.apps.some((app) => app.id === id) || existsSync(appDir))
     throw new Error(`apps/${id} already exists; nothing was changed`);
 
   const sdk = rootSdk(root);
-  const app = {
+  const entry = {
     id,
-    title: title.trim(),
-    ...(description === undefined ? {} : { description: description.trim() }),
     language,
     path: `/${id}/`,
     devPort: nextDevPort(manifest),
     pwa,
   };
+  let app;
   try {
     cpSync(SKELETON, appDir, { recursive: true, errorOnExist: true });
+    writeDescription(appDir, {
+      lang: textLanguage,
+      name: title.trim(),
+      ...(description === undefined ? {} : { description: description.trim() }),
+    });
+    app = describedApp(root, entry);
     fillTokens(appDir, app, theme);
     writeAppIcons(appDir, app.title, iconColours(themeCss(appDir, theme)));
     const pkgFile = join(appDir, 'package.json');
@@ -133,7 +150,7 @@ export function createApp(
     pkg.dependencies = sortedKeys({ ...pkg.dependencies, ...sdk });
     writeJson(pkgFile, pkg);
     writeGenerated(appDir, app, manifest.site);
-    writeApps(root, { ...manifest, apps: [...manifest.apps, app] });
+    writeApps(root, { ...manifest, apps: [...manifest.apps, entry] });
   } catch (error) {
     rmSync(appDir, { recursive: true, force: true });
     throw error;
@@ -149,6 +166,7 @@ function main() {
       title: { type: 'string' },
       description: { type: 'string' },
       language: { type: 'string' },
+      'text-language': { type: 'string' },
       theme: { type: 'string' },
       'no-pwa': { type: 'boolean' },
       'skip-install': { type: 'boolean' },
@@ -156,7 +174,7 @@ function main() {
   });
   if (positionals.length !== 1) {
     console.error(
-      'Usage: pnpm run new-app <id> [--title "<title>"] [--description "<text>"] [--language <auto|de|en>] [--theme <name>] [--no-pwa]',
+      'Usage: pnpm run new-app <id> [--title "<title>"] [--description "<text>"] [--language <auto|de|en>] [--text-language <de|en>] [--theme <name>] [--no-pwa]',
     );
     process.exit(2);
   }
@@ -169,6 +187,7 @@ function main() {
       description: values.description,
       theme: values.theme,
       language: values.language,
+      textLanguage: values['text-language'],
       pwa: !values['no-pwa'],
     });
   } catch (error) {
