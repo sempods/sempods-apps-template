@@ -477,15 +477,24 @@ build:
 - `store-check` computes the fingerprint from the local build and from the
   published site, and confirms it only when both agree.
 
-What the store fetched is still only what the host served to the store.
-A host can serve other contents to visitors than to the store, and the
-store cannot rule that out by fetching. Browsers can: `build-site` adds
-[Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity)
-(`integrity`) to the scripts, stylesheets and `modulepreload` links in
-`index.html`, so a visitor's browser refuses a changed entry module or
-statically imported chunk. Chunks loaded by `import()` and the service
-worker script have no browser-enforced integrity today, which is one more
-reason why a trust level is not a safety guarantee.
+### Limits of what the store can promise
+
+Whoever controls an app's origin decides what its visitors run. The web
+platform has no way to authenticate a hosted page against its publisher:
+[Subresource Integrity](https://www.w3.org/TR/sri/) checks resources against
+hashes in the enclosing HTML, so a host that replaces the HTML replaces the
+hashes too. Only signed bundles authenticate code independently of the host,
+and they do not fit a hosted PWA (see the table above). The template
+therefore adds no integrity attributes; for same-origin assets they would
+protect against nothing the host cannot also change.
+
+So the store promises only this: it lists a build that the publisher
+confirmed and that the store itself fetched with matching contents, and it
+stops listing it when the confirmation is withdrawn or the contents it
+fetches change. It cannot see what a host serves to anyone else. A host that
+serves the confirmed build to the store and other code to visitors defeats
+every check here; the defences are the owner withdrawing the confirmation,
+the consent in the Pod, and reports from visitors.
 
 ### Trust is not safety
 
@@ -513,10 +522,11 @@ person already consented to. The answers:
   and the entry is hidden after a short grace period (proposal: seven days)
   that lets an owner who forgot to confirm catch up.
 - A newcomer who serves the owner's last confirmed build unchanged to the
-  store passes. To visitors they may serve something else where the browser
-  enforces no integrity (see [The build fingerprint](#the-build-fingerprint)). The owner ends this by withdrawing
-  the confirmation in their Pod; the publish instructions tell owners to do
-  so whenever they give up a host or a domain.
+  store passes, and may serve any code to visitors (see
+  [Limits](#limits-of-what-the-store-can-promise)). Only the owner can end
+  the listing: by withdrawing the confirmation in their Pod, which the
+  publish instructions tell them to do whenever they give up a host or a
+  domain.
 - On the Pod side, sempods-kotlin#437 should consider how long consent to a
   client ID lasts and whether a changed client document (another `logo_uri`,
   other `redirect_uris`) asks again. This is input for the spec, not for
@@ -608,7 +618,7 @@ publication, as an optional step.
    2. Manifest with `*_localized`, categories, theme colours and the owner
       icon.
    3. `app.jsonld` and `apps.jsonld`, the identifier check in `build-site`,
-      `build.json` and Subresource Integrity in `index.html`.
+      and `build.json`.
    4. The overview: look, detail view, languages, install hint; `dev`
       without an ID.
    5. The declared kinds of data in `app.json`, and `store-check` with the
