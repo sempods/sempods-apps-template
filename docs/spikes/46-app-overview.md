@@ -561,30 +561,33 @@ WebID, and the store carries the entry over. People still sign in again. The
 publish instructions therefore advise choosing a durable domain before
 submitting to the store.
 
-### One registrable domain for many owners
+### Where owners publish
 
-Hosts that give each customer a subdomain are already on the
-[Public Suffix List](https://publicsuffix.org/), `netlify.app` among them, so
-`my-apps.netlify.app` is a site of its own. The question arises only if
-sempods itself offers subdomains, which is an optional service, not the
-default way.
+Owners publish on their host's subdomain, such as `my-apps.netlify.app`, on
+Cloudflare Pages or GitHub Pages, or on a domain of their own. These hosts
+are on the [Public Suffix List](https://publicsuffix.org/) (`netlify.app`,
+`pages.dev`, `github.io`), so each owner's site is a site of its own for
+browsers: cookies, `SameSite` and storage partitioning stay separate.
 
-If several people deploy to `<name>.apps.sempods.org`, their sites share the
-registrable domain `sempods.org`. Browsers then treat them as the same site
-for cookies (`SameSite`, a cookie set for `.apps.sempods.org`) and for
-storage partitioning, which contradicts "apps of different people never share
-a site". The fix is an entry `apps.sempods.org` in the private section of the
-Public Suffix List, as `github.io` has; each
-`<name>.apps.sempods.org` then is a site of its own. It takes weeks to reach
-browsers, so it belongs before the second owner; the owner decided to apply
-now. The store at
-`apps.sempods.org` itself then sits on a public suffix, which is fine for a
-page that reads public data without cookies or a session.
+sempods offers no subdomains to other publishers. `*.apps.sempods.org` is
+used only by the sempods operator for their own apps, for example
+`danilo.apps.sempods.org`. Those sites share the registrable domain
+`sempods.org` with every other host there, the store included. That is one
+owner and one trust boundary, so no Public Suffix List entry is needed; the
+list's [submission rules](https://publicsuffix.org/submit/) would also
+hardly admit it. Two precautions keep a compromised dependency of one of
+those apps from reaching other services under `sempods.org`:
 
-Who controls DNS for `<name>.apps.sempods.org` (a delegated CNAME to the
-owner's host) is a sempods operation, not template tooling; the template only
-needs the origin in `site.production`, as today. The vision's "no shared
-hosting for several people" still holds: each owner hosts their own site.
+- services there that sign in with cookies use `__Host-` cookies, which no
+  subdomain can set or overwrite;
+- their CSRF protection does not rely on `SameSite` alone.
+
+If sempods ever offered subdomains to other publishers, their sites would
+share one site with each other, against "apps of different people never
+share a site", and an entry `apps.sempods.org` on the Public Suffix List
+would have to come first. The DNS for such subdomains would be a sempods
+operation, not template tooling: the template only needs the origin in
+`site.production`.
 
 ## The store at `apps.sempods.org`
 
@@ -637,8 +640,7 @@ This paper reaches well beyond #46, which asked for an overview of one
 repository and left hosting out. The work therefore splits into separate
 packages, each with its own issue: **metadata and overview** (phase 1, steps
 1 to 4; this is #46), **store trust and submission** (phase 1, step 5, and
-phase 3), **sign-in by metadata document** (phase 2) and, only if sempods
-offers subdomains, **domain operations**.
+phase 3) and **sign-in by metadata document** (phase 2).
 
 1. **Template, no protocol change** (#46 and follow-ups):
    1. `app.json` with migration (`apps.json` schema 2), validation and the
@@ -661,11 +663,7 @@ offers subdomains, **domain operations**.
    and consent, and goes into the changelog as such.
 3. **The store**, its own repository: Pod, importer and UI with publisher
    confirmation required for listing; then build checks, moves, publisher
-   reviews, terms and a report path. DNS delegation for
-   `<name>.apps.sempods.org` only if sempods offers subdomains.
-
-Independent of the phases, and now: the Public Suffix List entry for
-`apps.sempods.org`, because it takes weeks to months to reach browsers.
+   reviews, terms and a report path.
 
 ## Decisions
 
@@ -684,7 +682,12 @@ Taken by the owner on 2026-11-12:
    proposed for sempods-kotlin#437.
 6. **Trust**: the three levels under [Trust](#trust); apps hold no keys, the
    store's key is the only one.
-7. **Public Suffix List**: apply for `apps.sempods.org` now.
+7. **Public Suffix List**: no entry. Owners publish on their host's
+   subdomain or their own domain; `*.apps.sempods.org` is only for the
+   sempods operator's own apps, and cookie-based services under
+   `sempods.org` use `__Host-` cookies. Revised on 2026-11-12 from "apply
+   now" after the review, once it was clear that sempods offers no
+   subdomains to other publishers.
 8. **Vocabulary**: schema.org `WebApplication`; the `did:web` identity and
    the client ID as `identifier` values; own terms only when the store needs
    them.
