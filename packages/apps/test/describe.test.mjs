@@ -119,6 +119,31 @@ describe('texts of an app', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
   const app = () => readApps(root).apps[0];
 
+  it("gives the manifest the owner's short names, else the name's", () => {
+    const shortNames = (value) => {
+      describeAs({ lang: 'en', name: 'Tasks', ...value });
+      return describedApp(root, app()).about.short_name_localized;
+    };
+    assert.deepEqual(
+      shortNames({
+        name_localized: { de: 'Aufgabenliste' },
+        short_name_localized: { de: 'Aufgaben' },
+      }),
+      { de: 'Aufgaben' },
+    );
+    assert.deepEqual(shortNames({ name_localized: { de: 'Aufgabenliste' } }), {
+      de: 'Aufgabenliste',
+    });
+    assert.deepEqual(shortNames({ short_name_localized: { de: 'Aufgaben' } }), {
+      de: 'Aufgaben',
+    });
+    // A short name of its own keeps its translations to itself.
+    assert.equal(
+      shortNames({ short_name: 'Tasks', name_localized: { de: 'Aufgabenliste' } }),
+      undefined,
+    );
+  });
+
   it('needs the description in every language the app is shown in', () => {
     assert.deepEqual(textCompleteness(root, app()), [
       'apps/konsum/app.json: description_localized.en is missing; the app is also shown in en',

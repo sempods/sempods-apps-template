@@ -141,9 +141,11 @@ export function describedApp(root, app) {
   };
   const localized = {
     name_localized: described.name_localized,
+    // Without a short name of its own, a language without a short
+    // translation takes the name's translation, as the base value does.
     short_name_localized:
-      described.short_name === undefined
-        ? described.name_localized
+      described.short_name === undefined && described.name_localized
+        ? { ...described.name_localized, ...described.short_name_localized }
         : described.short_name_localized,
     description_localized: described.description_localized,
   };
