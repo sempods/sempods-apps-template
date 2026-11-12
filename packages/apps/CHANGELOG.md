@@ -4,6 +4,29 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.11.0 (in preparation)
+
+### Changes
+
+- List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
+  two-line trigger, Contexts grouped by Pod, separate permission/selection
+  icons, a localized legend and exact-address details. The SDK owns generic
+  loading, retry, selection and authorization feedback. The skeleton example
+  now re-exports the standard instead of copying its implementation (#155).
+
+### Upgrade notes
+
+- Wait for the SDK release containing sempods/sempods-typescript#290. Then
+  upgrade all three SDK packages together and replace copied ContextSwitch
+  implementations with the public adapter. Preserve domain words, icons,
+  vocabulary and scopes, plus AppAccess for sign-in and management.
+- This development candidate is tested with local SDK tarballs. Before release,
+  set the starter SDK pins and tooling peer ranges to the actual containing SDK
+  version and rerun the ordinary self-test against the registry. The existing
+  0.8.0 pins are not evidence that the new adapter exists in published 0.8.0.
+- Existing owner apps are never rewritten automatically. Konsum adopts the
+  published standard later (haed/sempods-apps#162).
+
 ## 0.10.0
 
 ### Changes
