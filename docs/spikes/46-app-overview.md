@@ -640,7 +640,8 @@ This paper reaches well beyond #46, which asked for an overview of one
 repository and left hosting out. The work therefore splits into separate
 packages, each with its own issue: **metadata and overview** (phase 1, steps
 1 to 4; this is #46), **store trust and submission** (phase 1, step 5, and
-phase 3) and **sign-in by metadata document** (phase 2).
+phase 3; sempods/sempods-apps-template#158) and **sign-in by metadata
+document** (phase 2; sempods/sempods-apps-template#159).
 
 1. **Template, no protocol change** (#46 and follow-ups):
    1. `app.json` with migration (`apps.json` schema 2), validation and the
