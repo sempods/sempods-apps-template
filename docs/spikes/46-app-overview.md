@@ -100,9 +100,17 @@ is the HTTPS address of the app's start page:
 
 Any HTTPS origin works the same way, for example
 `https://my-apps.netlify.app/konsum/`. Everything lives below the app's path,
-so each app keeps its own isolation on a shared origin, and the IRI cannot drift from the identity: both derive from
+and the IRI cannot drift from the identity: both derive from
 `site.production` and the ID. Changing either still changes the identity and
 loses sessions and grants, as today.
+
+The path separates the apps' identities, callbacks and PWA scopes on a shared
+origin. It does not separate their code: apps of one origin share the
+browser's [security boundary](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy)
+and trust each other's JavaScript, as the vision's "one repository, one trust
+boundary" says. The store therefore lists apps one by one but trusts a site
+as a whole: a publisher confirmation, a build check or a review of one app
+says nothing in its favour against another app of the same site.
 
 ## The source: `apps/<id>/app.json`
 
@@ -167,8 +175,8 @@ apps/konsum/details.en.md
 Prose increasingly arrives as Markdown, from assistants, wikis and notes, and
 a sempod will have to handle Markdown sources well in general. The detail
 text is a small, early case of it, so it uses Markdown rather than a format to
-be replaced later. To keep every reader safe without its own sanitizer, the
-text is restricted:
+be replaced later. The template restricts what an owner writes, so that its
+own rendering stays simple:
 
 - CommonMark without raw HTML; `check` rejects HTML blocks and inline HTML.
 - Links only with `https:`; images only from below the app's own path.
@@ -177,7 +185,16 @@ text is restricted:
 
 `build-site` renders it with [micromark](https://github.com/micromark/micromark),
 which is CommonMark-compliant and drops raw HTML by default; that is one new
-runtime dependency of the tooling. In `app.jsonld` the text stays Markdown,
+runtime dependency of the tooling.
+
+`check` runs in the owner's repository and proves nothing to anyone else: a
+publisher can skip it and still confirm their build. Every other reader of
+`app.jsonld` (the store, another site, a Pod) treats the text as untrusted
+and enforces the rules again when it imports or renders it: raw HTML off,
+its own URL rules for links and images, and a size limit (proposal: 16 KB
+per language). A renderer that is safe by default, such as micromark, covers
+the first; the URL rules and the limit stay the reader's job
+([micromark on security](https://github.com/micromark/micromark#security)). In `app.jsonld` the text stays Markdown,
 so the store and a Pod receive the original. An RDF literal carries either a
 language or a datatype, never both, so each language becomes its own
 `schema:TextObject` with `inLanguage` and the media type `text/markdown`
@@ -328,7 +345,11 @@ description links the identifiers instead.
 ```
 
 The app's `index.html` links it with
-`<link rel="alternate" type="application/ld+json" href="app.jsonld">`. The
+`<link rel="alternate" type="application/ld+json" href="/konsum/app.jsonld">`,
+an absolute path built from the app's `path`. A relative `href` would break:
+`build-site` serves the same page at the app's routes and resource
+addresses, where `app.jsonld` would resolve to, for example,
+`/konsum/tasks/app.jsonld`. The
 mapping is small: `name`, `description`, the detail files → `subjectOf`,
 `categories` → `applicationCategory`, the UI languages → `inLanguage`.
 `publisher` comes from the catalog. The `did:web` identity and the client ID
@@ -341,7 +362,7 @@ vision asks.
 `/apps.jsonld` at the site root: a `schema:ItemList` with the catalog's name,
 description and publisher and one item per app, each with its IRI and its
 card fields, so the store needs one request for the list. The overview links
-it the same way. File names with a dot cannot collide with app IDs.
+it with `href="/apps.jsonld"`. File names with a dot cannot collide with app IDs.
 
 `build-site` adds `client.json`, `app.jsonld` and `build.json` to the paths it
 reserves in an app's output, as it does for `did.json`.
@@ -612,6 +633,13 @@ publication, as an optional step.
 
 ## Phases
 
+This paper reaches well beyond #46, which asked for an overview of one
+repository and left hosting out. The work therefore splits into separate
+packages, each with its own issue: **metadata and overview** (phase 1, steps
+1 to 4; this is #46), **store trust and submission** (phase 1, step 5, and
+phase 3), **sign-in by metadata document** (phase 2) and, only if sempods
+offers subdomains, **domain operations**.
+
 1. **Template, no protocol change** (#46 and follow-ups):
    1. `app.json` with migration (`apps.json` schema 2), validation and the
       assistant instructions; `regenerate` reads it.
@@ -623,7 +651,9 @@ publication, as an optional step.
       without an ID.
    5. The declared kinds of data in `app.json`, and `store-check` with the
       build confirmation in the owner's Pod and the submission link, once
-      the store's import format is fixed.
+      the store's import format is fixed. A Pod sign-in after every deploy
+      must not cost the next app its ease: try the routine with a real owner
+      who publishes several times before fixing it.
 2. **Sign-in by metadata document**, after sempods-kotlin#437 and the spec
    companion: `client.json` (may ship in phase 1), an identity kind in the
    SDK runtime, and a `configure-site` choice between `did:web` and the
