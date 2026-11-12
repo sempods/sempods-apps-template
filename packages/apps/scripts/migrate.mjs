@@ -128,9 +128,13 @@ export function linkedPaths(root, files = []) {
     BASELINE_FILE,
     MIGRATION_DIR,
     ...apps.flatMap(({ id }) =>
-      [...GENERATED_FILES, PAGE, VITE_CONFIG, DESCRIPTION_FILE].map(
-        (file) => `apps/${id}/${file}`,
-      ),
+      [
+        ...GENERATED_FILES,
+        PAGE,
+        VITE_CONFIG,
+        DESCRIPTION_FILE,
+        `public/${MASKABLE_ICON}`,
+      ].map((file) => `apps/${id}/${file}`),
     ),
     ...files,
   ]) {

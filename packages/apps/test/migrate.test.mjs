@@ -390,6 +390,23 @@ describe('migrate', () => {
     assert.equal(readFileSync(join(work, 'README.md'), 'utf8'), readme);
   });
 
+  it('refuses a linked public folder before it draws the maskable icon', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo' });
+    const outside = join(work, 'public');
+    cpSync(join(repo, 'apps', 'demo', 'public'), outside, { recursive: true });
+    rmSync(join(outside, 'icon-maskable-512.png'));
+    rmSync(join(repo, 'apps', 'demo', 'public'), { recursive: true });
+    symlinkSync(outside, join(repo, 'apps', 'demo', 'public'));
+    install(repo, '1.0.1');
+    assert.throws(
+      () => migrateTo(repo, '1.0.1'),
+      /symbolic links are: apps\/demo\/public\./,
+    );
+    assert.equal(existsSync(join(outside, 'icon-maskable-512.png')), false);
+  });
+
   it('refuses a linked generated file and keeps a leftover folder', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');
