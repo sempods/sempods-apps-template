@@ -4,6 +4,22 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
+## 0.10.1 (in preparation)
+
+### Changes
+
+- Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
+  compatibility hold (#153). Version 1.65 incorrectly treats controls in
+  a native modal dialog as inert when an ancestor is inert.
+
+### Upgrade notes
+
+- After updating the tooling, install its matching Chromium with
+  `pnpm run check:theme --install-browser`. Keep normal locator clicks in
+  confirmation checks; do not bypass actionability with forced clicks.
+- App code and SDK versions are unchanged. A future Playwright update must
+  pass the native-modal check in the packed self-test and the SDK browser gate.
+
 ## 0.10.0
 
 ### Changes
