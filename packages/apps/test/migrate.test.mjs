@@ -743,6 +743,32 @@ describe('migrate', () => {
     ]);
   });
 
+  it('draws the maskable icon of a monogram and leaves an own icon to the owner', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo', title: 'Demo', theme: 'fresh' });
+    createApp(repo, { id: 'own', title: 'Own' });
+    createApp(repo, { id: 'page', title: 'Page', pwa: false });
+    const pub = (id, file) => join(repo, 'apps', id, 'public', file);
+    // The state an older tooling left: no maskable icon.
+    for (const id of ['demo', 'own', 'page'])
+      rmSync(pub(id, 'icon-maskable-512.png'), { force: true });
+    writeFileSync(pub('own', 'favicon.svg'), '<svg viewBox="0 0 1 1"/>');
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.deepEqual(report.updated, ['apps/demo/public/icon-maskable-512.png']);
+    assert.ok(existsSync(pub('demo', 'icon-maskable-512.png')));
+    assert.equal(existsSync(pub('own', 'icon-maskable-512.png')), false);
+    assert.equal(existsSync(pub('page', 'icon-maskable-512.png')), false);
+    assert.match(
+      report.notes.join('\n'),
+      /apps\/own\/public\/icon-maskable-512\.png is missing, and the app's icon is not the monogram/,
+    );
+    assert.deepEqual(staticProblems(repo), [
+      'apps/own/public/icon-maskable-512.png is missing; run pnpm run icon own',
+    ]);
+  });
+
   it('keeps the texts of a schema 1 apps.json when app.json holds something else', () => {
     publish('1.0.1');
     const repo = createRepo('1.0.0');

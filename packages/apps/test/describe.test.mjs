@@ -12,6 +12,7 @@ import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { markdownProblems, textCompleteness } from '../scripts/lib/texts.mjs';
 import { staticProblems } from '../scripts/check.mjs';
 import { createApp } from '../scripts/new-app.mjs';
+import { regenerate } from '../scripts/regenerate.mjs';
 import { tempRepository } from './fixture.mjs';
 
 const entry = {
@@ -128,6 +129,9 @@ describe('texts of an app', () => {
       description_localized: { en: 'What the household needs.' },
     });
     assert.deepEqual(textCompleteness(root, app()), []);
+    // The installed app's manifest carries the translation too.
+    assert.match(staticProblems(root).join(), /does not match apps\.json, apps\/konsum\/app\.json/);
+    regenerate(root);
     assert.deepEqual(staticProblems(root), []);
   });
   it('needs texts in a language the app is shown in', () => {

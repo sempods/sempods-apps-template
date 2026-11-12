@@ -15,8 +15,10 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
@@ -37,6 +39,13 @@ import {
   replaceFile,
 } from './lib/files.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
+import {
+  MASKABLE_ICON,
+  monogramLetter,
+  monogramPng,
+  monogramSvg,
+  OWNER_ICON,
+} from './lib/icon.mjs';
 import { copiedKit, kitNote } from './lib/kit.mjs';
 import {
   adoptPageHead,
@@ -60,6 +69,7 @@ import {
   starterAt,
   writeBaseline,
 } from './lib/shared.mjs';
+import { appTheme, iconColours, themeCss } from './lib/themes.mjs';
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_DIR = '.sempods-migration';
@@ -546,10 +556,47 @@ function updateApps(root, report) {
     }
     const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
     report.updated.push(...new Set(changed));
+    adoptMaskableIcon(dir, app, report);
     const kit = copiedKit(dir);
     if (kit) report.notes.push(kitNote(app.id, kit));
   }
   report.regenerated = regenerate(root);
+}
+
+/**
+ * Draws the maskable icon a PWA's manifest names since 0.11.0, when the app
+ * still shows the monogram the tooling drew; an icon of the owner's own is
+ * left to them with a note.
+ */
+function adoptMaskableIcon(dir, app, report) {
+  if (!app.pwa || existsSync(join(dir, 'public', MASKABLE_ICON))) return;
+  const file = `apps/${app.id}/public/${MASKABLE_ICON}`;
+  const theme = appTheme(dir);
+  let colours;
+  try {
+    colours = theme && iconColours(themeCss(dir, theme));
+  } catch {
+    // A theme without the icon's roles: the note below applies.
+  }
+  const letter = monogramLetter(app.title);
+  const favicon = ifPresent(() =>
+    readFileSync(join(dir, 'public', 'favicon.svg'), 'utf8'),
+  );
+  if (
+    colours &&
+    !existsSync(join(dir, OWNER_ICON)) &&
+    favicon === monogramSvg(letter, colours)
+  ) {
+    writeFileSync(
+      join(dir, 'public', MASKABLE_ICON),
+      monogramPng(letter, 512, colours, { maskable: true }),
+    );
+    report.updated.push(file);
+    return;
+  }
+  report.notes.push(
+    `${file} is missing, and the app's icon is not the monogram the tooling draws. Put the icon as a square SVG, its content inside the middle 80 %, into apps/${app.id}/${OWNER_ICON} and run pnpm run icon ${app.id}; or run it without that file to draw the monogram.`,
+  );
 }
 
 export function formatMigration(report) {

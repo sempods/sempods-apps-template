@@ -23,6 +23,7 @@ import { readApps } from './lib/apps.mjs';
 import { describedApp } from './lib/describe.mjs';
 import { textCompleteness } from './lib/texts.mjs';
 import { staleGenerated } from './lib/generate.mjs';
+import { iconProblems } from './lib/icon.mjs';
 import { pageProblems } from './lib/page.mjs';
 import { migrationState } from './migrate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
@@ -139,8 +140,9 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
     if (app)
       for (const file of staleGenerated(dir, app, manifest.site))
         problems.push(
-          `apps/${app.id}/${file} does not match apps.json or apps/${app.id}/app.json; run pnpm run regenerate instead of editing it`,
+          `apps/${app.id}/${file} does not match apps.json, apps/${app.id}/app.json or the app's theme; run pnpm run regenerate instead of editing it`,
         );
+    problems.push(...iconProblems(dir, entry));
     problems.push(...pageProblems(dir, entry.id));
     const pkg = readJson(join(dir, 'package.json'));
     // The UI kit is optional: an app built before it keeps its own kit.

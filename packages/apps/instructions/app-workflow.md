@@ -220,10 +220,19 @@ for one fixed UI language, which is then also the text language, and
 app shown in both languages needs the description in the other one too, as
 in [the app's description](#describe-the-app-in-appjson). It never
 overwrites an app: check `apps.json` and the folder before invoking it; for
-an existing app, work in its folder and skip generation. The app's icon, in `public/`, is the monogram: `favicon.svg`
-(header and sign-in screen) and `icon-192.png`, `icon-512.png` (the installed
-app). After a rename or a theme change, `pnpm run icon <id>` draws it again;
-replace those files instead when the owner wants an icon of their own. The
+an existing app, work in its folder and skip generation. The app's icon, in
+`public/`, is the monogram: `favicon.svg` (header and sign-in screen) and
+`icon-192.png`, `icon-512.png` and `icon-maskable-512.png` (the installed
+app; a launcher cuts the maskable one into its own shape). After a rename or
+a theme change, `pnpm run icon <id>` draws it again, and after a theme change
+`pnpm run regenerate` gives the installed app the new background colour.
+When the owner wants an icon of their own, save it as `apps/<id>/icon.svg`:
+square, with a `viewBox` such as `0 0 512 512`, and everything that matters
+inside the middle 80 %, since a launcher may cut off the rest. Then
+`pnpm run icon <id>` draws every file in `public/` from it in a browser; if
+it reports the browser missing, run `pnpm run check:theme --install-browser`
+once. Do not replace the files in `public/` by hand: `pnpm run check`
+reports an `icon.svg` that was not drawn yet. The
 first app adds its dependency tree to `pnpm-lock.yaml` (several thousand
 lines); that is expected, so point the owner to the app's own files when they
 review the change.
@@ -488,6 +497,9 @@ field names of a web app manifest:
   language as `description_localized`.
 - `categories` takes the web app manifest's known categories, such as
   `shopping`, `productivity` or `lifestyle`.
+- The installed app's manifest takes these texts, their translations and the
+  categories; a browser shows the translation for its language where it
+  supports them.
 - An optional longer text for the app's detail page goes into `details.md`
   next to `app.json`, in `lang`, and into `details.en.md` or `details.de.md`
   for the other language. Write plain Markdown: headings from `##`, links
@@ -502,10 +514,10 @@ rules. Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 identity, callback, base path, page title and PWA configuration from
 `apps.json` and `app.json`. `index.html` has no `<title>` of its own; the
 generated plugin `pageTitle` in `vite.config.ts` adds the name. To rename an
-app or change its description, change `app.json` and run
+app or change its texts or categories, change `app.json` and run
 `pnpm run regenerate`; the page, the sign-in screen, the installed app and the
-overview follow. The ID and path stay; `pnpm run icon <id>` draws the icon's
-new letter. `new-app` creates new apps only; rerunning it does not reconfigure
+overview follow. The ID and path stay; `pnpm run icon <id>` draws the
+monogram's new letter. `new-app` creates new apps only; rerunning it does not reconfigure
 an existing app. `configure-site` changes the published identities of all
 apps. If a requested configuration change needs a command not shipped yet,
 explain that limitation to the owner; they can request it from the sempods

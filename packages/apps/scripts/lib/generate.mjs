@@ -10,9 +10,11 @@ import {
   siteIdentity,
 } from './apps.mjs';
 import { escapeHtml } from './html.mjs';
+import { MASKABLE_ICON } from './icon.mjs';
+import { manifestColours, PLAIN_COLOURS } from './themes.mjs';
 
-const HEADER = `// Generated from apps.json by @sempods/apps. Do not edit: change apps.json
-// and run pnpm run regenerate.`;
+const HEADER = `// Generated from apps.json and app.json by @sempods/apps. Do not edit:
+// change them and run pnpm run regenerate.`;
 
 export const GENERATED_FILES = [
   'src/sempods.generated.ts',
@@ -156,8 +158,50 @@ export const runtimeOptions: BrowserRuntimeOptions =
 `;
 }
 
+// The manifest members taken from app.json, in the order they are written.
+const ABOUT_KEYS = [
+  'name',
+  'name_localized',
+  'short_name',
+  'short_name_localized',
+  'description',
+  'description_localized',
+  'lang',
+  'categories',
+];
+
+/** The web app manifest of a PWA, as TypeScript. */
+function manifestSource(app, colours) {
+  const p = app.path;
+  const icon = (file, size, purpose) =>
+    `    { src: ${json(`${p}${file}`)}, sizes: '${size}x${size}', type: 'image/png', purpose: '${purpose}' },`;
+  const about = ABOUT_KEYS.filter((key) => app.about[key] !== undefined).map(
+    (key) => `  ${key}: ${json(app.about[key])},`,
+  );
+  return `
+// The installed app's manifest, from app.json and the app's theme. Its
+// translations (name_localized and the like, Chrome and Edge 148) are newer
+// than the plugin's types, hence the wider type.
+const manifest: Partial<ManifestOptions> &
+  Record<\`\${string}_localized\`, Record<string, string>> = {
+  id: ${json(p)},
+${about.join('\n')}
+  start_url: ${json(p)},
+  scope: ${json(p)},
+  display: 'standalone',
+  background_color: ${json(colours.background)},
+  theme_color: ${json(colours.background)},
+  icons: [
+${icon('icon-192.png', 192, 'any')}
+${icon('icon-512.png', 512, 'any')}
+${icon(MASKABLE_ICON, 512, 'maskable')}
+  ],
+};
+`;
+}
+
 /** Vite base path, development server, page title and PWA settings. */
-export function viteSource(app) {
+export function viteSource(app, colours = PLAIN_COLOURS) {
   const p = app.path;
   const pwa = app.pwa
     ? `{
@@ -165,28 +209,7 @@ export function viteSource(app) {
     // an open page: an update applies once every window is closed.
     registerType: 'prompt',
     injectRegister: false,
-    manifest: {
-      id: ${json(p)},
-      name: ${json(app.title)},
-      short_name: ${json(app.title)},
-${app.description ? `      description: ${json(app.description)},\n` : ''}${
-        app.language === AUTO
-          ? `      // The app picks its language in the browser, so the manifest names
-      // none; undefined also replaces the plugin's default "en".
-      lang: undefined,
-`
-          : `      lang: ${json(app.language)},
-`
-      }      start_url: ${json(p)},
-      scope: ${json(p)},
-      display: 'standalone',
-      background_color: '#ffffff',
-      theme_color: '#ffffff',
-      icons: [
-        { src: ${json(`${p}icon-192.png`)}, sizes: '192x192', type: 'image/png' },
-        { src: ${json(`${p}icon-512.png`)}, sizes: '512x512', type: 'image/png' },
-      ],
-    },
+    manifest,
     workbox: {
       // Precache the built shell only; nothing is cached at runtime.
       globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
@@ -204,11 +227,11 @@ ${app.description ? `      description: ${json(app.description)},\n` : ''}${
     : 'null';
   return `${HEADER}
 import type { Plugin } from 'vite';
-import type { VitePWAOptions } from 'vite-plugin-pwa';
-
+import type { ${app.pwa ? 'ManifestOptions, ' : ''}VitePWAOptions } from 'vite-plugin-pwa';
+${app.pwa ? manifestSource(app, colours) : ''}
 export const base = ${json(p)};
 
-// The page title from apps.json, added to the head of every page Vite serves
+// The page title from app.json, added to the head of every page Vite serves
 // or builds; index.html has no <title> of its own.
 export const pageTitle: Plugin = {
   name: 'sempods-page-title',
@@ -227,21 +250,28 @@ export const pwa: Partial<VitePWAOptions> | null = ${pwa};
 `;
 }
 
-export function generatedFiles(app, site) {
+/**
+ * The generated files of an app; `colours` are its theme's, as
+ * manifestColours reads them from the app's folder.
+ */
+export function generatedFiles(app, site, colours = PLAIN_COLOURS) {
   return {
     'src/sempods.generated.ts': runtimeSource(app, site),
-    'vite.sempods.generated.ts': viteSource(app),
+    'vite.sempods.generated.ts': viteSource(app, colours),
   };
 }
 
+const filesFor = (appDir, app, site) =>
+  generatedFiles(app, site, manifestColours(appDir));
+
 export function writeGenerated(appDir, app, site) {
-  for (const [file, source] of Object.entries(generatedFiles(app, site)))
+  for (const [file, source] of Object.entries(filesFor(appDir, app, site)))
     writeFileSync(join(appDir, file), source);
 }
 
 /** Lists generated files whose content differs from what apps.json produces. */
 export function staleGenerated(appDir, app, site) {
-  return Object.entries(generatedFiles(app, site))
+  return Object.entries(filesFor(appDir, app, site))
     .filter(([file, source]) => {
       try {
         return readFileSync(join(appDir, file), 'utf8') !== source;

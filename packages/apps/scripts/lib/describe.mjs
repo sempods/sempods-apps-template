@@ -115,16 +115,45 @@ export function writeDescription(dir, description) {
   writeJson(join(dir, DESCRIPTION_FILE), description);
 }
 
+const trimmed = (map) =>
+  map === undefined
+    ? undefined
+    : Object.fromEntries(
+        Object.entries(map).map(([language, text]) => [language, text.trim()]),
+      );
+
 /**
  * One app of apps.json with its title and description from app.json: the
- * shape the generator, the icon and the overview work with.
+ * shape the generator, the icon and the overview work with. `about` holds
+ * app.json's texts as the web app manifest takes them: trimmed, with the
+ * short name falling back to the name.
  */
 export function describedApp(root, app) {
-  const { name, description } = readDescription(root, app.id);
+  const described = readDescription(root, app.id);
+  const { lang, name, description, categories } = described;
+  const shortName = described.short_name ?? name;
+  const about = {
+    lang,
+    name: name.trim(),
+    short_name: shortName.trim(),
+    ...(description === undefined ? {} : { description: description.trim() }),
+    ...(categories === undefined ? {} : { categories }),
+  };
+  const localized = {
+    name_localized: described.name_localized,
+    short_name_localized:
+      described.short_name === undefined
+        ? described.name_localized
+        : described.short_name_localized,
+    description_localized: described.description_localized,
+  };
+  for (const [key, map] of Object.entries(localized))
+    if (map !== undefined) about[key] = trimmed(map);
   return {
     ...app,
-    title: name.trim(),
-    ...(description === undefined ? {} : { description: description.trim() }),
+    title: about.name,
+    ...(description === undefined ? {} : { description: about.description }),
+    about,
   };
 }
 
