@@ -703,6 +703,46 @@ describe('migrate', () => {
     assert.deepEqual(staticProblems(repo), []);
   });
 
+  it('moves titles and descriptions of a schema 1 apps.json into app.json', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, {
+      id: 'demo',
+      title: 'Demo',
+      description: 'A demo.',
+      language: 'auto',
+    });
+    createApp(repo, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    // The state an older tooling left: texts in apps.json, no app.json.
+    editJson(repo, 'apps.json', (manifest) => {
+      manifest.schemaVersion = 1;
+      for (const app of manifest.apps) {
+        const description = readJson(join(repo, 'apps', app.id, 'app.json'));
+        app.title = description.name;
+        if (description.description) app.description = description.description;
+        rmSync(join(repo, 'apps', app.id, 'app.json'));
+      }
+    });
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.deepEqual(report.updated, [
+      'apps/demo/app.json',
+      'apps/konsum/app.json',
+      'apps.json',
+    ]);
+    assert.match(report.notes.join(), /demo\/app\.json: the app follows/);
+    assert.deepEqual(report.regenerated, []);
+    assert.deepEqual(readJson(join(repo, 'apps', 'demo', 'app.json')), {
+      lang: 'en',
+      name: 'Demo',
+      description: 'A demo.',
+    });
+    // The note's remaining step: the description in German.
+    assert.deepEqual(staticProblems(repo), [
+      'apps/demo/app.json: description_localized.de is missing; the app is also shown in de',
+    ]);
+  });
+
   it('does not bring back a seed file the owner deleted', () => {
     publish('2.0.0', v2);
     const repo = createRepo('1.0.0');

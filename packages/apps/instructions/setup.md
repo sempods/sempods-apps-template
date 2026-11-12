@@ -48,12 +48,15 @@ From the repository root, after the bootstrap in `INIT.md`:
 
 ```sh
 pnpm run new-app konsum --title "Einkaufsliste" \
-  --description "Was im Haushalt fehlt, für alle." --theme warm
+  --description "Was im Haushalt fehlt, für alle." --text-language de \
+  --theme warm
 pnpm run dev konsum
 ```
 
-Replace the example ID, title, description and theme with the recorded
-choices. PWA is on by default; `--no-pwa` is available if the owner chooses it
+Replace the example ID, title, description, the language they are written in
+and the theme with the recorded choices. The app is shown in German and
+English by default, so add the description in the other language to
+`apps/<id>/app.json` as the app workflow describes. PWA is on by default; `--no-pwa` is available if the owner chooses it
 when creating an app. The dev server is long-running: keep it in a separate
 terminal/session.
 Open the exact URL it reports; `apps.json` records the assigned `devPort` and

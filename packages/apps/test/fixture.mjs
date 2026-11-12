@@ -20,7 +20,7 @@ export function tempRepository(prefix) {
   );
   writeFileSync(
     join(root, 'apps.json'),
-    '{\n  "schemaVersion": 1,\n  "apps": []\n}\n',
+    '{\n  "schemaVersion": 2,\n  "apps": []\n}\n',
   );
   return root;
 }

@@ -208,14 +208,19 @@ Then create the app from the repository root with those answers:
 
 ```sh
 pnpm run new-app konsum --title "Einkaufsliste" \
-  --description "Was im Haushalt fehlt, für alle." --theme warm
+  --description "Was im Haushalt fehlt, für alle." --text-language de \
+  --theme warm
 pnpm run dev konsum
 ```
 
-`new-app` also accepts `--language de` or `--language en` for one fixed UI
-language and `--no-pwa`. It never overwrites an app: check `apps.json` and the
-folder before invoking it; for an existing app, work in its folder and skip
-generation. The app's icon, in `public/`, is the monogram: `favicon.svg`
+`--text-language` names the language the title and description are written
+in (`de` or `en`). `new-app` also accepts `--language de` or `--language en`
+for one fixed UI language, which is then also the text language, and
+`--no-pwa`. It writes the title and description to `apps/<id>/app.json`; an
+app shown in both languages needs the description in the other one too, as
+in [the app's description](#describe-the-app-in-appjson). It never
+overwrites an app: check `apps.json` and the folder before invoking it; for
+an existing app, work in its folder and skip generation. The app's icon, in `public/`, is the monogram: `favicon.svg`
 (header and sign-in screen) and `icon-192.png`, `icon-512.png` (the installed
 app). After a rename or a theme change, `pnpm run icon <id>` draws it again;
 replace those files instead when the owner wants an icon of their own. The
@@ -448,19 +453,56 @@ closing the tab) is not a router move: the SDK's leave prompt covers it.
 
 ### Keep the configuration in apps.json
 
-`apps.json` has `schemaVersion: 1` and an `apps` array. Each entry records
-`id`, `title`, `language`, `path`, `devPort` and `pwa`, and optionally
-`description`, `routes` and `resources`. An optional `site` records where
-the apps are published; only `pnpm run configure-site` writes it, and it
-regenerates every app's configuration from it. Do not add other deployment
+`apps.json` has `schemaVersion: 2` and an `apps` array. Each entry records
+how an app runs: `id`, `language`, `path`, `devPort` and `pwa`, and
+optionally `routes` and `resources`. An optional `site` records where the
+apps are published; only `pnpm run configure-site` writes it, and it
+regenerates every app's configuration from it. An optional `catalog` names
+the whole site for its overview: `lang`, `name`, an optional `description`
+(both translatable as in `app.json`) and an optional `publisher`, the HTTPS
+WebID of the person or team behind the site. Do not add other deployment
 fields.
 
-Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
+### Describe the app in app.json
+
+`apps/<id>/app.json` belongs to the owner and says what the app is, with the
+field names of a web app manifest:
+
+```json
+{
+  "lang": "de",
+  "name": "Einkaufsliste",
+  "description": "Was im Haushalt fehlt, für alle.",
+  "categories": ["shopping"],
+  "description_localized": { "en": "What the household needs, for everyone." }
+}
+```
+
+- `lang` is the language the texts are written in, one the app is shown in.
+- `name` is the app's only title, and `short_name` an optional shorter one for
+  a home screen. A name needs no translation; add `name_localized` only when
+  it differs, such as `{ "en": "Shopping list" }`.
+- `description` is one short sentence, at most 120 characters, for the
+  sign-in screen, the installed app and the overview. An app shown in both
+  languages (`"language": "auto"` in `apps.json`) needs it in the other
+  language as `description_localized`.
+- `categories` takes the web app manifest's known categories, such as
+  `shopping`, `productivity` or `lifestyle`.
+- An optional longer text for the app's detail page goes into `details.md`
+  next to `app.json`, in `lang`, and into `details.en.md` or `details.de.md`
+  for the other language. Write plain Markdown: headings from `##`, links
+  only to `https://` addresses, images only from below the app's path (for
+  example `/konsum/screenshot.png` from its `public/` folder), no HTML. Ask
+  the owner what the app is for before writing it, keep it short, and do not
+  promise more than the app does.
+
+`pnpm run check` reports a missing translation or a detail text outside these
+rules. Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls
-identity, callback, base path, page title and PWA configuration. The title in
-`apps.json` is the app's only title: `index.html` has no `<title>` of its own,
-and the generated plugin `pageTitle` in `vite.config.ts` adds it. To rename an
-app or change its description, change it there and run
+identity, callback, base path, page title and PWA configuration from
+`apps.json` and `app.json`. `index.html` has no `<title>` of its own; the
+generated plugin `pageTitle` in `vite.config.ts` adds the name. To rename an
+app or change its description, change `app.json` and run
 `pnpm run regenerate`; the page, the sign-in screen, the installed app and the
 overview follow. The ID and path stay; `pnpm run icon <id>` draws the icon's
 new letter. `new-app` creates new apps only; rerunning it does not reconfigure

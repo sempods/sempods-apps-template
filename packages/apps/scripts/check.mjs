@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import semver from 'semver';
 import { readApps } from './lib/apps.mjs';
+import { describedApp } from './lib/describe.mjs';
+import { textCompleteness } from './lib/texts.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { pageProblems } from './lib/page.mjs';
 import { migrationState } from './migrate.mjs';
@@ -121,21 +123,29 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       );
     else expect('root', pkg, rootManifest.devDependencies?.[pkg]);
 
-  for (const app of manifest.apps) {
-    const dir = join(appsDir, app.id);
+  for (const entry of manifest.apps) {
+    const dir = join(appsDir, entry.id);
     if (!existsSync(join(dir, 'package.json'))) {
-      problems.push(`apps/${app.id} is listed in apps.json but missing`);
+      problems.push(`apps/${entry.id} is listed in apps.json but missing`);
       continue;
     }
-    for (const file of staleGenerated(dir, app, manifest.site))
-      problems.push(
-        `apps/${app.id}/${file} does not match apps.json; regenerate it instead of editing`,
-      );
-    problems.push(...pageProblems(dir, app.id));
+    problems.push(...textCompleteness(root, entry));
+    let app;
+    try {
+      app = describedApp(root, entry);
+    } catch {
+      // textCompleteness reported why app.json cannot be read.
+    }
+    if (app)
+      for (const file of staleGenerated(dir, app, manifest.site))
+        problems.push(
+          `apps/${app.id}/${file} does not match apps.json or apps/${app.id}/app.json; run pnpm run regenerate instead of editing it`,
+        );
+    problems.push(...pageProblems(dir, entry.id));
     const pkg = readJson(join(dir, 'package.json'));
     // The UI kit is optional: an app built before it keeps its own kit.
     for (const sdk of appSdk(pkg.dependencies))
-      expect(`apps/${app.id}`, sdk, pkg.dependencies?.[sdk]);
+      expect(`apps/${entry.id}`, sdk, pkg.dependencies?.[sdk]);
     const declared = new Set([
       ...Object.keys(pkg.dependencies ?? {}),
       ...Object.keys(pkg.devDependencies ?? {}),
@@ -144,7 +154,7 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       for (const name of importedPackages(readFileSync(file, 'utf8')))
         if (!declared.has(name))
           problems.push(
-            `${file.slice(root.length + 1)} imports ${name}, which apps/${app.id}/package.json does not declare`,
+            `${file.slice(root.length + 1)} imports ${name}, which apps/${entry.id}/package.json does not declare`,
           );
   }
 

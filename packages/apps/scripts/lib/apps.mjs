@@ -3,7 +3,10 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJson, writeJson } from './json.mjs';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+// Schema 1 kept each app's title and description in apps.json; migrate moves
+// them into apps/<id>/app.json.
+export const LEGACY_SCHEMA_VERSION = 1;
 export const FIRST_DEV_PORT = 5174;
 // The UI languages of the SDK; "auto" follows the browser among them.
 export const LANGUAGES = ['en', 'de'];
@@ -172,9 +175,9 @@ function addressProblems(app) {
 }
 
 /**
- * Returns a reason when `description` cannot describe an app, otherwise
- * undefined. It is optional: one short sentence for the sign-in screen, the
- * installed app and the overview.
+ * Returns a reason when `description` cannot describe an app or the site,
+ * otherwise undefined. It is optional: one short sentence for the sign-in
+ * screen, the installed app and the overview.
  */
 export function invalidDescription(description) {
   if (description === undefined) return undefined;
@@ -211,6 +214,113 @@ export function siteIdentity(origin, app) {
   };
 }
 
+const CATALOG_KEYS = new Set([
+  'lang',
+  'name',
+  'description',
+  'name_localized',
+  'description_localized',
+  'publisher',
+]);
+
+/** Why `value` is not a map from another UI language to valid text. */
+function localizedProblems(where, value, base, invalid) {
+  if (value === undefined) return [];
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return [`${where} must be an object from language to text`];
+  const problems = [];
+  for (const [language, text] of Object.entries(value)) {
+    if (!LANGUAGES.includes(language))
+      problems.push(
+        `${where}.${language}: the language must be one of ${LANGUAGES.join(', ')}`,
+      );
+    else if (language === base)
+      problems.push(
+        `${where}.${language} repeats the base language; write that text without _localized`,
+      );
+    else {
+      const reason = invalid(text);
+      if (reason) problems.push(`${where}.${language}: ${reason}`);
+    }
+  }
+  return problems;
+}
+
+/** Returns a reason when `name` cannot name an app or the site. */
+export function invalidName(name) {
+  if (typeof name !== 'string' || name.trim() === '')
+    return 'a name must be text';
+  return undefined;
+}
+
+/**
+ * Lists every problem of the texts an app or the site is described with: a
+ * base language, a name and an optional description, and their translations
+ * as `<field>_localized`. `fields` maps each text field to its check.
+ */
+export function textProblems(where, value, fields) {
+  const problems = [];
+  if (!LANGUAGES.includes(value.lang))
+    problems.push(
+      `${where}.lang must be one of ${LANGUAGES.join(', ')}: the language of its texts`,
+    );
+  for (const [field, { invalid, required }] of Object.entries(fields)) {
+    if (value[field] === undefined) {
+      if (required) problems.push(`${where}.${field} is required`);
+    } else {
+      const reason = invalid(value[field]);
+      if (reason) problems.push(`${where}.${field}: ${reason}`);
+    }
+    problems.push(
+      ...localizedProblems(
+        `${where}.${field}_localized`,
+        value[`${field}_localized`],
+        value.lang,
+        invalid,
+      ),
+    );
+  }
+  return problems;
+}
+
+/** Returns a reason when `value` is not an HTTPS URL, otherwise undefined. */
+function invalidHttpsUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    url = undefined;
+  }
+  if (url?.protocol !== 'https:' || url.href !== value)
+    return 'must be an HTTPS URL, such as https://pod.example.org/profile/card#me';
+  return undefined;
+}
+
+/**
+ * Lists every problem of the optional catalog: the site's name, description
+ * and publisher for the overview and its machine-readable list.
+ */
+export function validateCatalog(catalog) {
+  if (catalog === undefined) return [];
+  if (catalog === null || typeof catalog !== 'object' || Array.isArray(catalog))
+    return ['catalog must be an object'];
+  const problems = [];
+  for (const key of Object.keys(catalog))
+    if (!CATALOG_KEYS.has(key))
+      problems.push(`catalog.${key} is not a known field`);
+  problems.push(
+    ...textProblems('catalog', catalog, {
+      name: { invalid: invalidName, required: true },
+      description: { invalid: invalidDescription },
+    }),
+  );
+  if (catalog.publisher !== undefined) {
+    const reason = invalidHttpsUrl(catalog.publisher);
+    if (reason) problems.push(`catalog.publisher ${reason}`);
+  }
+  return problems;
+}
+
 /** Lists every problem of the optional site configuration. */
 export function validateSite(site) {
   if (site === undefined) return [];
@@ -243,6 +353,10 @@ export function readApps(root) {
       'apps.json is missing; it lists the apps of this repository and must exist, even with no apps',
     );
   const manifest = readJson(file);
+  if (manifest?.schemaVersion === LEGACY_SCHEMA_VERSION)
+    throw new Error(
+      'apps.json still has schemaVersion 1; run pnpm run migrate, which moves each title and description into apps/<id>/app.json',
+    );
   const problems = validateApps(manifest);
   if (problems.length > 0) throw new Error(`apps.json: ${problems.join('; ')}`);
   return manifest;
@@ -259,6 +373,7 @@ export function validateApps(manifest) {
   if (manifest?.schemaVersion !== SCHEMA_VERSION)
     problems.push(`schemaVersion must be ${SCHEMA_VERSION}`);
   problems.push(...validateSite(manifest?.site));
+  problems.push(...validateCatalog(manifest?.catalog));
   if (!Array.isArray(manifest?.apps))
     return [...problems, 'apps must be a list'];
   const ids = new Set();
@@ -271,10 +386,11 @@ export function validateApps(manifest) {
     }
     if (ids.has(app.id)) problems.push(`${app.id}: listed twice`);
     ids.add(app.id);
-    if (typeof app.title !== 'string' || app.title.trim() === '')
-      problems.push(`${app.id}: title must be text`);
-    const description = invalidDescription(app.description);
-    if (description) problems.push(`${app.id}: ${description}`);
+    for (const key of ['title', 'description'])
+      if (app[key] !== undefined)
+        problems.push(
+          `${app.id}: ${key} belongs in apps/${app.id}/app.json, not in apps.json`,
+        );
     if (!APP_LANGUAGES.includes(app.language))
       problems.push(
         `${app.id}: language must be one of ${APP_LANGUAGES.join(', ')}`,

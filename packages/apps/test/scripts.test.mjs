@@ -22,6 +22,8 @@ import {
   validateApps,
 } from '../scripts/lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
+import { describedApp } from '../scripts/lib/describe.mjs';
+import { readJson } from '../scripts/lib/json.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
@@ -72,19 +74,17 @@ describe('app IDs', () => {
 describe('apps.json', () => {
   const app = {
     id: 'konsum',
-    title: 'Einkaufsliste',
     language: 'de',
     path: '/konsum/',
     devPort: 5174,
     pwa: true,
   };
   it('accepts a valid manifest', () => {
-    assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
+    assert.deepEqual(validateApps({ schemaVersion: 2, apps: [app] }), []);
   });
   it('accepts routes as distinct lowercase addresses', () => {
     const app = (routes) => ({
       id: 'konsum',
-      title: 'Konsum',
       language: 'de',
       path: '/konsum/',
       devPort: 5174,
@@ -92,7 +92,7 @@ describe('apps.json', () => {
       routes,
     });
     const problems = (routes) =>
-      validateApps({ schemaVersion: 1, apps: [app(routes)] });
+      validateApps({ schemaVersion: 2, apps: [app(routes)] });
     assert.deepEqual(problems(['open', 'bought', 'tasks/add']), []);
     assert.deepEqual(problems(undefined), []);
     assert.match(problems('bought').join(), /routes must be a list/);
@@ -108,7 +108,7 @@ describe('apps.json', () => {
   it('accepts resource patterns that start with a word', () => {
     const problems = (resources, routes) =>
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [{ ...app, resources, ...(routes ? { routes } : {}) }],
       });
     assert.deepEqual(
@@ -130,7 +130,7 @@ describe('apps.json', () => {
 
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
     const problems = validateApps({
-      schemaVersion: 1,
+      schemaVersion: 2,
       apps: [
         app,
         { ...app },
@@ -145,7 +145,7 @@ describe('apps.json', () => {
   it('accepts a site with HTTPS origins and a known host', () => {
     assert.deepEqual(
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [app],
         site: {
           production: 'https://apps.example.org',
@@ -167,7 +167,7 @@ describe('apps.json', () => {
     ])
       assert.notEqual(invalidOrigin(origin), undefined, origin);
     const problems = validateApps({
-      schemaVersion: 1,
+      schemaVersion: 2,
       apps: [app],
       site: {
         preview: 'https://a.example.org',
@@ -178,7 +178,7 @@ describe('apps.json', () => {
     assert.ok(problems.some((p) => p.includes('site.host is not a known')));
     assert.ok(
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [app],
         site: { production: 'https://a.org', preview: 'https://a.org' },
       }).some((p) => p.includes('must differ')),
@@ -500,7 +500,13 @@ describe('new-app', () => {
       );
     assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
-    assert.deepEqual(manifest.apps, [app]);
+    const { title, description, ...entry } = app;
+    assert.deepEqual(manifest.apps, [entry]);
+    assert.equal(description, undefined);
+    assert.deepEqual(readJson(join(dir, 'app.json')), {
+      lang: 'de',
+      name: title,
+    });
     // By default an app follows the browser; its page starts in English.
     const second = createApp(root, { id: 'second' });
     assert.equal(second.devPort, 5175);
@@ -553,7 +559,7 @@ describe('new-app', () => {
   it('preserves other fields of apps.json when adding an app', () => {
     writeFileSync(
       join(root, 'apps.json'),
-      JSON.stringify({ schemaVersion: 1, apps: [], note: 'owner' }),
+      JSON.stringify({ schemaVersion: 2, apps: [], note: 'owner' }),
     );
     createApp(root, { id: 'konsum' });
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
@@ -620,7 +626,10 @@ describe('configure-site', () => {
     });
     assert.match(runtime(), /did:web:apps\.example\.org:konsum/);
     const dir = join(root, 'apps', 'konsum');
-    assert.deepEqual(staleGenerated(dir, apps().apps[0], apps().site), []);
+    assert.deepEqual(
+      staleGenerated(dir, describedApp(root, apps().apps[0]), apps().site),
+      [],
+    );
     const before = [readFileSync(join(root, 'apps.json'), 'utf8'), runtime()];
     configureSite(root, {});
     assert.deepEqual(
@@ -690,7 +699,11 @@ describe('configure-site', () => {
     manifest.site.production = 'https://moved.example.org';
     writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
     assert.deepEqual(
-      staleGenerated(join(root, 'apps', 'konsum'), manifest.apps[0], manifest.site),
+      staleGenerated(
+        join(root, 'apps', 'konsum'),
+        describedApp(root, manifest.apps[0]),
+        manifest.site,
+      ),
       ['src/sempods.generated.ts'],
     );
   });
