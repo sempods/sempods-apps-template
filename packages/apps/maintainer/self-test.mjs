@@ -27,6 +27,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
@@ -229,6 +230,74 @@ function ownerIcon(repo) {
   console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
 }
 
+/**
+ * Opens the built overview in Chromium, as a visitor with a German browser:
+ * the list launches apps directly, Details opens the secondary view, and
+ * language choice, narrow screens and no-script navigation keep working.
+ */
+async function overviewCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    const url = pathToFileURL(join(repo, 'site-dist', 'index.html')).href;
+    const page = await browser.newPage({ locale: 'de-DE' });
+    await page.goto(url);
+    const row = page.locator('.app-row').first();
+    if ((await row.locator('h2').innerText()) !== 'Selbsttest')
+      throw new Error('the overview does not show the German name');
+    for (const selector of ['.launch', '.open']) {
+      const link = row.locator(selector);
+      if ((await link.getAttribute('href')) !== `/${FIXTURE}/` ||
+          (await link.getAttribute('target')) !== '_blank')
+        throw new Error('the overview does not launch the app in a new tab');
+    }
+    await row.locator('.details-link').click();
+    const detail = page.locator(`#${FIXTURE}`);
+    if (!(await detail.isVisible()) || await page.locator('.apps').isVisible())
+      throw new Error('Details does not replace the list with the detail view');
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    if ((await detail.locator('h1').innerText()) !== 'Self test')
+      throw new Error('the switch does not change the language');
+    const install = detail.locator('.install');
+    if (await install.evaluate((el) => el.open))
+      throw new Error('installation help should start collapsed');
+    await install.locator('summary').click();
+    if (!(await install.evaluate((el) => el.open)))
+      throw new Error('installation help does not expand');
+    for (const width of [375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the detail view overflows at ${width}px`);
+      await detail.locator('.back').click();
+      if (!(await page.locator('.apps').isVisible()) ||
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the app list does not fit at ${width}px`);
+      await row.locator('.details-link').click();
+    }
+    await page.reload();
+    if ((await page.locator('html').getAttribute('lang')) !== 'en')
+      throw new Error('the language choice was not remembered');
+    await page.close();
+    const plain = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 320, height: 800 } });
+    await plain.goto(`${url}#${FIXTURE}`);
+    if (!(await plain.locator(`#${FIXTURE}`).isVisible()))
+      throw new Error('a direct detail link fails without script');
+    await plain.locator(`#${FIXTURE} .install summary`).click();
+    if (!(await plain.locator(`#${FIXTURE} .install`).evaluate((el) => el.open)))
+      throw new Error('installation help fails without script');
+    await plain.locator(`#${FIXTURE} .back`).click();
+    if (!(await plain.locator('.apps').isVisible()))
+      throw new Error('returning to the list fails without script');
+    await plain.close();
+    console.log('✓ overview launches apps, opens details and works on mobile without script');
+  } finally {
+    await browser.close();
+  }
+}
+
 /** Configures a site, builds it for real and checks the profiles. */
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
@@ -301,6 +370,16 @@ function publish(repo) {
     throw new Error('client.json names another app');
   if (!readFileSync(join(site, FIXTURE, 'index.html'), 'utf8').includes(`href="/${FIXTURE}/app.jsonld"`))
     throw new Error('the app page does not link its description');
+  // The overview shows the app as its description has it.
+  const overview = readFileSync(join(site, 'index.html'), 'utf8');
+  for (const part of [
+    '<html lang="en" data-languages="en de">',
+    `<a class="details-link" href="#${FIXTURE}">`,
+    `<a class="open" href="/${FIXTURE}/" target="_blank" rel="noopener noreferrer">`,
+    `<article class="detail" id="${FIXTURE}">`,
+    '<details class="install">',
+  ])
+    if (!overview.includes(part)) throw new Error(`the overview has no ${part}`);
   const listed = readJson(join(site, FIXTURE, 'build.json')).files;
   const built = readdirSync(join(site, FIXTURE), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name !== 'build.json')
@@ -548,6 +627,11 @@ try {
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
+  await overviewCheck(repo);
+  // Without an ID, dev lists the apps instead of starting one.
+  if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
+    throw new Error('pnpm run dev without an ID does not list the app');
+  console.log('✓ dev without an ID lists the apps');
   migrateExercise(repo, work, tooling);
 } catch (error) {
   console.error(`self-test: ${error.message}`);

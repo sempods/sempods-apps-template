@@ -72,13 +72,37 @@ Published descriptions (sempods/sempods-apps-template#46, step 3):
   `client.json` larger than 5,000 bytes. An app's own `app.jsonld`,
   `client.json`, `build.json` or `_headers` in `public/` is not published.
 
+The overview (sempods/sempods-apps-template#46, step 4):
+
+- The site's overview at `/` is a compact app launcher: the catalog's name
+  and description above a list in the order of `apps.json`. Each row shows
+  the app's icon, name and short description. The name/icon and "Open"
+  launch the app in a new tab; the page and accessible link names announce
+  that behavior. The skeleton's `fresh` theme supplies light and dark
+  colours; the apps keep their own icons.
+- A separate "Details" link opens `/#<id>`: the text from `details.md`,
+  categories, languages, the catalog's publisher and "Open". For PWAs,
+  installation help expands on request. Detail links and installation help
+  work without script. App count never changes the list's order or layout
+  into category groups. This follows the owner's accepted design of
+  2026-11-13.
+- The page holds every text in each of the catalog's languages, or without
+  a catalog in each language the apps are shown in. Without script it shows
+  the first; a few lines of script pick the visitor's language and offer a
+  switch, which the page remembers. An app's texts stay in its own language
+  where it has no translation. The not-found page has the same look.
+- `build-site` renders detail texts with micromark, a new dependency of the
+  tooling, which leaves out raw HTML and unsafe links.
+- `pnpm run dev` without an ID lists every app with its name and
+  development address instead of failing.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
   `catalog` and `--text-language`; the app workflow describes `icon.svg` and
   what the installed app takes from `app.json` and the theme. The publishing
   guide lists the published descriptions, the cross-origin header a host must
-  send for them, and how to check it.
+  send for them, and how to check it, and describes the overview.
 
 ### Upgrade notes
 
@@ -105,6 +129,10 @@ Instructions:
    GitHub Pages, Netlify or Cloudflare Pages needs the header
    `Access-Control-Allow-Origin: *` for `/apps.jsonld` and each
    `/<id>/app.jsonld`, as the publishing guide describes.
+5. The overview needs no change of its own. Its header shows the catalog's
+   name and description and offers the catalog's languages; without a
+   `catalog` in `apps.json` it is titled "Apps". If the repository has none,
+   offer the owner to add one as the app workflow describes.
 
 ## 0.10.1 (in preparation)
 

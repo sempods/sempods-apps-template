@@ -33,6 +33,7 @@ import {
   ownerIconProblem,
 } from '../scripts/lib/icon.mjs';
 import { drawIcon } from '../scripts/icon.mjs';
+import { appListing } from '../scripts/dev.mjs';
 import { MISSING_BROWSER } from '../scripts/check-theme.mjs';
 import {
   iconColours,
@@ -1359,5 +1360,30 @@ describe('script arguments', () => {
       'all',
     ]);
     assert.deepEqual(scriptArgs(['demo', '--', 'x']), ['demo', '--', 'x']);
+  });
+});
+
+describe('dev', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-dev-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('lists every app with its address when no app is named', () => {
+    assert.match(appListing(root), /no apps yet[\s\S]*pnpm run new-app <id>/);
+    createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    createApp(root, { id: 'notes', title: 'Notes', language: 'en' });
+    const { apps } = readApps(root);
+    assert.equal(
+      appListing(root),
+      [
+        'Apps:',
+        `  konsum  Einkauf  http://127.0.0.1:${apps[0].devPort}/konsum/`,
+        `  notes   Notes  http://127.0.0.1:${apps[1].devPort}/notes/`,
+        '',
+        'Start one with pnpm run dev <id>, for example pnpm run dev konsum.',
+      ].join('\n'),
+    );
   });
 });

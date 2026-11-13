@@ -15,7 +15,8 @@ Create a repository with `pnpm create @sempods/apps <directory>`
   built with the UI kit `@sempods/app-ui`.
 - `pnpm run icon <id>` draws an app's icons again: from `apps/<id>/icon.svg`
   when there is one, otherwise the monogram in its theme's primary colour.
-- `pnpm run dev <id>` starts that app.
+- `pnpm run dev <id>` starts that app; without an ID, it lists the apps with
+  their development addresses.
 - `pnpm run regenerate` rewrites every app's generated configuration from
   `apps.json`, for example after a tooling update.
 - `pnpm run configure-site --production <origin>` records where the apps are

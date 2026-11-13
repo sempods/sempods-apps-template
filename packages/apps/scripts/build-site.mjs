@@ -19,7 +19,7 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { AUTO, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { describedApps } from './lib/describe.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { PNG_ICONS } from './lib/icon.mjs';
@@ -106,19 +106,28 @@ function copyLicences(roots, appOut, appId) {
   }
 }
 
-/** The overview entry of a built app. */
-function overviewEntry(app, outDir) {
-  const entry = {
+/**
+ * The overview entry of a built app, from its published description, so the
+ * overview shows what every other reader of app.jsonld sees. The name comes
+ * from app.json instead: the description repeats an untranslated name in
+ * every language, and the overview must keep marking it in its own.
+ */
+function overviewEntry(app, description, outDir) {
+  const details = description.subjectOf?.map((text) => [text.inLanguage, text.text]);
+  return {
     id: app.id,
-    title: app.title,
-    ...(app.description ? { description: app.description } : {}),
-    // An app that follows the browser has no one language to announce.
-    ...(app.language === AUTO ? {} : { language: app.language }),
     href: app.path,
+    lang: app.about.lang,
+    name: { ...app.about.name_localized, [app.about.lang]: app.about.name },
+    ...(description.description ? { description: description.description } : {}),
+    ...(details ? { details: Object.fromEntries(details) } : {}),
+    ...(description.applicationCategory ? { categories: description.applicationCategory } : {}),
+    languages: description.inLanguage,
+    installable: app.pwa === true,
+    // The overview's cards are small: the smaller icon, by path, so the
+    // overview also works on another origin, such as a local preview.
+    ...(existsSync(join(outDir, PNG_ICONS[0])) ? { icon: `${app.path}${PNG_ICONS[0]}` } : {}),
   };
-  if (existsSync(join(outDir, 'icon-192.png')))
-    entry.icon = `${app.path}icon-192.png`;
-  return entry;
 }
 
 /** Builds the site for `profile`; returns what it built and any warnings. */
@@ -224,7 +233,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     for (const pattern of app.resources ?? [])
       rewrites.push(`${app.path}${pattern} ${app.path}index.html 200`);
 
-    entries.push(overviewEntry(app, appOut));
+    entries.push(overviewEntry(app, description, appOut));
     // Last, so it lists every file the app publishes.
     writeJson(join(appOut, BUILD_LIST), buildList(appOut, app));
   }
@@ -232,10 +241,10 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
   writeJson(join(out, SITE_CATALOG), siteCatalog(origin, descriptions, catalog));
   writeFileSync(join(out, '_headers'), headersFile(apps));
 
-  writeFileSync(join(out, 'index.html'), renderOverview(entries));
+  writeFileSync(join(out, 'index.html'), renderOverview(entries, catalog));
   // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve
   // the overview for every unknown path.
-  writeFileSync(join(out, '404.html'), renderNotFound(entries));
+  writeFileSync(join(out, '404.html'), renderNotFound(entries, catalog));
   // Netlify and Cloudflare Pages read it at the site root; a placeholder
   // matches one segment, and a published file at the address wins.
   if (rewrites.length > 0)

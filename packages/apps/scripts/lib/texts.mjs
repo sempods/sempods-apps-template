@@ -1,7 +1,6 @@
 // What `check` asks of an app's texts beyond the shape of app.json: texts in
 // every language the app is shown in, and detail texts in Markdown within the
-// rules every reader can rely on. Only check imports this module, so the
-// Markdown parser loads for checks alone.
+// rules every reader can rely on. check and build-site use it.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fromMarkdown } from 'mdast-util-from-markdown';
