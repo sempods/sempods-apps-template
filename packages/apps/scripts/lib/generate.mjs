@@ -107,6 +107,10 @@ export function runtimeSource(app, site) {
   // "auto" stays a literal: the app resolves it from the browser.
   const language =
     app.language === AUTO ? json(AUTO) : `${json(app.language)} as Language`;
+  const localized = Object.fromEntries(['en', 'de'].map(language => [language, {
+    title: app.about?.name_localized?.[language] ?? app.about?.name ?? app.title,
+    description: app.about?.description_localized?.[language] ?? app.about?.description ?? app.description ?? null,
+  }]));
   return `${HEADER}
 import type { BrowserRuntimeOptions${app.language === AUTO ? '' : ', Language'} } from '@sempods/app-sdk';
 
@@ -115,6 +119,7 @@ export const app = {
   title: ${json(app.title)},
   description: ${json(app.description ?? null)},
   language: ${language},
+  localized: ${json(localized)},
   basePath: ${json(app.path)},
   pwa: ${app.pwa},
   routes: ${json(app.routes ?? [])},
@@ -240,14 +245,17 @@ export const base = ${json(p)};
 // the same page answers the app's routes.
 export const pageTitle: Plugin = {
   name: 'sempods-page-title',
-  transformIndexHtml: () => [
-    { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
-    {
-      tag: 'link',
-      attrs: { rel: 'alternate', type: 'application/ld+json', href: ${json(`${p}app.jsonld`)} },
-      injectTo: 'head',
-    },
-  ],
+  transformIndexHtml: (html) => ({
+    html: html.replaceAll('__THEME_LIGHT__', ${json(colours.background)}).replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)}),
+    tags: [
+      { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
+      {
+        tag: 'link',
+        attrs: { rel: 'alternate', type: 'application/ld+json', href: ${json(`${p}app.jsonld`)} },
+        injectTo: 'head',
+      },
+    ],
+  }),
 };
 
 export const server = {

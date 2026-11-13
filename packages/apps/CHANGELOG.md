@@ -8,6 +8,22 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+Shared login appearance (sempods/sempods-apps-template#169):
+
+- New apps use sage, outlined main actions and text secondary actions across
+  the app and SDK surfaces. Other themes and action variants remain available.
+- HTML theme-colour placeholders resolve from the app's light/dark background
+  at build time. The new `src/browser-theme.ts` synchronizes marked meta elements
+  with the actual CSS background at runtime, including system appearance changes.
+  The Preferences example calls the same helper after an explicit choice.
+- Generated `app.localized` supplies names and descriptions in EN/DE from
+  `app.json`, falling back to the source text. The skeleton uses the SDK's shown
+  language for its header and AppAccess identity; the login icon takes the SDK's
+  size instead of the small header size.
+- The combined Pod chooser and centred login require the SDK release containing
+  sempods/sempods-typescript#313. This template change retains its published SDK
+  pin; it does not make unpublished SDK behavior available to installed apps.
+
 App descriptions (sempods/sempods-apps-template#46, step 1):
 
 - Each app describes itself in its own file, `apps/<id>/app.json`, with the
@@ -107,6 +123,22 @@ Instructions:
   send for them, and how to check it, and describes the overview.
 
 ### Upgrade notes
+
+For the shared appearance, existing app source is not replaced by an update.
+Regenerate the configuration, then deliberately apply the skeleton changes:
+
+- Choose sage or keep the owner's palette; set `data-actions="inverted"` and
+  `data-secondary="text"` on `<html>` if the outlined style fits the app.
+- Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
+  and copy the skeleton's two marked theme-colour meta elements with their
+  `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements without
+  the marker remain independent. Appearance settings call `syncBrowserTheme()`.
+- Use `app.localized[useSdkLocale().language]` for the AppAccess name and
+  description, and pass its icon without the header's `size-7` class. Use the
+  same identity for the header. Keep owner translations and layout choices.
+- Run `check:theme` and inspect light/dark browser chrome. The manifest keeps
+  its light background; installed-device behavior still needs device evidence.
+
 
 1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
    and `description` from `apps.json`. For an app whose `language` is

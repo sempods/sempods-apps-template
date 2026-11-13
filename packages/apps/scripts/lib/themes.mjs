@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { ifPresent } from './json.mjs';
 import { SKELETON } from './paths.mjs';
 
-export const DEFAULT_THEME = 'calm';
+export const DEFAULT_THEME = 'sage';
 const THEMES_DIR = join('src', 'themes');
 // The import line in src/index.css; apps from before the UI kit import their
 // theme in src/main.tsx.
@@ -84,7 +84,7 @@ export function themeCss(dir, name) {
 }
 
 // The manifest's colours when an app imports no theme the tooling can read.
-export const PLAIN_COLOURS = { background: '#ffffff' };
+export const PLAIN_COLOURS = { background: '#ffffff', darkBackground: '#111315' };
 
 /**
  * The installed app's colours for the web app manifest: the light background
@@ -95,5 +95,5 @@ export function manifestColours(appDir) {
   const theme = appTheme(appDir);
   const css = theme && ifPresent(() => themeCss(appDir, theme));
   const background = css && tokenColours(css, 'background');
-  return background ? { background: background.light } : PLAIN_COLOURS;
+  return background ? { background: background.light, darkBackground: background.dark } : PLAIN_COLOURS;
 }
