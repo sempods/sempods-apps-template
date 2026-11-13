@@ -50,6 +50,7 @@ describe('apps.json schema 2', () => {
         name_localized: { en: "Danilo's apps" },
         description_localized: { en: 'Small everyday apps.' },
         publisher: 'https://pod.example.org/profile/card#me',
+        theme: 'warm',
       }),
       [],
     );
@@ -58,9 +59,11 @@ describe('apps.json schema 2', () => {
       description: 'x'.repeat(121),
       name_localized: { de: 'Apps', es: 'Apps' },
       publisher: 'http://pod.example.org/me',
-      theme: 'warm',
+      theme: 'neon',
+      colour: 'red',
     }).join('\n');
-    assert.match(problems, /catalog\.theme is not a known field/);
+    assert.match(problems, /catalog\.colour is not a known field/);
+    assert.match(problems, /catalog\.theme must be one of calm, fresh, playful, warm/);
     assert.match(problems, /catalog\.lang must be one of en, de/);
     assert.match(problems, /catalog\.name is required/);
     assert.match(problems, /catalog\.description: .*at most 120 characters/);

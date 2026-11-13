@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJson, writeJson } from './json.mjs';
+import { themeNames } from './themes.mjs';
 
 export const SCHEMA_VERSION = 2;
 // Schema 1 kept each app's title and description in apps.json; migrate moves
@@ -221,6 +222,7 @@ const CATALOG_KEYS = new Set([
   'name_localized',
   'description_localized',
   'publisher',
+  'theme',
 ]);
 
 /** Why `value` is not a map from another UI language to valid text. */
@@ -298,7 +300,8 @@ function invalidHttpsUrl(value) {
 
 /**
  * Lists every problem of the optional catalog: the site's name, description
- * and publisher for the overview and its machine-readable list.
+ * and publisher for the overview and its machine-readable list, and the
+ * overview's theme, one of the skeleton's.
  */
 export function validateCatalog(catalog) {
   if (catalog === undefined) return [];
@@ -318,6 +321,8 @@ export function validateCatalog(catalog) {
     const reason = invalidHttpsUrl(catalog.publisher);
     if (reason) problems.push(`catalog.publisher ${reason}`);
   }
+  if (catalog.theme !== undefined && !themeNames().includes(catalog.theme))
+    problems.push(`catalog.theme must be one of ${themeNames().join(', ')}`);
   return problems;
 }
 

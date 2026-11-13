@@ -19,7 +19,8 @@ App descriptions (sempods/sempods-apps-template#46, step 1):
 - `apps.json` has `schemaVersion: 2`. Its entries keep how an app runs (ID,
   language, path, port, PWA, routes, resources) and no longer hold `title`
   or `description`. An optional `catalog` names the site for its overview:
-  `lang`, `name`, `description`, their translations and a `publisher` WebID.
+  `lang`, `name`, `description`, their translations, a `publisher` WebID and
+  a `theme` for the overview.
 - `new-app` writes `app.json` and takes `--text-language de|en`, the language
   of `--title` and `--description`; `regenerate`, `icon`, `dev`,
   `configure-site` and `build-site` read the name and description from
@@ -78,8 +79,9 @@ The overview (sempods/sempods-apps-template#46, step 4):
   and description above a list in the order of `apps.json`. Each row shows
   the app's icon, name and short description. The name/icon and "Open"
   launch the app in a new tab; the page and accessible link names announce
-  that behavior. The skeleton's `fresh` theme supplies light and dark
-  colours; the apps keep their own icons.
+  that behavior. One of the skeleton's themes supplies light and dark
+  colours, `fresh` unless `catalog.theme` names another; the apps keep their
+  own icons.
 - A separate "Details" link opens `/#<id>`: the text from `details.md`,
   categories, languages, the catalog's publisher and "Open". For PWAs,
   installation help expands on request. Detail links and installation help
@@ -132,7 +134,9 @@ Instructions:
 5. The overview needs no change of its own. Its header shows the catalog's
    name and description and offers the catalog's languages; without a
    `catalog` in `apps.json` it is titled "Apps". If the repository has none,
-   offer the owner to add one as the app workflow describes.
+   offer the owner to add one as the app workflow describes. Its colours
+   come from the `fresh` theme; offer `catalog.theme` with the theme most of
+   the apps use.
 
 ## 0.10.1 (in preparation)
 

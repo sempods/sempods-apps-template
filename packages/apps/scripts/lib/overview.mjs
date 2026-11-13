@@ -160,7 +160,8 @@ const word = (languages, key, tag = 'span', attrs = '') =>
   localized(languages, tag, (language) => ({ text: TEXT[language][key], lang: language }), { attrs });
 
 // The same checked theme roles as the skeleton, with restrained surfaces and
-// the primary colour on actions. App icons keep their own colours.
+// the primary colour on actions. App icons keep their own colours. The
+// catalog's theme picks another of the skeleton's themes.
 export const SITE_THEME = 'fresh';
 
 const STYLE = `
@@ -326,7 +327,7 @@ const SWITCH = `(() => {
       show(html.lang);
     })();`;
 
-function page(languages, { title, heading, intro = '', body, head = '', launches = false }) {
+function page(languages, { title, heading, intro = '', body, head = '', launches = false, theme = SITE_THEME }) {
   const several = languages.length > 1;
   const choose = several ? `\n    <script>${CHOOSE}</script>` : '';
   const buttons = languages
@@ -346,7 +347,7 @@ function page(languages, { title, heading, intro = '', body, head = '', launches
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>${escape(title)}</title>${head}${choose}
-    <style>${themeCss(SKELETON, SITE_THEME)}${STYLE}${languageRules(languages)}
+    <style>${themeCss(SKELETON, theme)}${STYLE}${languageRules(languages)}
     </style>
   </head>
   <body>
@@ -520,7 +521,15 @@ export function renderOverview(entries, catalog) {
     : `      ${word(languages, 'empty', 'p')}`;
   // Machines find the same list in the site catalog.
   const head = '\n    <link rel="alternate" type="application/ld+json" href="/apps.jsonld" />';
-  return page(languages, { title, heading, intro, body, head, launches: entries.length > 0 });
+  return page(languages, {
+    title,
+    heading,
+    intro,
+    body,
+    head,
+    launches: entries.length > 0,
+    theme: catalog?.theme,
+  });
 }
 
 /** The page for unknown paths, so no host falls back to an app or the overview. */
@@ -530,5 +539,6 @@ export function renderNotFound(entries, catalog) {
     title: TEXT[languages[0]].missing,
     heading: word(languages, 'missing'),
     body: `      <p><a class="back" href="/">${BACK_ICON}${word(languages, 'back')}</a></p>`,
+    theme: catalog?.theme,
   });
 }
