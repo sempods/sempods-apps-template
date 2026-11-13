@@ -75,7 +75,8 @@ describe('overview page', () => {
   it('takes one language without a catalog when all apps share it', () => {
     const html = renderOverview([entry('a', 'A'), entry('b', 'B')]);
     assert.match(html, /<html lang="de" data-languages="de">/);
-    assert.doesNotMatch(html, /<script>|class="switch"/);
+    // Neither script nor switch, in any spelling.
+    assert.doesNotMatch(html, /<script\b|class="switch"/i);
     assert.deepEqual(
       siteLanguages(undefined, [entry('a', 'A'), entry('b', 'B', { lang: 'en' })]),
       ['en', 'de'],
@@ -130,7 +131,7 @@ describe('overview page', () => {
 
   it('renders Markdown without raw HTML or unsafe links', () => {
     const html = renderMarkdown('<script>x</script>\n\n[a](javascript:alert(1)) <b>b</b>\n');
-    assert.doesNotMatch(html, /<script>|<b>|javascript:/);
+    assert.doesNotMatch(html, /<script\b|<b\b|javascript:/i);
     assert.match(html, /&lt;script&gt;/);
   });
 
@@ -139,7 +140,7 @@ describe('overview page', () => {
       entry(`app-${i}`, `App ${i}`, i === 0 ? {} : { categories: [i % 2 ? 'games' : 'shopping'] }),
     );
     const html = renderOverview(many);
-    const groups = [...html.matchAll(/<h2>(.*?)<\/h2>/g)].map(([, name]) => name.replace(/<[^>]+>/g, ''));
+    const groups = [...html.matchAll(/<h2><span lang="de">([^<]*)<\/span><\/h2>/g)].map(([, name]) => name);
     assert.deepEqual(groups.slice(0, 3), ['Spiele', 'Einkaufen', 'Weitere Apps']);
     assert.match(html, /<h3><a href="#app-1">/);
     // Fewer apps, or all in one group: one list without headings.

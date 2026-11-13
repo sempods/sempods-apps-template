@@ -225,7 +225,7 @@ const STYLE = `
              color: var(--muted-foreground); }
   .apps h2:first-child { margin-top: 0; }
   ul.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
-            grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); }
+            grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr)); }
   .card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr);
           grid-template-rows: auto auto auto 1fr; gap: 0.15rem 1rem; padding: 1.25rem;
           border-radius: 1rem; background: var(--card); color: var(--card-foreground);
