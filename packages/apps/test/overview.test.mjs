@@ -116,6 +116,9 @@ describe('overview page', () => {
     assert.match(details, /<summary><span data-l="de" lang="de">Auf dem Gerät installieren<\/span>/);
     assert.doesNotMatch(html, /<details class="install" open/);
     assert.match(html, /Apps öffnen in einem neuen Tab\./);
+    // Link names say so too, and name the app on the detail view's action.
+    assert.match(html, /<span class="vh"> <span data-l="de" lang="de">\(öffnet in einem neuen Tab\)<\/span>/);
+    assert.match(details, /<span data-l="de" lang="de">Konsum öffnen<\/span><span data-l="en" lang="en">Open Konsum<\/span>/);
   });
 
   it("takes its one colour from the site theme's palette", () => {

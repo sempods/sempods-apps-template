@@ -20,7 +20,8 @@ const TEXT = {
     back: 'All apps',
     open: 'Open',
     details: 'Details',
-    newTab: 'opens in a new tab',
+    openNamed: 'Open {name}',
+    newTab: '(opens in a new tab)',
     launchHint: 'Apps open in a new tab.',
     categories: 'Categories',
     languages: 'Languages',
@@ -39,7 +40,8 @@ const TEXT = {
     back: 'Alle Apps',
     open: 'Öffnen',
     details: 'Details',
-    newTab: 'öffnet in einem neuen Tab',
+    openNamed: '{name} öffnen',
+    newTab: '(öffnet in einem neuen Tab)',
     launchHint: 'Apps öffnen in einem neuen Tab.',
     categories: 'Kategorien',
     languages: 'Sprachen',
@@ -402,11 +404,11 @@ function openLink(languages, entry, { primary = false } = {}) {
   const name = (language) => textIn(entry.name, language, entry.lang);
   const label = primary
     ? localized(languages, 'span', (language) => ({
-        text: language === 'de' ? `${name(language).text} öffnen` : `Open ${name(language).text}`,
+        text: TEXT[language].openNamed.replace('{name}', name(language).text),
         lang: language,
       }))
     : `${word(languages, 'open')}<span class="vh"> ${localized(languages, 'span', name)}</span>`;
-  return `<a class="open${primary ? ' primary' : ''}" href="${escape(entry.href)}" target="_blank" rel="noopener noreferrer">${label}<span class="vh"> (${word(languages, 'newTab')})</span>${OPEN_ICON}</a>`;
+  return `<a class="open${primary ? ' primary' : ''}" href="${escape(entry.href)}" target="_blank" rel="noopener noreferrer">${label}<span class="vh"> ${word(languages, 'newTab')}</span>${OPEN_ICON}</a>`;
 }
 
 function row(languages, entry) {
@@ -420,7 +422,7 @@ function row(languages, entry) {
               <div class="app-copy">
                 <h2>${localized(languages, 'span', name)}</h2>${summary}
               </div>
-              <span class="vh">(${word(languages, 'newTab')})</span>
+              <span class="vh">${word(languages, 'newTab')}</span>
             </a>
             <div class="actions">
               <a class="details-link" href="#${escape(entry.id)}">${word(languages, 'details')}<span class="vh"> ${localized(languages, 'span', name)}</span></a>

@@ -424,7 +424,7 @@ need reserved paths or host-specific language redirects, which Cloudflare
 Pages lacks. An app's card always shows the app's own texts; an app in German
 only stays German on an English page, marked `lang="de"`.
 
-The overview's own words ("Open", "Can be installed", the install help) come
+The overview's own words ("Open", "Details", the install help) come
 from the tooling in English and German, as today.
 
 ### Install hint
