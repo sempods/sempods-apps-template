@@ -233,11 +233,6 @@ function ownerIcon(repo) {
   console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
 }
 
-/**
- * Opens the built overview in Chromium, as a visitor with a German browser:
- * the list launches apps directly, Details opens the secondary view, and
- * language choice, narrow screens and no-script navigation keep working.
- */
 // Exercise the shipped app, including CSS and JavaScript, without a real Pod.
 async function appThemeCheck(repo) {
   const require = createRequire(
@@ -362,6 +357,11 @@ async function appThemeCheck(repo) {
   }
 }
 
+/**
+ * Opens the built overview in Chromium, as a visitor with a German browser:
+ * the list launches apps directly, Details opens the secondary view, and
+ * language choice, narrow screens and no-script navigation keep working.
+ */
 async function overviewCheck(repo) {
   const require = createRequire(
     realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),

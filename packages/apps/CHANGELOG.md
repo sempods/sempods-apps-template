@@ -12,6 +12,8 @@ Shared login appearance (sempods/sempods-apps-template#169):
 
 - New apps use sage, outlined main actions and text secondary actions across
   the app and SDK surfaces. Other themes and action variants remain available.
+- Production builds keep native `light-dark()` (`build.cssTarget: 'esnext'`),
+  so an explicit appearance choice overrides the system preference.
 - HTML theme-colour placeholders resolve from the app's light/dark background
   at build time. The new `src/browser-theme.ts` synchronizes marked meta elements
   with the actual CSS background at runtime, including system appearance changes.
@@ -129,6 +131,9 @@ Regenerate the configuration, then deliberately apply the skeleton changes:
 
 - Choose sage or keep the owner's palette; set `data-actions="inverted"` and
   `data-secondary="text"` on `<html>` if the outlined style fits the app.
+- Keep `build.cssTarget: 'esnext'` in `vite.config.ts` so production CSS does
+  not turn `light-dark()` into system-only media queries. This uses the modern
+  CSS already required by the SDK/UI kit.
 - Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
   and copy the skeleton's two marked theme-colour meta elements with their
   `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements without

@@ -346,6 +346,8 @@ Keep the screen consistent with the SDK's UI:
   give components colour values of their own. After any change to the theme
   or the variants, run `pnpm run check:theme <id>`; fix the roles it names
   and run it again until it passes.
+- Keep the skeleton's `build.cssTarget: 'esnext'` in `vite.config.ts`: native
+  `light-dark()` lets an app appearance choice override the device preference.
 - The generated HTML and PWA manifest take their initial colours from the
   theme; run `pnpm run regenerate` after changing it. `src/browser-theme.ts`
   keeps the browser's theme colour in step with the resolved `--background`
