@@ -12,7 +12,6 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { buildSite } from '../scripts/build-site.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
-import { renderNotFound, renderOverview } from '../scripts/lib/overview.mjs';
 import { CLIENT_LIMIT, manifestAddresses } from '../scripts/lib/published.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { regenerate } from '../scripts/regenerate.mjs';
@@ -117,7 +116,7 @@ describe('build-site', () => {
     buildSite(root, { build });
     assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
     assert.equal(exists('_redirects'), false);
-    assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
+    assert.match(read('404.html'), /<h1><span data-l="en" lang="en">Page not found<\/span>/);
     // The only headers: the descriptions may be read from any origin.
     assert.equal(
       read('_headers').replace(/^#.*\n/gm, ''),
@@ -387,18 +386,24 @@ describe('build-site', () => {
     assert.equal(read('konsum/tasks/add.html'), read('konsum/index.html'));
   });
 
-  it('lists every app on the overview from apps.json and its icon', () => {
+  it('shows every app on the overview as its description has it', () => {
     configureSite(root, { production: 'https://apps.example.org' });
     rmSync(join(root, 'apps', 'notes', 'public', 'icon-192.png'));
+    writeFileSync(join(root, 'apps', 'konsum', 'details.md'), '## Wofür\n\nFür alle.\n');
     buildSite(root, { build });
     const html = read('index.html');
-    assert.match(html, /<html lang="en">/);
-    assert.match(html, /<a href="\/konsum\/" lang="de">/);
-    assert.match(html, /<img src="\/konsum\/icon-192\.png" alt=""/);
-    assert.match(html, /Einkauf/);
+    // The apps are shown in German and English, English first.
+    assert.match(html, /<html lang="en" data-languages="en de">/);
+    assert.match(html, /<h2><a href="#konsum"><span lang="de">Einkauf<\/span><\/a><\/h2>/);
+    assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt=""/);
+    assert.match(html, /<a class="open" href="\/konsum\/">/);
+    assert.match(html, /<article class="detail" id="konsum">/);
+    assert.match(html, /<div class="text" lang="de"><h2>Wofür<\/h2>/);
+    // Only a PWA can be installed.
+    assert.match(html, /<article class="detail" id="konsum">[\s\S]*<section class="install">[\s\S]*<article class="detail" id="notes">/);
+    assert.doesNotMatch(html.split('<article class="detail" id="notes">')[1], /class="install"/);
     // Without an icon, a letter stands in.
-    assert.match(html, /<a href="\/notes\/" lang="en">/);
-    assert.match(html, /<span class="letter" aria-hidden="true">N<\/span>/);
+    assert.match(html, /<span class="icon letter" aria-hidden="true">N<\/span>/);
   });
 
   it('replaces a did.json the app ships with the site identity', () => {
@@ -473,31 +478,5 @@ describe('build-site', () => {
       () => buildSite(root, { build: () => true }),
       /must end with vite build/,
     );
-  });
-});
-
-describe('overview page', () => {
-  it('escapes text and falls back to a letter without an icon', () => {
-    const html = renderOverview([
-      { id: 'a', title: 'Ä<b>', language: 'de', href: '/a/' },
-    ]);
-    assert.match(html, /<html lang="de">/);
-    assert.match(html, /Ä&#60;b&#62;/);
-    assert.match(html, /<span class="letter" aria-hidden="true">Ä<\/span>/);
-    assert.match(html, /:focus-visible/);
-    assert.match(html, /color-scheme: light dark/);
-  });
-  it('announces no language for an app that follows the browser', () => {
-    const html = renderOverview([
-      { id: 'a', title: 'A', href: '/a/' },
-      { id: 'b', title: 'B', language: 'de', href: '/b/' },
-    ]);
-    assert.match(html, /<html lang="en">/);
-    assert.match(html, /<a href="\/a\/">/);
-    assert.match(html, /<a href="\/b\/" lang="de">/);
-  });
-  it('has an empty state and a not-found page that links home', () => {
-    assert.match(renderOverview([]), /No apps yet\./);
-    assert.match(renderNotFound([]), /<a href="\/">All apps<\/a>/);
   });
 });

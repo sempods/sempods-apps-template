@@ -2,7 +2,9 @@
 
 All apps of the repository are published together as one static site. Each
 app lives under its own path (`https://<host>/<id>/`), and an overview at `/`
-links them. Read this guide before the first deployment, together with the
+shows them like an app store: a card per app and a detail view at `/#<id>`
+with the app's detail text and how to install it, in the catalog's
+languages. Read this guide before the first deployment, together with the
 installed SDK's `deployment.md` and `pwa.md`
 (`node_modules/@sempods/app-sdk/docs/`).
 

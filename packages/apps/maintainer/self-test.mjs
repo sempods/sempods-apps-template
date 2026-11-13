@@ -27,6 +27,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
@@ -230,6 +231,35 @@ function ownerIcon(repo) {
 }
 
 /** Configures a site, builds it for real and checks the profiles. */
+/**
+ * Opens the built overview in Chromium, as a visitor with a German browser:
+ * the page picks German, the card leads to the app's detail view, and the
+ * switch changes the language.
+ */
+async function overviewCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ locale: 'de-DE' });
+    await page.goto(pathToFileURL(join(repo, 'site-dist', 'index.html')).href);
+    const card = page.locator('.card').first();
+    if ((await card.locator('h2').innerText()) !== 'Selbsttest')
+      throw new Error('the overview does not show the German name');
+    await card.locator('h2 a').click();
+    if (!(await page.locator(`#${FIXTURE}`).isVisible()))
+      throw new Error("the card does not open the app's detail view");
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    if ((await page.locator(`#${FIXTURE} h1`).innerText()) !== 'Self test')
+      throw new Error('the switch does not change the language');
+    console.log('✓ overview picks the language and opens the detail view');
+  } finally {
+    await browser.close();
+  }
+}
+
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
   const production = 'https://apps.example.org';
@@ -301,6 +331,16 @@ function publish(repo) {
     throw new Error('client.json names another app');
   if (!readFileSync(join(site, FIXTURE, 'index.html'), 'utf8').includes(`href="/${FIXTURE}/app.jsonld"`))
     throw new Error('the app page does not link its description');
+  // The overview shows the app as its description has it.
+  const overview = readFileSync(join(site, 'index.html'), 'utf8');
+  for (const part of [
+    '<html lang="en" data-languages="en de">',
+    `<a href="#${FIXTURE}">`,
+    `<a class="open" href="/${FIXTURE}/">`,
+    `<article class="detail" id="${FIXTURE}">`,
+    '<section class="install">',
+  ])
+    if (!overview.includes(part)) throw new Error(`the overview has no ${part}`);
   const listed = readJson(join(site, FIXTURE, 'build.json')).files;
   const built = readdirSync(join(site, FIXTURE), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name !== 'build.json')
@@ -548,6 +588,11 @@ try {
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
+  await overviewCheck(repo);
+  // Without an ID, dev lists the apps instead of starting one.
+  if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
+    throw new Error('pnpm run dev without an ID does not list the app');
+  console.log('✓ dev without an ID lists the apps');
   migrateExercise(repo, work, tooling);
 } catch (error) {
   console.error(`self-test: ${error.message}`);
