@@ -391,16 +391,20 @@ reserves in an app's output, as it does for `did.json`.
 
 ### Look
 
-A store front, not a list of links:
+The owner accepted a compact app launcher on 2026-11-13 after trying an
+interactive design. This supersedes the store-like grid and automatic
+category grouping originally proposed here and in #46; the public store's
+own layout remains a separate decision.
 
-- A header with the catalog's name and description and a language switch.
-- Cards in a grid: the icon as a rounded square with a soft shadow, the name,
-  the short description, the first category as a small chip, an "Open"
-  action, and "Can be installed" for PWAs.
-- Grouping by category once there are enough apps (proposal: from eight),
-  otherwise the order of `apps.json`.
-- A detail view at `/#<id>`: large icon, name, the rendered detail text,
-  categories, languages, publisher, "Open", and the install hint. It uses
+- A compact header with the catalog's name and description and a language
+  switch, without a large coloured band.
+- One list with icon, name, short description, "Details" and "Open" per app.
+  The name/icon and "Open" launch the app in a new tab. Visible help and
+  accessible link names announce the new tab.
+- Preserve the order of `apps.json` at every app count. Category and
+  installation metadata belong in the detail view.
+- A secondary detail view at `/#<id>`: icon, name, the rendered detail text,
+  categories, languages, publisher, "Open", and expandable install help. It uses
   CSS `:target`, so it works without script and every app has a shareable
   link without a reserved path.
 - Colours from the theme tokens of `@sempods/app-ui` (one of the skeleton's
@@ -425,12 +429,17 @@ from the tooling in English and German, as today.
 
 ### Install hint
 
-Unchanged from the first version of this paper: the overview cannot install
+The overview cannot install
 another page's app, since the browser offers installation only inside the
-app's scope. A card says "Can be installed", and the detail view explains the
+app's scope. Expandable help in a PWA's detail view explains the
 three browser cases (Chromium's install icon, "Add to Home Screen" on iOS,
 little in desktop Firefox) with the SDK's caveat that installed apps are
 experimental.
+
+The accepted design changes the template renderer only: it keeps the
+published descriptions, Markdown rules, language handling and native
+fragment navigation from #46. It adds no SDK behavior or dependency, so no
+SDK issue or local adoption workaround is needed.
 
 ### Local overview
 
@@ -761,3 +770,8 @@ Taken by the owner on 2026-11-13:
     confirmation wait for the Pod store, and no stopgap is built for them.
     `app.jsonld` and `/apps.jsonld` are therefore served with
     `Access-Control-Allow-Origin: *`.
+11. **Personal overview**: adopt the compact app launcher described under
+    [Look](#look). Direct launch is primary, "Details" is secondary,
+    installation help is expandable, and the owner's app order stays
+    stable. This refines #46 and PR #167; it does not prescribe the public
+    store's interface.

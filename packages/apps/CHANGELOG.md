@@ -74,15 +74,18 @@ Published descriptions (sempods/sempods-apps-template#46, step 3):
 
 The overview (sempods/sempods-apps-template#46, step 4):
 
-- The site's overview at `/` looks like an app store: a band with the
-  catalog's name and description, a card per app with its icon, name,
-  description, first category, "Can be installed" for a PWA and "Open", and
-  from eight apps a group per first category. It has one colour, the
-  skeleton's `fresh` theme, in light and dark mode; the apps' icons bring
-  their own.
-- Each card leads to the app's detail view at `/#<id>`: its detail text
-  from `details.md`, categories, languages, the catalog's publisher, "Open"
-  and, for a PWA, how to install it. The view works without script.
+- The site's overview at `/` is a compact app launcher: the catalog's name
+  and description above a list in the order of `apps.json`. Each row shows
+  the app's icon, name and short description. The name/icon and "Open"
+  launch the app in a new tab; the page and accessible link names announce
+  that behavior. The skeleton's `fresh` theme supplies light and dark
+  colours; the apps keep their own icons.
+- A separate "Details" link opens `/#<id>`: the text from `details.md`,
+  categories, languages, the catalog's publisher and "Open". For PWAs,
+  installation help expands on request. Detail links and installation help
+  work without script. App count never changes the list's order or layout
+  into category groups. This follows the owner's accepted design of
+  2026-11-13.
 - The page holds every text in each of the catalog's languages, or without
   a catalog in each language the apps are shown in. Without script it shows
   the first; a few lines of script pick the visitor's language and offer a

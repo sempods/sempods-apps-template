@@ -394,13 +394,14 @@ describe('build-site', () => {
     const html = read('index.html');
     // The apps are shown in German and English, English first.
     assert.match(html, /<html lang="en" data-languages="en de">/);
-    assert.match(html, /<h2><a href="#konsum"><span lang="de">Einkauf<\/span><\/a><\/h2>/);
+    assert.match(html, /<a class="launch" href="\/konsum\/" target="_blank" rel="noopener noreferrer">/);
+    assert.match(html, /<h2><span lang="de">Einkauf<\/span><\/h2>/);
     assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt=""/);
-    assert.match(html, /<a class="open" href="\/konsum\/">/);
+    assert.match(html, /<a class="open" href="\/konsum\/" target="_blank" rel="noopener noreferrer">/);
     assert.match(html, /<article class="detail" id="konsum">/);
     assert.match(html, /<div class="text" lang="de"><h2>Wofür<\/h2>/);
     // Only a PWA can be installed.
-    assert.match(html, /<article class="detail" id="konsum">[\s\S]*<section class="install">[\s\S]*<article class="detail" id="notes">/);
+    assert.match(html, /<article class="detail" id="konsum">[\s\S]*<details class="install">[\s\S]*<article class="detail" id="notes">/);
     assert.doesNotMatch(html.split('<article class="detail" id="notes">')[1], /class="install"/);
     // Without an icon, a letter stands in.
     assert.match(html, /<span class="icon letter" aria-hidden="true">N<\/span>/);

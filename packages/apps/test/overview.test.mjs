@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  GROUP_FROM,
   renderMarkdown,
   renderNotFound,
   renderOverview,
@@ -87,7 +86,7 @@ describe('overview page', () => {
     );
   });
 
-  it('links each card to its detail view and its app', () => {
+  it('opens apps directly and keeps metadata in the secondary detail view', () => {
     const html = renderOverview(
       [
         entry('konsum', 'Konsum', {
@@ -100,33 +99,32 @@ describe('overview page', () => {
       ],
       catalog,
     );
-    assert.match(html, /<h2><a href="#konsum">/);
-    assert.match(html, /<a class="open" href="\/konsum\/">/);
-    assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt="" width="56" height="56" \/>/);
-    const [cards, details] = html.split('<article class="detail" id="konsum">');
+    assert.match(html, /<a class="launch" href="\/konsum\/" target="_blank" rel="noopener noreferrer">/);
+    assert.match(html, /<a class="details-link" href="#konsum">/);
+    assert.match(html, /<a class="open" href="\/konsum\/" target="_blank" rel="noopener noreferrer">/);
+    assert.match(html, /<a class="open primary" href="\/konsum\/" target="_blank" rel="noopener noreferrer">/);
+    assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt="" width="52" height="52" \/>/);
+    const [list, details] = html.split('<article class="detail" id="konsum">');
     assert.ok(details);
-    // The first category on the card, all of them in the detail view.
-    assert.match(cards, />Einkaufen</);
-    assert.doesNotMatch(cards, />Lifestyle</);
+    // The list is for launching; metadata stays in the detail view.
+    assert.doesNotMatch(list, />Einkaufen<|>Lifestyle<|Installierbar/);
     assert.match(details, />Einkaufen<[\s\S]*>Lifestyle</);
     assert.match(html, /<h2>Wofür<\/h2>\n<p>Für <a href="https:\/\/example\.org">alle<\/a>\.<\/p>/);
     assert.match(html, /<a href="https:\/\/pod\.example\.org\/profile\/card#me">/);
     // The install hint only for an app that can be installed.
-    assert.equal(html.match(/<section class="install">/g).length, 1);
-    assert.match(cards, /<p class="note" data-l="de" lang="de">Installierbar<\/p>/);
-    assert.equal(cards.split('<li class="card">')[2].includes('class="note"'), false);
+    assert.equal(html.match(/<details class="install">/g).length, 1);
+    assert.match(details, /<summary><span data-l="de" lang="de">Auf dem Gerät installieren<\/span>/);
+    assert.doesNotMatch(html, /<details class="install" open/);
+    assert.match(html, /Apps öffnen in einem neuen Tab\./);
   });
 
   it("takes its one colour from the site theme's palette", () => {
     const html = renderOverview([entry('a', 'A')]);
     assert.equal(SITE_THEME, 'fresh');
-    // The fresh theme's roles, and the band's pairs taken from them.
+    // The fresh theme's checked roles, with no separate band palette.
     assert.match(html, /--primary: light-dark\(#0a6680, #5ec6e4\);/);
-    assert.match(html, /--band: light-dark\(#0a6680, #1a2d38\);/);
-    assert.match(html, /--on-band: light-dark\(#ffffff, #e1edf3\);/);
-    assert.match(html, /<header class="band">/);
-    // The apps' cards carry no colours of their own.
-    assert.match(html, /<li class="card">/);
+    assert.match(html, /<header class="bar">/);
+    assert.match(html, /<li class="app-row">/);
   });
 
   it('renders Markdown without raw HTML or unsafe links', () => {
@@ -135,17 +133,22 @@ describe('overview page', () => {
     assert.match(html, /&lt;script&gt;/);
   });
 
-  it(`groups by first category from ${GROUP_FROM} apps`, () => {
-    const many = Array.from({ length: GROUP_FROM }, (_, i) =>
+  it('keeps the owner order as the list grows, regardless of categories', () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
       entry(`app-${i}`, `App ${i}`, i === 0 ? {} : { categories: [i % 2 ? 'games' : 'shopping'] }),
     );
     const html = renderOverview(many);
-    const groups = [...html.matchAll(/<h2><span lang="de">([^<]*)<\/span><\/h2>/g)].map(([, name]) => name);
-    assert.deepEqual(groups.slice(0, 3), ['Spiele', 'Einkaufen', 'Weitere Apps']);
-    assert.match(html, /<h3><a href="#app-1">/);
-    // Fewer apps, or all in one group: one list without headings.
-    assert.doesNotMatch(renderOverview(many.slice(1, GROUP_FROM)), /<h2>[^<]*<span/);
-    assert.match(renderOverview(many.slice(1, GROUP_FROM)), /<h2><a href="#app-1">/);
+    const ids = [...html.matchAll(/<a class="details-link" href="#([^"]+)">/g)].map(([, id]) => id);
+    assert.deepEqual(ids, many.map(({ id }) => id));
+    assert.equal(html.match(/<ul class="app-list">/g).length, 1);
+  });
+
+  it('keeps an app with no summary or Markdown usable without an empty text column', () => {
+    const html = renderOverview([entry('plain', 'Plain')]);
+    assert.match(html, /<a class="launch" href="\/plain\/"/);
+    assert.match(html, /<div class="about no-text">/);
+    assert.match(html, /<dl class="facts">/);
+    assert.doesNotMatch(html, /<div class="text"|<details class="install">/);
   });
 
   it('has an empty state and a not-found page that links home', () => {

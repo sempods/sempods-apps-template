@@ -230,11 +230,10 @@ function ownerIcon(repo) {
   console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
 }
 
-/** Configures a site, builds it for real and checks the profiles. */
 /**
  * Opens the built overview in Chromium, as a visitor with a German browser:
- * the page picks German, the card leads to the app's detail view, and the
- * switch changes the language.
+ * the list launches apps directly, Details opens the secondary view, and
+ * language choice, narrow screens and no-script navigation keep working.
  */
 async function overviewCheck(repo) {
   const require = createRequire(
@@ -243,23 +242,63 @@ async function overviewCheck(repo) {
   const { chromium } = require('playwright');
   const browser = await chromium.launch();
   try {
+    const url = pathToFileURL(join(repo, 'site-dist', 'index.html')).href;
     const page = await browser.newPage({ locale: 'de-DE' });
-    await page.goto(pathToFileURL(join(repo, 'site-dist', 'index.html')).href);
-    const card = page.locator('.card').first();
-    if ((await card.locator('h2').innerText()) !== 'Selbsttest')
+    await page.goto(url);
+    const row = page.locator('.app-row').first();
+    if ((await row.locator('h2').innerText()) !== 'Selbsttest')
       throw new Error('the overview does not show the German name');
-    await card.locator('h2 a').click();
-    if (!(await page.locator(`#${FIXTURE}`).isVisible()))
-      throw new Error("the card does not open the app's detail view");
+    for (const selector of ['.launch', '.open']) {
+      const link = row.locator(selector);
+      if ((await link.getAttribute('href')) !== `/${FIXTURE}/` ||
+          (await link.getAttribute('target')) !== '_blank')
+        throw new Error('the overview does not launch the app in a new tab');
+    }
+    await row.locator('.details-link').click();
+    const detail = page.locator(`#${FIXTURE}`);
+    if (!(await detail.isVisible()) || await page.locator('.apps').isVisible())
+      throw new Error('Details does not replace the list with the detail view');
     await page.getByRole('button', { name: 'English', exact: true }).click();
-    if ((await page.locator(`#${FIXTURE} h1`).innerText()) !== 'Self test')
+    if ((await detail.locator('h1').innerText()) !== 'Self test')
       throw new Error('the switch does not change the language');
-    console.log('✓ overview picks the language and opens the detail view');
+    const install = detail.locator('.install');
+    if (await install.evaluate((el) => el.open))
+      throw new Error('installation help should start collapsed');
+    await install.locator('summary').click();
+    if (!(await install.evaluate((el) => el.open)))
+      throw new Error('installation help does not expand');
+    for (const width of [375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the detail view overflows at ${width}px`);
+      await detail.locator('.back').click();
+      if (!(await page.locator('.apps').isVisible()) ||
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the app list does not fit at ${width}px`);
+      await row.locator('.details-link').click();
+    }
+    await page.reload();
+    if ((await page.locator('html').getAttribute('lang')) !== 'en')
+      throw new Error('the language choice was not remembered');
+    await page.close();
+    const plain = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 320, height: 800 } });
+    await plain.goto(`${url}#${FIXTURE}`);
+    if (!(await plain.locator(`#${FIXTURE}`).isVisible()))
+      throw new Error('a direct detail link fails without script');
+    await plain.locator(`#${FIXTURE} .install summary`).click();
+    if (!(await plain.locator(`#${FIXTURE} .install`).evaluate((el) => el.open)))
+      throw new Error('installation help fails without script');
+    await plain.locator(`#${FIXTURE} .back`).click();
+    if (!(await plain.locator('.apps').isVisible()))
+      throw new Error('returning to the list fails without script');
+    await plain.close();
+    console.log('✓ overview launches apps, opens details and works on mobile without script');
   } finally {
     await browser.close();
   }
 }
 
+/** Configures a site, builds it for real and checks the profiles. */
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
   const production = 'https://apps.example.org';
@@ -335,10 +374,10 @@ function publish(repo) {
   const overview = readFileSync(join(site, 'index.html'), 'utf8');
   for (const part of [
     '<html lang="en" data-languages="en de">',
-    `<a href="#${FIXTURE}">`,
-    `<a class="open" href="/${FIXTURE}/">`,
+    `<a class="details-link" href="#${FIXTURE}">`,
+    `<a class="open" href="/${FIXTURE}/" target="_blank" rel="noopener noreferrer">`,
     `<article class="detail" id="${FIXTURE}">`,
-    '<section class="install">',
+    '<details class="install">',
   ])
     if (!overview.includes(part)) throw new Error(`the overview has no ${part}`);
   const listed = readJson(join(site, FIXTURE, 'build.json')).files;

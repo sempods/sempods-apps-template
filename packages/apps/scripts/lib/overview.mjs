@@ -1,5 +1,5 @@
-// The site's static overview and not-found pages, in the look of an app store:
-// a card per app and a detail view at /#<id>. They run no SDK runtime and no
+// The site's static app launcher and not-found page: a compact list with
+// direct app links and a secondary detail view at /#<id>. No SDK runtime or
 // sign-in. The page holds every text in every site language; without script
 // it shows the first, and a few lines of inline script pick the visitor's
 // language and offer a switch. The entries carry what an app's description
@@ -9,7 +9,7 @@ import { micromark } from 'micromark';
 import { LANGUAGES } from './apps.mjs';
 import { escapeHtml as escape } from './html.mjs';
 import { SKELETON } from './paths.mjs';
-import { themeCss, tokenColours } from './themes.mjs';
+import { themeCss } from './themes.mjs';
 
 // The overview's own words.
 const TEXT = {
@@ -19,17 +19,18 @@ const TEXT = {
     missing: 'Page not found',
     back: 'All apps',
     open: 'Open',
-    installable: 'Can be installed',
+    details: 'Details',
+    newTab: 'opens in a new tab',
+    launchHint: 'Apps open in a new tab.',
     categories: 'Categories',
     languages: 'Languages',
     publisher: 'Published by',
-    other: 'Other apps',
     language: 'Language',
-    install: 'Install',
+    install: 'Install on your device',
     installSteps:
       'Open the app first: a browser offers to install an app only on its own page. In Chrome and Edge, use the install icon in the address bar or the menu; in Safari on iPhone and iPad, Share and then “Add to Home Screen”. Firefox on the desktop installs no apps.',
     installCaveat:
-      'Installed apps are still experimental. The app in the browser always works.',
+      'Installed apps are still experimental. You can also use the app in your browser.',
   },
   de: {
     title: 'Apps',
@@ -37,17 +38,18 @@ const TEXT = {
     missing: 'Seite nicht gefunden',
     back: 'Alle Apps',
     open: 'Öffnen',
-    installable: 'Installierbar',
+    details: 'Details',
+    newTab: 'öffnet in einem neuen Tab',
+    launchHint: 'Apps öffnen in einem neuen Tab.',
     categories: 'Kategorien',
     languages: 'Sprachen',
     publisher: 'Herausgegeben von',
-    other: 'Weitere Apps',
     language: 'Sprache',
-    install: 'Installieren',
+    install: 'Auf dem Gerät installieren',
     installSteps:
       'Öffne zuerst die App: Ein Browser bietet die Installation nur auf der Seite der App selbst an. In Chrome und Edge über das Installationssymbol in der Adressleiste oder das Menü, in Safari auf iPhone und iPad über Teilen und dann „Zum Home-Bildschirm“. Firefox auf dem Desktop installiert keine Apps.',
     installCaveat:
-      'Installierte Apps sind noch experimentell. Im Browser funktioniert die App immer.',
+      'Installierte Apps sind noch experimentell. Du kannst die App auch im Browser nutzen.',
   },
 };
 
@@ -87,9 +89,6 @@ const CATEGORY_NAMES = {
 };
 const categoryName = (category, language) =>
   CATEGORY_NAMES[category]?.[language === 'de' ? 1 : 0] ?? category;
-
-// From this many apps, the overview groups them by their first category.
-export const GROUP_FROM = 8;
 
 // Where the page remembers a visitor's choice of language. Apps share the
 // origin's storage, so the key names the overview.
@@ -158,150 +157,122 @@ function localized(languages, tag, pick, { attrs = '', html = false } = {}) {
 const word = (languages, key, tag = 'span', attrs = '') =>
   localized(languages, tag, (language) => ({ text: TEXT[language][key], lang: language }), { attrs });
 
-// The page's look: one colour, the primary of a skeleton theme, on the band
-// at the top and on the actions; everything else in that theme's neutrals.
-// The apps' icons bring their own colours. Text pairs keep the theme's
-// checked contrast in both modes.
+// The same checked theme roles as the skeleton, with restrained surfaces and
+// the primary colour on actions. App icons keep their own colours.
 export const SITE_THEME = 'fresh';
 
-/**
- * The site theme's palette and the band's colours taken from it: its primary
- * in light mode and its quiet secondary surface in dark mode, with the text
- * pairs the theme checks for those roles.
- */
-function palette() {
-  const css = themeCss(SKELETON, SITE_THEME);
-  const token = (name) => tokenColours(css, name);
-  const [primary, onPrimary, secondary, foreground] = [
-    'primary',
-    'primary-foreground',
-    'secondary',
-    'foreground',
-  ].map(token);
-  return `${css}
-:root {
-  --band: light-dark(${primary.light}, ${secondary.dark});
-  --on-band: light-dark(${onPrimary.light}, ${foreground.dark});
-  --band-action: light-dark(${onPrimary.light}, ${primary.dark});
-  --on-band-action: light-dark(${primary.light}, ${onPrimary.dark});
-}`;
-}
-
 const STYLE = `
-  :root { color-scheme: light dark; font: 1rem/1.55 system-ui, sans-serif; }
+  :root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
   body { margin: 0; background: var(--muted); color: var(--foreground); }
   a { color: inherit; }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
-  .bar, .intro, main { box-sizing: border-box; max-width: 68rem; margin: 0 auto;
-                       padding-inline: 1.5rem; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--ring); outline-offset: 3px;
+  }
+  .shell { max-width: 58.75rem; margin: 0 auto; padding-inline: 2.625rem; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+         gap: 1rem; min-height: 5.125rem; padding-block: 0.75rem;
+         border-bottom: 1px solid var(--border); }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
+           font-size: 0.95rem; font-weight: 650; min-height: 2.75rem; }
+  .brand svg { color: var(--primary); }
+  .intro { padding-block: 2rem 1.75rem; }
+  .intro h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.125rem); line-height: 1.2;
+              font-weight: 650; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+  .intro p { margin: 0.5rem 0 0; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  main { padding-bottom: 0.5rem; }
+  footer { display: flex; align-items: center; gap: 0.5rem; padding-block: 1.25rem 2rem;
+           color: var(--muted-foreground); font-size: 0.8rem; }
+  footer svg { flex: none; }
 
-  .band { color: var(--on-band);
-          background: radial-gradient(48rem 22rem at 88% -20%,
-                        color-mix(in oklab, var(--on-band) 13%, transparent), transparent 70%),
-                      var(--band); }
-  .band a:focus-visible, .band button:focus-visible { outline-color: var(--on-band); }
-  .bar { display: flex; justify-content: flex-end; padding-top: 1.25rem; min-height: 2.25rem; }
-  .intro { padding-block: 2.5rem 4.5rem; }
-  .intro h1 { font-size: clamp(2.25rem, 5.5vw, 3.75rem); line-height: 1.08; font-weight: 650;
-              letter-spacing: -0.025em; margin: 0; max-width: 20ch; text-wrap: balance; }
-  .intro p { margin: 1rem 0 0; max-width: 34rem; font-size: clamp(1.05rem, 1.8vw, 1.25rem);
-             color: color-mix(in oklab, var(--on-band) 82%, var(--band)); text-wrap: pretty; }
-  main { padding-block: 2.5rem 5rem; }
-
-  .switch { display: flex; gap: 0.15rem; padding: 0.2rem; border-radius: 999px;
-            background: color-mix(in oklab, var(--on-band) 12%, transparent); }
+  .switch { display: flex; flex-wrap: wrap; gap: 0.2rem; }
   .switch[hidden] { display: none; }
-  .switch button { font: inherit; font-size: 0.875rem; padding: 0.25rem 0.85rem; border: 0;
-                   border-radius: 999px; background: transparent; color: inherit; cursor: pointer; }
-  .switch button[aria-pressed='true'] { background: var(--band-action); color: var(--on-band-action); }
+  .switch button { font: inherit; font-size: 0.85rem; padding: 0.5rem 0.65rem;
+                   min-height: 2.75rem; border: 0; border-radius: 0.5rem;
+                   background: transparent; color: var(--muted-foreground); cursor: pointer; }
+  .switch button[aria-pressed='true'] { background: var(--secondary); color: var(--secondary-foreground);
+                                       font-weight: 600; }
 
-  .icon { display: block; flex: none; box-sizing: border-box; width: 3.5rem; height: 3.5rem;
-          border-radius: 23%; object-fit: cover;
-          box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 8%, transparent); }
+  .icon { display: block; flex: none; width: 3.25rem; height: 3.25rem;
+          border-radius: 25%; object-fit: cover; }
   .letter { display: grid; place-items: center; font-weight: 650; font-size: 1.6rem;
             background: var(--primary); color: var(--primary-foreground); }
+  .app-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border);
+              border-radius: 1rem; background: var(--card); color: var(--card-foreground); }
+  .app-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+             gap: 1.25rem; padding: 1.5rem; }
+  .app-row + .app-row { border-top: 1px solid var(--border); }
+  .launch { display: flex; align-items: center; gap: 1.125rem; min-width: 0;
+            border-radius: 0.5rem; text-decoration: none; }
+  .app-copy { min-width: 0; overflow-wrap: anywhere; }
+  .app-copy h2 { margin: 0; font-size: 1.125rem; font-weight: 650; letter-spacing: -0.02em; }
+  .launch:hover h2 { color: var(--primary); text-decoration: underline; text-underline-offset: 0.2em; }
+  .summary { margin: 0.2rem 0 0; color: var(--muted-foreground); font-size: 0.9rem; }
+  .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.85rem; }
+  .details-link { font-size: 0.85rem; color: var(--muted-foreground); padding: 0.75rem 0.15rem;
+                  text-underline-offset: 0.2em; }
+  .open { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+          max-width: 100%; min-width: 0; overflow-wrap: anywhere;
+          padding: 0.6rem 0.95rem; min-height: 2.75rem; border: 1px solid var(--input);
+          border-radius: 0.6rem; font-weight: 600; font-size: 0.9rem; text-decoration: none;
+          background: var(--card); color: var(--primary); }
+  .open svg { flex: none; }
+  .open:hover { background: var(--accent); }
+  .primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .primary:hover { background: var(--primary); text-decoration: underline; text-underline-offset: 0.2em; }
 
-  .apps h2 { font-size: 1.05rem; font-weight: 600; margin: 2.5rem 0 1rem;
-             color: var(--muted-foreground); }
-  .apps h2:first-child { margin-top: 0; }
-  ul.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
-            grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr)); }
-  .card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr);
-          grid-template-rows: auto auto auto 1fr; gap: 0.15rem 1rem; padding: 1.25rem;
-          border-radius: 1rem; background: var(--card); color: var(--card-foreground);
-          border: 1px solid var(--border);
-          box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent);
-          transition: border-color 0.15s, box-shadow 0.15s; }
-  .card:hover { border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
-                box-shadow: 0 10px 28px -16px color-mix(in oklab, var(--foreground) 35%, transparent); }
-  .card .icon { grid-row: 1 / 4; }
-  .card h2, .card h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.3; margin: 0;
-                       color: var(--card-foreground); }
-  .card h2 a, .card h3 a { text-decoration: none; }
-  .card h2 a::after, .card h3 a::after { content: ''; position: absolute; inset: 0;
-                                         border-radius: inherit; }
-  .card h2 a:focus-visible, .card h3 a:focus-visible { outline: none; }
-  .card:has(h2 a:focus-visible, h3 a:focus-visible) { outline: 2px solid var(--ring);
-                                                       outline-offset: 3px; }
-  .summary { margin: 0; color: var(--muted-foreground); font-size: 0.95rem; }
-  .note { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--muted-foreground); }
-  .card .meta { grid-column: 1 / -1; grid-row: 4; align-self: end; display: flex; flex-wrap: wrap;
-                align-items: center; gap: 0.5rem; padding-top: 1.1rem; }
-  .chip { display: inline-block; padding: 0.1rem 0.65rem; border-radius: 999px; font-size: 0.8rem;
-          background: var(--secondary); color: var(--secondary-foreground); }
-  .open { display: inline-block; padding: 0.4rem 1.1rem; border-radius: 999px;
-          font-weight: 600; font-size: 0.95rem; text-decoration: none;
-          background: var(--primary); color: var(--primary-foreground); }
-  .card .open { position: relative; margin-left: auto; padding: 0.3rem 0.95rem;
-                background: transparent; color: var(--primary);
-                box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent); }
-  .card .open:hover { background: var(--primary); color: var(--primary-foreground); }
-
-  .detail { display: none; }
+  .detail { display: none; padding-top: 1.5rem; }
   .detail:target { display: block; }
   body:has(.detail:target) .intro, body:has(.detail:target) .apps { display: none; }
-  body:has(.detail:target) main { padding-top: 0; }
-  body:has(.detail:target) .band { background: var(--band); }
-  .hero { color: var(--on-band); background: var(--band);
-          box-shadow: 0 0 0 100vmax var(--band); clip-path: inset(0 -100vmax);
-          padding-block: 0.75rem 3rem; }
-  .back { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.95rem;
-          text-decoration: none; padding: 0.3rem 0.85rem 0.3rem 0.55rem; border-radius: 999px;
-          background: color-mix(in oklab, var(--on-band) 12%, transparent); }
-  .hero-main { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
-               gap: 0.35rem 1.75rem; margin-top: 2rem; }
-  .hero .icon { width: 6.5rem; height: 6.5rem; grid-row: span 3;
-                box-shadow: 0 12px 30px -14px rgb(0 0 0 / 0.5); }
-  .hero .letter { font-size: 3rem; background: var(--band-action); color: var(--on-band-action); }
-  .hero h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; font-weight: 650;
-             letter-spacing: -0.02em; margin: 0; }
-  .hero p { margin: 0; font-size: 1.1rem; color: color-mix(in oklab, var(--on-band) 82%, var(--band)); }
-  .hero .open { justify-self: start; margin-top: 0.85rem;
-                background: var(--band-action); color: var(--on-band-action); }
-  .about { display: grid; grid-template-columns: minmax(0, 40rem) minmax(14rem, 18rem);
-           justify-content: space-between; gap: 2.5rem 3rem; margin-top: 2.5rem; }
-  .text { font-size: 1.05rem; }
+  .back { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem;
+          font-size: 0.9rem; color: var(--muted-foreground); text-decoration: none; }
+  .back:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+  .hero-main { display: flex; align-items: center; justify-content: space-between;
+               gap: 1.25rem; padding-block: 1.4rem 1.8rem; border-bottom: 1px solid var(--border); }
+  .hero-heading { display: flex; align-items: center; gap: 1.2rem; min-width: 0; }
+  .hero-copy { min-width: 0; overflow-wrap: anywhere; }
+  .hero .icon { width: 4rem; height: 4rem; }
+  .hero h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; letter-spacing: -0.03em; font-weight: 650; }
+  .hero p { margin: 0.4rem 0 0; color: var(--muted-foreground); font-size: 0.9rem; }
+  .hero .open { flex: none; max-width: min(100%, 18rem); }
+  .about { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 13rem);
+           gap: 2.5rem; margin-top: 1.65rem; }
+  .about.no-text { grid-template-columns: 1fr; }
+  .text { font-size: 0.95rem; overflow-wrap: anywhere; min-width: 0; }
   .text > :first-child { margin-top: 0; }
-  .text h2, .text h3 { font-weight: 650; line-height: 1.3; margin: 1.75rem 0 0.5rem; }
+  .text h2, .text h3 { font-weight: 600; line-height: 1.3; margin: 1.5rem 0 0.65rem; }
+  .text h2 { font-size: 1.125rem; }
+  .text h3 { font-size: 1rem; }
   .text a { color: var(--primary); }
   .text img { max-width: 100%; height: auto; border-radius: 0.75rem; }
-  .facts { margin: 0; }
+  .text pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .facts { margin: 0; display: grid; align-content: start; gap: 1.1rem; }
   .facts dt { font-size: 0.8rem; color: var(--muted-foreground); }
-  .facts dd { margin: 0.2rem 0 1.1rem; overflow-wrap: anywhere; }
+  .facts dd { margin: 0.2rem 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
   .facts .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-  .install { padding: 1rem 1.15rem; border-radius: 1rem; font-size: 0.925rem;
-             background: var(--card); border: 1px solid var(--border); }
-  .install h2 { font-size: 1rem; font-weight: 600; margin: 0; }
-  .install p { margin: 0.5rem 0 0; }
+  .chip { display: inline-block; padding: 0.1rem 0.65rem; border-radius: 999px;
+          background: var(--secondary); color: var(--secondary-foreground); }
+  .no-text .facts { grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr)); }
+  .install { margin-top: 1.75rem; padding-block: 1rem; font-size: 0.9rem;
+             border-block: 1px solid var(--border); }
+  .install summary { font-weight: 500; padding-block: 0.5rem; cursor: pointer; }
+  .install p { margin: 0.6rem 0 0; max-width: 40rem; color: var(--muted-foreground); }
 
-  @media (max-width: 44rem) {
-    .intro { padding-block: 1.5rem 3rem; }
-    .about { grid-template-columns: 1fr; }
+  @media (max-width: 40rem) {
+    .shell { padding-inline: 1.375rem; }
+    .bar { min-height: 4.5rem; }
+    .intro { padding-top: 1.75rem; }
+    .app-row { grid-template-columns: 1fr; gap: 0.8rem; padding: 1.25rem; }
+    .launch { align-items: flex-start; }
+    .actions { margin-left: 4.375rem; justify-content: space-between; }
+    .hero-main { flex-wrap: wrap; }
+    .hero-main > .open { margin-left: 5.2rem; max-width: calc(100% - 5.2rem); }
+    .about { grid-template-columns: 1fr; gap: 1.5rem; }
+    .facts { grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr)); }
   }
-  @media (max-width: 30rem) {
-    .bar, .intro, main { padding-inline: 1rem; }
-    .hero-main { gap: 0.35rem 1rem; }
-    .hero .icon { width: 4.5rem; height: 4.5rem; }
+  @media (max-width: 22.5rem) {
+    .shell { padding-inline: 1rem; }
+    .app-row { padding: 1rem; }
   }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden;
         clip-path: inset(50%); white-space: nowrap; }
@@ -353,7 +324,7 @@ const SWITCH = `(() => {
       show(html.lang);
     })();`;
 
-function page(languages, { title, heading, intro = '', body, head = '' }) {
+function page(languages, { title, heading, intro = '', body, head = '', launches = false }) {
   const several = languages.length > 1;
   const choose = several ? `\n    <script>${CHOOSE}</script>` : '';
   const buttons = languages
@@ -373,19 +344,22 @@ function page(languages, { title, heading, intro = '', body, head = '' }) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>${escape(title)}</title>${head}${choose}
-    <style>${palette()}${STYLE}${languageRules(languages)}
+    <style>${themeCss(SKELETON, SITE_THEME)}${STYLE}${languageRules(languages)}
     </style>
   </head>
   <body>
-    <header class="band">
-      <div class="bar">${nav}</div>
-      <div class="intro">
-        <h1>${heading}</h1>${intro}
-      </div>
-    </header>
-    <main>
+    <div class="shell">
+      <header class="bar">
+        <a class="brand" href="/">${BRAND_ICON}sempods</a>${nav}
+      </header>
+      <main>
+        <div class="intro">
+          <h1>${heading}</h1>${intro}
+        </div>
 ${body}
-    </main>${script}
+      </main>
+      ${launches ? `<footer>${OPEN_ICON}${word(languages, 'launchHint')}</footer>` : ''}
+    </div>${script}
   </body>
 </html>
 `;
@@ -423,55 +397,41 @@ const categoryChips = (languages, categories) =>
     )
     .join('');
 
-function card(languages, entry, level) {
+/** Direct app links announce that they open a separate tab, including without script. */
+function openLink(languages, entry, { primary = false } = {}) {
+  const name = (language) => textIn(entry.name, language, entry.lang);
+  const label = primary
+    ? localized(languages, 'span', (language) => ({
+        text: language === 'de' ? `${name(language).text} öffnen` : `Open ${name(language).text}`,
+        lang: language,
+      }))
+    : `${word(languages, 'open')}<span class="vh"> ${localized(languages, 'span', name)}</span>`;
+  return `<a class="open${primary ? ' primary' : ''}" href="${escape(entry.href)}" target="_blank" rel="noopener noreferrer">${label}<span class="vh"> (${word(languages, 'newTab')})</span>${OPEN_ICON}</a>`;
+}
+
+function row(languages, entry) {
   const name = (language) => textIn(entry.name, language, entry.lang);
   const summary = entry.description
-    ? `\n            ${localized(languages, 'p', (language) => textIn(entry.description, language, entry.lang), { attrs: ' class="summary"' })}`
+    ? `\n                ${localized(languages, 'p', (language) => textIn(entry.description, language, entry.lang), { attrs: ' class="summary"' })}`
     : '';
-  const chip = entry.categories?.length ? categoryChips(languages, entry.categories.slice(0, 1)) : '';
-  const installable = entry.installable
-    ? `\n            ${word(languages, 'installable', 'p', ' class="note"')}`
-    : '';
-  return `          <li class="card">
-            ${icon(entry, 56)}
-            <h${level}><a href="#${escape(entry.id)}">${localized(languages, 'span', name)}</a></h${level}>${summary}${installable}
-            <div class="meta">${chip}<a class="open" href="${escape(entry.href)}">${word(languages, 'open')}<span class="vh"> ${localized(languages, 'span', name)}</span></a></div>
+  return `          <li class="app-row">
+            <a class="launch" href="${escape(entry.href)}" target="_blank" rel="noopener noreferrer">
+              ${icon(entry, 52)}
+              <div class="app-copy">
+                <h2>${localized(languages, 'span', name)}</h2>${summary}
+              </div>
+              <span class="vh">(${word(languages, 'newTab')})</span>
+            </a>
+            <div class="actions">
+              <a class="details-link" href="#${escape(entry.id)}">${word(languages, 'details')}<span class="vh"> ${localized(languages, 'span', name)}</span></a>
+              ${openLink(languages, entry)}
+            </div>
           </li>`;
 }
 
-/**
- * The apps in groups of their first category, those without one last. Below
- * GROUP_FROM apps, or when all share one group, there is one unnamed group.
- */
-function groups(entries) {
-  const byCategory = new Map();
-  for (const entry of entries) {
-    const key = entry.categories?.[0];
-    if (!byCategory.has(key)) byCategory.set(key, []);
-    byCategory.get(key).push(entry);
-  }
-  if (entries.length < GROUP_FROM || byCategory.size === 1) return [{ entries }];
-  const rest = byCategory.get(undefined);
-  byCategory.delete(undefined);
-  return [
-    ...[...byCategory].map(([category, members]) => ({ category, entries: members })),
-    ...(rest ? [{ entries: rest }] : []),
-  ];
-}
-
+/** Preserve the owner's order regardless of the number or categories of apps. */
 function list(languages, entries) {
-  const grouped = groups(entries);
-  const single = grouped.length === 1;
-  return grouped
-    .map(({ category, entries: members }) => {
-      const name =
-        category === undefined
-          ? word(languages, 'other')
-          : localized(languages, 'span', (language) => ({ text: categoryName(category, language), lang: language }));
-      const heading = single ? '' : `        <h2>${name}</h2>\n`;
-      return `${heading}        <ul class="grid">\n${members.map((entry) => card(languages, entry, single ? 2 : 3)).join('\n')}\n        </ul>`;
-    })
-    .join('\n');
+  return `        <ul class="app-list">\n${entries.map((entry) => row(languages, entry)).join('\n')}\n        </ul>`;
 }
 
 /**
@@ -479,6 +439,11 @@ function list(languages, entries) {
  * follows CommonMark and leaves raw HTML and unsafe link protocols out.
  */
 export const renderMarkdown = (text) => micromark(text);
+
+const OPEN_ICON =
+  '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M4 12 12 4M5 4h7v7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const BRAND_ICON =
+  '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="2" y="8" width="6" height="9" rx="1"/><rect x="11" y="2" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>';
 
 const BACK_ICON =
   '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -498,9 +463,9 @@ function detail(languages, entry, publisher) {
         },
         { attrs: ' class="text"', html: true },
       )}`
-    : '\n          <div></div>';
+    : '';
   const fact = (key, value, attrs = '') =>
-    `\n              <dt>${word(languages, key)}</dt>\n              <dd${attrs}>${value}</dd>`;
+    `\n              <div><dt>${word(languages, key)}</dt><dd${attrs}>${value}</dd></div>`;
   const facts = [
     entry.categories?.length
       ? fact('categories', categoryChips(languages, entry.categories), ' class="chips"')
@@ -514,27 +479,27 @@ function detail(languages, entry, publisher) {
     publisher ? fact('publisher', `<a href="${escape(publisher)}">${escape(publisher)}</a>`) : '',
   ].join('');
   const install = entry.installable
-    ? `\n            <section class="install">
-              <h2>${word(languages, 'install')}</h2>
+    ? `\n            <details class="install">
+              <summary>${word(languages, 'install')}</summary>
               ${word(languages, 'installSteps', 'p')}
               ${word(languages, 'installCaveat', 'p')}
-            </section>`
+            </details>`
     : '';
   return `      <article class="detail" id="${escape(entry.id)}">
         <div class="hero">
           <a class="back" href="#">${BACK_ICON}${word(languages, 'back')}</a>
           <div class="hero-main">
-            ${icon(entry, 104)}
-            <h1>${localized(languages, 'span', name)}</h1>${summary}
-            <a class="open" href="${escape(entry.href)}">${word(languages, 'open')}</a>
+            <div class="hero-heading">
+              ${icon(entry, 64)}
+              <div class="hero-copy"><h1>${localized(languages, 'span', name)}</h1>${summary}</div>
+            </div>
+            ${openLink(languages, entry, { primary: true })}
           </div>
         </div>
-        <div class="about">${text}
-          <aside>
-            <dl class="facts">${facts}
-            </dl>${install}
-          </aside>
-        </div>
+        <div class="about${entry.details ? '' : ' no-text'}">${text}
+          <dl class="facts">${facts}
+          </dl>
+        </div>${install}
       </article>`;
 }
 
@@ -553,7 +518,7 @@ export function renderOverview(entries, catalog) {
     : `      ${word(languages, 'empty', 'p')}`;
   // Machines find the same list in the site catalog.
   const head = '\n    <link rel="alternate" type="application/ld+json" href="/apps.jsonld" />';
-  return page(languages, { title, heading, intro, body, head });
+  return page(languages, { title, heading, intro, body, head, launches: entries.length > 0 });
 }
 
 /** The page for unknown paths, so no host falls back to an app or the overview. */
