@@ -85,11 +85,11 @@ function buildApp(appDir, outDir) {
     );
 }
 
-const MISSING_BROWSER =
+export const MISSING_BROWSER =
   'the browser for the check is missing: run pnpm run check:theme --install-browser once, then again without it';
 
 /** Starts Chromium through the tooling's Playwright. */
-async function launch() {
+export async function launch() {
   const { chromium } = await import('playwright');
   try {
     return await chromium.launch();

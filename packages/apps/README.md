@@ -13,8 +13,8 @@ Create a repository with `pnpm create @sempods/apps <directory>`
 
 - `pnpm run new-app <id>` creates `apps/<id>` with the root's SDK version,
   built with the UI kit `@sempods/app-ui`.
-- `pnpm run icon <id>` draws an app's monogram icon again in its theme's
-  primary colour.
+- `pnpm run icon <id>` draws an app's icons again: from `apps/<id>/icon.svg`
+  when there is one, otherwise the monogram in its theme's primary colour.
 - `pnpm run dev <id>` starts that app.
 - `pnpm run regenerate` rewrites every app's generated configuration from
   `apps.json`, for example after a tooling update.

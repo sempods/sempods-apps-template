@@ -26,10 +26,17 @@ import { describedApp } from '../scripts/lib/describe.mjs';
 import { readJson } from '../scripts/lib/json.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
-import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
+import {
+  iconProblems,
+  monogramLetter,
+  monogramPng,
+  ownerIconProblem,
+} from '../scripts/lib/icon.mjs';
 import { drawIcon } from '../scripts/icon.mjs';
+import { MISSING_BROWSER } from '../scripts/check-theme.mjs';
 import {
   iconColours,
+  manifestColours,
   themeCss,
   themeNames,
   tokenColours,
@@ -201,6 +208,7 @@ describe('generated configuration', () => {
     path: '/demo/',
     devPort: 5180,
     pwa: true,
+    about: { lang: 'en', name: 'Demo "App"', short_name: 'Demo "App"' },
   };
   it('derives callback, return path, base and PWA scope from the app path', () => {
     const files = generatedFiles(app);
@@ -367,11 +375,47 @@ describe('generated configuration', () => {
     const runtime = files['src/sempods.generated.ts'];
     assert.match(runtime, /^  language: "auto",$/m);
     assert.match(runtime, /import type \{ BrowserRuntimeOptions \} from/);
-    // The plugin's default "en" must not fill the gap.
-    assert.match(files['vite.sempods.generated.ts'], /^      lang: undefined,$/m);
+    // The manifest names the language of its texts, from app.json.
+    const german = { ...app.about, lang: 'de' };
+    assert.match(
+      generatedFiles({ ...app, language: 'auto', about: german })[
+        'vite.sempods.generated.ts'
+      ],
+      /^  lang: "de",$/m,
+    );
+  });
+  it('writes the manifest from app.json and the theme', () => {
+    const about = {
+      lang: 'de',
+      name: 'Einkauf',
+      name_localized: { en: 'Shopping' },
+      short_name: 'Einkauf',
+      short_name_localized: { en: 'Shopping' },
+      description: 'Was fehlt.',
+      description_localized: { en: 'What is missing.' },
+      categories: ['shopping', 'lifestyle'],
+    };
+    const vite = generatedFiles({ ...app, about }, undefined, {
+      background: '#fdfaf6',
+    })['vite.sempods.generated.ts'];
+    assert.match(vite, /^  name_localized: \{"en":"Shopping"\},$/m);
+    assert.match(vite, /^  description_localized: \{"en":"What is missing\."\},$/m);
+    assert.match(vite, /^  categories: \["shopping","lifestyle"\],$/m);
+    assert.match(vite, /^  background_color: "#fdfaf6",$/m);
+    assert.match(vite, /^  theme_color: "#fdfaf6",$/m);
+    assert.match(
+      vite,
+      /src: "\/demo\/icon-maskable-512\.png", sizes: '512x512', type: 'image\/png', purpose: 'maskable'/,
+    );
+    assert.match(vite, /import type \{ ManifestOptions, VitePWAOptions \}/);
+    // Without a theme the tooling can read, the manifest stays white.
     assert.match(
       generatedFiles(app)['vite.sempods.generated.ts'],
-      /lang: "en",/,
+      /^  theme_color: "#ffffff",$/m,
+    );
+    assert.doesNotMatch(
+      generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
+      /ManifestOptions|const manifest/,
     );
   });
   it('has no PWA settings when the app opts out', () => {
@@ -500,8 +544,13 @@ describe('new-app', () => {
       );
     assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
-    const { title, description, ...entry } = app;
+    const { title, description, about, ...entry } = app;
     assert.deepEqual(manifest.apps, [entry]);
+    assert.deepEqual(about, {
+      lang: 'de',
+      name: 'Einkaufs<liste>',
+      short_name: 'Einkaufs<liste>',
+    });
     assert.equal(description, undefined);
     assert.deepEqual(readJson(join(dir, 'app.json')), {
       lang: 'de',
@@ -584,8 +633,8 @@ describe('app icon', () => {
   it('draws the letter in white on graphite, with transparent corners', () => {
     // RGBA of one pixel: the image data follows the 33 bytes of signature and
     // header and precedes the checksum and the end chunk.
-    const pixel = (letter) => {
-      const png = monogramPng(letter, 64);
+    const pixel = (letter, options) => {
+      const png = monogramPng(letter, 64, undefined, options);
       const rows = inflateSync(png.subarray(41, png.length - 16));
       return (x, y) => {
         const start = y * 257 + 1 + x * 4;
@@ -598,6 +647,135 @@ describe('app icon', () => {
     assert.deepEqual(at(32, 32), [255, 255, 255, 255]);
     // Without a letter, the square stays plain.
     assert.deepEqual(pixel(undefined)(32, 32), [0x1f, 0x29, 0x33, 255]);
+    // The maskable variant fills the corners too.
+    const mask = pixel('I', { maskable: true });
+    assert.deepEqual(mask(0, 0), [0x1f, 0x29, 0x33, 255]);
+    assert.deepEqual(mask(32, 32), [255, 255, 255, 255]);
+  });
+  it('keeps every letter inside the maskable safe zone', () => {
+    // The middle 80 %: a circle of radius 0.4 × 64 around the centre.
+    for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+      const png = monogramPng(letter, 64, undefined, { maskable: true });
+      const rows = inflateSync(png.subarray(41, png.length - 16));
+      for (let y = 0; y < 64; y++)
+        for (let x = 0; x < 64; x++) {
+          if (Math.hypot(x + 0.5 - 32, y + 0.5 - 32) <= 25.6) continue;
+          const start = y * 257 + 1 + x * 4;
+          assert.deepEqual(
+            [...rows.subarray(start, start + 3)],
+            [0x1f, 0x29, 0x33],
+            `${letter} at ${x},${y}`,
+          );
+        }
+    }
+  });
+});
+
+describe('owner icon', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-owner-icon-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  const SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30"/></svg>\n';
+  // Stands in for Chromium: records what it is asked to draw.
+  const fakeBrowser = (calls) => async () => ({
+    newPage: async () => {
+      let size;
+      let html;
+      return {
+        setViewportSize: async (viewport) => {
+          size = viewport.width;
+        },
+        setContent: async (content) => {
+          html = content;
+        },
+        locator: () => ({ evaluate: async () => true }),
+        screenshot: async ({ omitBackground }) => {
+          calls.push({ size, omitBackground, html });
+          return Buffer.from(`png ${size} ${omitBackground}`);
+        },
+        close: async () => {},
+      };
+    },
+    close: async () => calls.push('closed'),
+  });
+
+  it('accepts a square SVG only', () => {
+    assert.equal(ownerIconProblem(SVG), undefined);
+    assert.match(ownerIconProblem('<svg viewBox="0 0 10 12"/>'), /square viewBox/);
+    assert.match(ownerIconProblem('<svg width="10" height="10"/>'), /square viewBox/);
+    assert.match(ownerIconProblem('<png/>'), /holds no <svg> element/);
+    assert.match(
+      ownerIconProblem(`<svg viewBox="0 0 1 1">${' '.repeat(64 * 1024)}</svg>`),
+      /larger than 64 KB/,
+    );
+  });
+
+  it("draws the owner's icon.svg instead of the monogram", async () => {
+    createApp(root, { id: 'demo', title: 'Demo', theme: 'warm' });
+    const dir = join(root, 'apps', 'demo');
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    writeFileSync(join(dir, 'icon.svg'), SVG);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), [
+      'apps/demo/icon.svg is not drawn into public/ yet; run pnpm run icon demo',
+    ]);
+    const calls = [];
+    assert.deepEqual(await drawIcon(root, 'demo', { browser: fakeBrowser(calls) }), [
+      'apps/demo/public/favicon.svg',
+      'apps/demo/public/icon-192.png',
+      'apps/demo/public/icon-512.png',
+      'apps/demo/public/icon-maskable-512.png',
+    ]);
+    assert.equal(readFileSync(join(dir, 'public', 'favicon.svg'), 'utf8'), SVG);
+    assert.equal(
+      readFileSync(join(dir, 'public', 'icon-maskable-512.png'), 'utf8'),
+      'png 512 false',
+    );
+    // Transparent PNGs, then the maskable one on the theme's background; the
+    // SVG is only ever an image.
+    const warm = manifestColours(dir).background;
+    assert.notEqual(warm, '#ffffff');
+    assert.deepEqual(
+      calls.slice(0, 3).map(({ size, omitBackground }) => [size, omitBackground]),
+      [[192, true], [512, true], [512, false]],
+    );
+    assert.match(calls[2].html, new RegExp(`background:${warm}`));
+    assert.match(calls[0].html, /<img src="data:image\/svg\+xml;base64,/);
+    assert.equal(calls.at(-1), 'closed');
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    assert.deepEqual(staticProblems(root), []);
+
+    writeFileSync(join(dir, 'icon.svg'), '<svg viewBox="0 0 2 1"/>');
+    await assert.rejects(
+      drawIcon(root, 'demo', { browser: fakeBrowser([]) }),
+      /icon\.svg needs a square viewBox/,
+    );
+    assert.match(staticProblems(root).join(), /apps\/demo\/icon\.svg needs a square viewBox/);
+  });
+
+  it('names the command that installs the browser', async () => {
+    createApp(root, { id: 'demo' });
+    writeFileSync(join(root, 'apps', 'demo', 'icon.svg'), SVG);
+    await assert.rejects(
+      drawIcon(root, 'demo', {
+        browser: async () => {
+          throw new Error(MISSING_BROWSER);
+        },
+      }),
+      /run pnpm run check:theme --install-browser once, then pnpm run icon demo again/,
+    );
+  });
+
+  it("reports a PWA's missing icons", () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    rmSync(join(dir, 'public', 'icon-maskable-512.png'));
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), [
+      'apps/demo/public/icon-maskable-512.png is missing; run pnpm run icon demo',
+    ]);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: false }), []);
   });
 });
 
@@ -1099,14 +1277,15 @@ describe('app theme and icon', () => {
     );
   });
 
-  it('draws the icon again after a theme change', () => {
+  it('draws the icon again after a theme change', async () => {
     createApp(root, { id: 'demo', title: 'Demo' });
     const css = join(root, 'apps', 'demo', 'src', 'index.css');
     writeFileSync(css, file('demo', 'src', 'index.css').replace('calm', 'fresh'));
-    assert.deepEqual(drawIcon(root, 'demo'), [
+    assert.deepEqual(await drawIcon(root, 'demo'), [
       'apps/demo/public/favicon.svg',
       'apps/demo/public/icon-192.png',
       'apps/demo/public/icon-512.png',
+      'apps/demo/public/icon-maskable-512.png',
     ]);
     const fresh = iconColours(themeCss(SKELETON, 'fresh'));
     assert.match(
@@ -1122,11 +1301,11 @@ describe('app theme and icon', () => {
       join(root, 'apps', 'demo', 'src', 'themes', 'old.css'),
       ':root {\n  --sempods-accent: light-dark(#176354, #7fd1bd);\n  --sempods-on-accent: light-dark(#ffffff, #0b2a23);\n}\n',
     );
-    drawIcon(root, 'demo');
+    await drawIcon(root, 'demo');
     assert.match(file('demo', 'public', 'favicon.svg'), /fill:#176354/);
     writeFileSync(main, "import './index.css';\n");
-    assert.throws(() => drawIcon(root, 'demo'), /imports no theme/);
-    assert.throws(() => drawIcon(root, 'none'), /lists no app "none"/);
+    await assert.rejects(drawIcon(root, 'demo'), /imports no theme/);
+    await assert.rejects(drawIcon(root, 'none'), /lists no app "none"/);
   });
 
   it('carries a description to the sign-in screen, manifest and overview', () => {

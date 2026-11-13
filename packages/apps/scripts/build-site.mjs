@@ -118,7 +118,7 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     const stale = staleGenerated(join(root, 'apps', app.id), app, site);
     if (stale.length > 0)
       throw new Error(
-        `apps/${app.id}/${stale[0]} does not match apps.json or apps/${app.id}/app.json; run pnpm run regenerate.`,
+        `apps/${app.id}/${stale[0]} does not match apps.json, apps/${app.id}/app.json or the app's theme; run pnpm run regenerate.`,
       );
   }
 

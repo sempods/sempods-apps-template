@@ -12,6 +12,7 @@ import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { markdownProblems, textCompleteness } from '../scripts/lib/texts.mjs';
 import { staticProblems } from '../scripts/check.mjs';
 import { createApp } from '../scripts/new-app.mjs';
+import { regenerate } from '../scripts/regenerate.mjs';
 import { tempRepository } from './fixture.mjs';
 
 const entry = {
@@ -118,6 +119,31 @@ describe('texts of an app', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
   const app = () => readApps(root).apps[0];
 
+  it("gives the manifest the owner's short names, else the name's", () => {
+    const shortNames = (value) => {
+      describeAs({ lang: 'en', name: 'Tasks', ...value });
+      return describedApp(root, app()).about.short_name_localized;
+    };
+    assert.deepEqual(
+      shortNames({
+        name_localized: { de: 'Aufgabenliste' },
+        short_name_localized: { de: 'Aufgaben' },
+      }),
+      { de: 'Aufgaben' },
+    );
+    assert.deepEqual(shortNames({ name_localized: { de: 'Aufgabenliste' } }), {
+      de: 'Aufgabenliste',
+    });
+    assert.deepEqual(shortNames({ short_name_localized: { de: 'Aufgaben' } }), {
+      de: 'Aufgaben',
+    });
+    // A short name of its own keeps its translations to itself.
+    assert.equal(
+      shortNames({ short_name: 'Tasks', name_localized: { de: 'Aufgabenliste' } }),
+      undefined,
+    );
+  });
+
   it('needs the description in every language the app is shown in', () => {
     assert.deepEqual(textCompleteness(root, app()), [
       'apps/konsum/app.json: description_localized.en is missing; the app is also shown in en',
@@ -128,6 +154,9 @@ describe('texts of an app', () => {
       description_localized: { en: 'What the household needs.' },
     });
     assert.deepEqual(textCompleteness(root, app()), []);
+    // The installed app's manifest carries the translation too.
+    assert.match(staticProblems(root).join(), /does not match apps\.json, apps\/konsum\/app\.json/);
+    regenerate(root);
     assert.deepEqual(staticProblems(root), []);
   });
   it('needs texts in a language the app is shown in', () => {

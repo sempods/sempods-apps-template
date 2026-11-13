@@ -193,7 +193,7 @@ describe('build-site', () => {
     writeFileSync(file, JSON.stringify(manifest));
     assert.throws(
       () => buildSite(root, { build }),
-      /apps\/konsum\/src\/sempods\.generated\.ts does not match apps\.json or apps\/konsum\/app\.json; run pnpm run regenerate/,
+      /apps\/konsum\/src\/sempods\.generated\.ts does not match apps\.json, apps\/konsum\/app\.json or the app's theme; run pnpm run regenerate/,
     );
     assert.equal(builds.length, 0);
   });

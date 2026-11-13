@@ -82,3 +82,18 @@ export function appTheme(appDir) {
 export function themeCss(dir, name) {
   return readFileSync(join(dir, THEMES_DIR, `${name}.css`), 'utf8');
 }
+
+// The manifest's colours when an app imports no theme the tooling can read.
+export const PLAIN_COLOURS = { background: '#ffffff' };
+
+/**
+ * The installed app's colours for the web app manifest: the light background
+ * of the theme the app imports, for its splash screen and title bar. The page
+ * sets both modes itself through its theme-color meta elements.
+ */
+export function manifestColours(appDir) {
+  const theme = appTheme(appDir);
+  const css = theme && ifPresent(() => themeCss(appDir, theme));
+  const background = css && tokenColours(css, 'background');
+  return background ? { background: background.light } : PLAIN_COLOURS;
+}

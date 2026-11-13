@@ -33,10 +33,31 @@ App descriptions (sempods/sempods-apps-template#46, step 1):
 - `migrate` moves each app's title and description from a schema 1
   `apps.json` into a new `app.json` and raises the schema version.
 
+The installed app (sempods/sempods-apps-template#46, step 2):
+
+- A PWA's web app manifest takes `name`, `short_name`, `description`, their
+  translations (`*_localized`, shown by Chrome and Edge 148 and later) and
+  `categories` from `app.json`. Its `lang` is the language of those texts,
+  also for an app that follows the browser's language, which named none
+  before.
+- The manifest's `background_color` and `theme_color` are the light
+  background of the app's theme instead of a fixed white.
+- Every PWA has a maskable icon, `public/icon-maskable-512.png`, which a
+  launcher cuts into its own shape; the monogram fills the whole square with
+  the letter inside the safe zone. `new-app` and `icon` draw it.
+- An owner's icon of their own goes into `apps/<id>/icon.svg` (square, at
+  most 64 KB). `icon` then draws `favicon.svg`, the PNG icons and the
+  maskable one from it in the tooling's browser, on the theme's background
+  for the maskable one. `check` reports an `icon.svg` that is not square or
+  not drawn yet, and a PWA's missing PNG icon.
+- `migrate` draws the maskable icon of an app that shows the tooling's
+  monogram, and notes each app with an icon of its own.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
-  `catalog` and `--text-language`.
+  `catalog` and `--text-language`; the app workflow describes `icon.svg` and
+  what the installed app takes from `app.json` and the theme.
 
 ### Upgrade notes
 
@@ -52,7 +73,12 @@ Instructions:
    description lacks the other language. Add it as `description_localized`,
    in the owner's words or as a translation the owner confirms, and add
    `name_localized` only when the name differs in that language.
-3. Nothing else changes for app code; the generated files stay the same.
+3. `migrate` regenerates `vite.sempods.generated.ts` of every PWA with the
+   new manifest; app code is unchanged. For an app whose icon is not the
+   tooling's monogram, its notes say so: ask the owner for the icon as a
+   square SVG, save it as `apps/<id>/icon.svg` and run
+   `pnpm run icon <id>`, or run it without that file to draw the monogram.
+   Until then `pnpm run check` reports the missing maskable icon.
 
 ## 0.10.1 (in preparation)
 

@@ -192,6 +192,42 @@ function themeCheck(repo) {
   console.log('✓ theme check in light and dark, and a failing control');
 }
 
+const OWNER_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#c2410c"/></svg>\n';
+
+/**
+ * Draws an owner's icon.svg in the tooling's browser and gives the app texts
+ * the manifest carries: a translated name and a category.
+ */
+function ownerIcon(repo) {
+  const dir = join(repo, 'apps', FIXTURE);
+  writeFileSync(join(dir, 'icon.svg'), OWNER_SVG);
+  pnpmRun(repo, 'icon', FIXTURE);
+  const pub = (file) => join(dir, 'public', file);
+  if (readFileSync(pub('favicon.svg'), 'utf8') !== OWNER_SVG)
+    throw new Error('icon did not take icon.svg as favicon.svg');
+  for (const [file, size] of [
+    ['icon-192.png', 192],
+    ['icon-512.png', 512],
+    ['icon-maskable-512.png', 512],
+  ]) {
+    const png = readFileSync(pub(file));
+    if (png.readUInt32BE(16) !== size || png.readUInt32BE(20) !== size)
+      throw new Error(`icon drew ${file} in another size than ${size}`);
+  }
+  if (readFileSync(pub('icon-512.png')).equals(readFileSync(pub('icon-maskable-512.png'))))
+    throw new Error('the maskable icon has no background of its own');
+  const about = join(dir, 'app.json');
+  writeJson(about, {
+    ...readJson(about),
+    name_localized: { de: 'Selbsttest' },
+    categories: ['utilities'],
+  });
+  pnpmRun(repo, 'regenerate');
+  pnpmRun(repo, 'check', '--standalone', FIXTURE);
+  console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
+}
+
 /** Configures a site, builds it for real and checks the profiles. */
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
@@ -223,13 +259,25 @@ function publish(repo) {
   ])
     if (!existsSync(join(site, file)))
       throw new Error(`build-site wrote no ${file}`);
-  // The fixture's language is automatic: the built manifest names none,
-  // whatever the PWA plugin would default to.
+  // The plugin keeps the members its types do not know yet, and the
+  // manifest names the language of its texts.
   const manifest = readJson(join(site, FIXTURE, 'manifest.webmanifest'));
-  if ('lang' in manifest)
-    throw new Error(
-      `the manifest of an app with language auto names ${JSON.stringify(manifest.lang)}`,
-    );
+  const expected = {
+    lang: 'en',
+    name: 'Self test',
+    name_localized: { de: 'Selbsttest' },
+    categories: ['utilities'],
+    theme_color: '#ffffff',
+  };
+  for (const [key, value] of Object.entries(expected))
+    if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
+      throw new Error(
+        `the built manifest has ${key} ${JSON.stringify(manifest[key])}, not ${JSON.stringify(value)}`,
+      );
+  if (!manifest.icons?.some((icon) => icon.purpose === 'maskable'))
+    throw new Error('the built manifest names no maskable icon');
+  if (!existsSync(join(site, FIXTURE, 'icon-maskable-512.png')))
+    throw new Error('build-site wrote no maskable icon');
   const did = readJson(join(site, FIXTURE, 'did.json'));
   if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
     throw new Error(`unexpected did.json id ${did.id}`);
@@ -466,6 +514,7 @@ try {
     throw new Error('a refused rerun changed apps.json');
   pnpmRun(repo, 'check', '--standalone', FIXTURE);
   themeCheck(repo);
+  ownerIcon(repo);
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
