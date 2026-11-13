@@ -108,7 +108,9 @@ function copyLicences(roots, appOut, appId) {
 
 /**
  * The overview entry of a built app, from its published description, so the
- * overview shows what every other reader of app.jsonld sees.
+ * overview shows what every other reader of app.jsonld sees. The name comes
+ * from app.json instead: the description repeats an untranslated name in
+ * every language, and the overview must keep marking it in its own.
  */
 function overviewEntry(app, description, outDir) {
   const details = description.subjectOf?.map((text) => [text.inLanguage, text.text]);
@@ -116,7 +118,7 @@ function overviewEntry(app, description, outDir) {
     id: app.id,
     href: app.path,
     lang: app.about.lang,
-    name: description.name,
+    name: { ...app.about.name_localized, [app.about.lang]: app.about.name },
     ...(description.description ? { description: description.description } : {}),
     ...(details ? { details: Object.fromEntries(details) } : {}),
     ...(description.applicationCategory ? { categories: description.applicationCategory } : {}),

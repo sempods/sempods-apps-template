@@ -407,6 +407,31 @@ describe('build-site', () => {
     assert.match(html, /<span class="icon letter" aria-hidden="true">N<\/span>/);
   });
 
+  it("marks an untranslated name in its own language on the overview", () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.apps[0].language = 'auto';
+    writeFileSync(file, JSON.stringify(manifest));
+    writeFileSync(
+      join(root, 'apps', 'konsum', 'app.json'),
+      JSON.stringify({
+        lang: 'de',
+        name: 'Einkauf',
+        description: 'Was fehlt.',
+        description_localized: { en: 'What is missing.' },
+      }),
+    );
+    regenerate(root);
+    buildSite(root, { build });
+    // app.jsonld repeats the name for English, as readers need one there.
+    assert.deepEqual(JSON.parse(read('konsum/app.jsonld')).name, { en: 'Einkauf', de: 'Einkauf' });
+    // The overview keeps it German on the English page too.
+    const html = read('index.html');
+    assert.match(html, /<h2><span lang="de">Einkauf<\/span><\/h2>/);
+    assert.doesNotMatch(html, /<span[^>]* lang="en">Einkauf</);
+  });
+
   it('replaces a did.json the app ships with the site identity', () => {
     configureSite(root, { production: 'https://apps.example.org' });
     writeFileSync(join(root, 'apps', 'konsum', 'public', 'did.json'), '{');
