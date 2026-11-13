@@ -10,15 +10,16 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { siteIdentity } from './apps.mjs';
 import { appDir } from './describe.mjs';
-import { ifPresent } from './json.mjs';
+import { formatJson, ifPresent } from './json.mjs';
 import { DETAILS_FILE, uiLanguages } from './texts.mjs';
 
 export const APP_DESCRIPTION = 'app.jsonld';
 export const CLIENT_DOCUMENT = 'client.json';
 export const BUILD_LIST = 'build.json';
 export const SITE_CATALOG = 'apps.jsonld';
-// The size the Client ID Metadata Document draft suggests as a limit.
-export const CLIENT_LIMIT = 5 * 1024;
+// The Client ID Metadata Document draft recommends that a server read at most
+// 5 kilobytes of it; the stricter reading, in bytes as written.
+export const CLIENT_LIMIT = 5000;
 
 // schema.org, with the localized texts as language maps.
 const CONTEXT = [
@@ -113,7 +114,10 @@ export function appDescription(root, app, origin, { icon, publisher } = {}) {
 /**
  * The Client ID Metadata Document, client.json: the app as a public client
  * without secrets or keys, named in its base language and, with RFC 7591's
- * `#<language>` suffix, in every other language it is shown in.
+ * `#<language>` suffix, in every other language it is shown in. The draft
+ * names the authentication methods in `token_endpoint_auth_methods_supported`;
+ * the singular RFC 7591 field, which the draft still allows for backwards
+ * compatibility, keeps servers that read only it from assuming a secret.
  */
 export function clientDocument(app, origin, { icon } = {}) {
   const iri = appIri(origin, app);
@@ -135,6 +139,7 @@ export function clientDocument(app, origin, { icon } = {}) {
     redirect_uris: [siteIdentity(origin, app).redirectUri],
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
+    token_endpoint_auth_methods_supported: ['none'],
     token_endpoint_auth_method: 'none',
     application_type: 'web',
   };
@@ -238,13 +243,37 @@ ${[`/${SITE_CATALOG}`, ...apps.map((app) => `${app.path}${APP_DESCRIPTION}`)]
 `;
 }
 
-/** `value` resolved against `base`, or itself when it is no address. */
-function resolved(value, base) {
+/** `value` as a URL resolved against `base`, or undefined. */
+function parsed(value, base) {
+  if (typeof value !== 'string') return undefined;
   try {
-    return new URL(value, base).href;
+    return new URL(value, base);
   } catch {
-    return value;
+    return undefined;
   }
+}
+
+/**
+ * The addresses a browser takes from a web app manifest served at
+ * `manifestUrl`: `start_url` and `scope` resolve against the manifest's
+ * address, the `id` against the start URL's origin and without its fragment.
+ * An `id` that is missing, invalid or of another origin falls back to the
+ * start URL. A field that does not resolve keeps its raw value.
+ */
+export function manifestAddresses(manifest, manifestUrl) {
+  const start = parsed(manifest.start_url, manifestUrl);
+  const scope = parsed(manifest.scope, manifestUrl);
+  let id;
+  if (start) {
+    const own = parsed(manifest.id, start.origin);
+    id = new URL(own?.origin === start.origin ? own : start);
+    id.hash = '';
+  }
+  return {
+    id: id?.href ?? manifest.id,
+    start_url: start?.href ?? manifest.start_url,
+    scope: scope?.href ?? manifest.scope,
+  };
 }
 
 /**
@@ -278,13 +307,16 @@ export function identifierProblems(app, origin, { description, client, did, mani
   if (app.pwa) {
     if (!manifest)
       problems.push(`${where}: the build wrote no manifest.webmanifest`);
-    else
+    else {
+      const addresses = manifestAddresses(manifest, `${iri}manifest.webmanifest`);
       for (const key of ['id', 'start_url', 'scope'])
-        expect(`manifest.webmanifest ${key}`, resolved(manifest[key], iri), iri);
+        expect(`manifest.webmanifest ${key}`, addresses[key], iri);
+    }
   }
-  if (Buffer.byteLength(JSON.stringify(client)) > CLIENT_LIMIT)
+  // Measured as build-site writes it.
+  if (Buffer.byteLength(formatJson(client)) > CLIENT_LIMIT)
     problems.push(
-      `${where}: ${CLIENT_DOCUMENT} is larger than ${CLIENT_LIMIT / 1024} KB; shorten the app's names`,
+      `${where}: ${CLIENT_DOCUMENT} is larger than ${CLIENT_LIMIT} bytes; shorten the app's names`,
     );
   return problems;
 }

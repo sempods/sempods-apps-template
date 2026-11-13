@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { buildSite } from '../scripts/build-site.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { renderNotFound, renderOverview } from '../scripts/lib/overview.mjs';
+import { CLIENT_LIMIT, manifestAddresses } from '../scripts/lib/published.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { regenerate } from '../scripts/regenerate.mjs';
 import { tempRepository } from './fixture.mjs';
@@ -190,6 +191,7 @@ describe('build-site', () => {
       redirect_uris: [`${iri}callback`],
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
+      token_endpoint_auth_methods_supported: ['none'],
       token_endpoint_auth_method: 'none',
       application_type: 'web',
     });
@@ -234,18 +236,83 @@ describe('build-site', () => {
 
   it("refuses an app whose documents name it differently", () => {
     configureSite(root, { production: 'https://apps.example.org' });
-    const other = (appDir, mode, outDir) => {
+    const withId = (id) => (appDir, mode, outDir) => {
       build(appDir, mode, outDir);
       if (existsSync(join(outDir, 'manifest.webmanifest')))
         writeFileSync(
           join(outDir, 'manifest.webmanifest'),
-          JSON.stringify({ id: '/other/', start_url: '/konsum/', scope: '/konsum/' }),
+          JSON.stringify({ id, start_url: './', scope: './' }),
         );
       return true;
     };
+    const differs = (actual) =>
+      new RegExp(
+        `apps/konsum: manifest\\.webmanifest id is "${actual}", not "https://apps\\.example\\.org/konsum/"`,
+      );
     assert.throws(
-      () => buildSite(root, { build: other }),
-      /apps\/konsum: manifest\.webmanifest id is "https:\/\/apps\.example\.org\/other\/", not "https:\/\/apps\.example\.org\/konsum\/"/,
+      () => buildSite(root, { build: withId('/other/') }),
+      differs('https://apps\\.example\\.org/other/'),
+    );
+    // The id resolves against the start URL's origin, not the manifest's
+    // address: "./" names the site root, which every app would share.
+    assert.throws(
+      () => buildSite(root, { build: withId('./') }),
+      differs('https://apps\\.example\\.org/'),
+    );
+    // "konsum/" is the app, although it reads like a relative path.
+    buildSite(root, { build: withId('konsum/') });
+  });
+
+  it('reads the addresses of a manifest as a browser does', () => {
+    const at = 'https://apps.example.org/konsum/manifest.webmanifest';
+    assert.deepEqual(
+      manifestAddresses({ id: 'konsum/#a', start_url: './', scope: '.' }, at),
+      {
+        id: 'https://apps.example.org/konsum/',
+        start_url: 'https://apps.example.org/konsum/',
+        scope: 'https://apps.example.org/konsum/',
+      },
+    );
+    // Without an id, or with one of another origin, the start URL stands in.
+    assert.equal(manifestAddresses({ start_url: './' }, at).id, 'https://apps.example.org/konsum/');
+    assert.equal(
+      manifestAddresses({ id: 'https://other.example/', start_url: './' }, at).id,
+      'https://apps.example.org/konsum/',
+    );
+    // A field that is no address keeps its raw value for the message.
+    assert.deepEqual(manifestAddresses({ id: 7, scope: 1 }, at), {
+      id: 7,
+      start_url: undefined,
+      scope: 1,
+    });
+  });
+
+  it('keeps client.json within the read limit as it is written', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const named = (name) => {
+      writeFileSync(
+        join(root, 'apps', 'konsum', 'app.json'),
+        JSON.stringify({ lang: 'de', name, description: 'Was fehlt.' }),
+      );
+      regenerate(root);
+    };
+    named('E');
+    buildSite(root, { build });
+    const written = Buffer.byteLength(read('konsum/client.json'));
+    // A name that fills the limit exactly, as written with its indentation.
+    const name = 'E'.repeat(1 + CLIENT_LIMIT - written);
+    named(name);
+    buildSite(root, { build });
+    assert.equal(Buffer.byteLength(read('konsum/client.json')), CLIENT_LIMIT);
+    // The compact form of one byte more would still fit.
+    named(`${name}E`);
+    assert.ok(
+      Buffer.byteLength(JSON.stringify(JSON.parse(read('konsum/client.json')))) + 1 <=
+        CLIENT_LIMIT,
+    );
+    assert.throws(
+      () => buildSite(root, { build }),
+      /apps\/konsum: client\.json is larger than 5000 bytes; shorten the app's names/,
     );
   });
 

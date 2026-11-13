@@ -68,7 +68,8 @@ Published descriptions (sempods/sempods-apps-template#46, step 3):
   the overview links `apps.jsonld`.
 - `build-site` checks that the descriptions, the client document, `did.json`
   and the built web app manifest name the app the same way, and stops when
-  an app's texts miss a language it is shown in. An app's own `app.jsonld`,
+  an app's texts miss a language it is shown in or its names make
+  `client.json` larger than 5,000 bytes. An app's own `app.jsonld`,
   `client.json`, `build.json` or `_headers` in `public/` is not published.
 
 Instructions:

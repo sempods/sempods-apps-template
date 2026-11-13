@@ -49,7 +49,8 @@ client metadata for sign-in servers, not used for sign-in yet),
 `<id>/build.json` (every published file of the app with its digest), the
 site's list `apps.jsonld` and `_headers`, which lets other sites read the
 descriptions. It stops when a text is missing in a language an app is shown
-in, as `pnpm run check` reports it. The layout is the same for every host.
+in, as `pnpm run check` reports it, and when an app's names make
+`client.json` larger than 5,000 bytes, more than a sign-in server reads. The layout is the same for every host.
 `site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.

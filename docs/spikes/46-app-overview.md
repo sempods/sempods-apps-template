@@ -259,7 +259,8 @@ colours instead of fixed white. Only for apps with `pwa: true`.
 
 ### Client ID Metadata Document (authorization servers)
 
-`/<id>/client.json`, small enough for the draft's suggested 5 KB limit:
+`/<id>/client.json`, within the 5 kilobytes the draft recommends a server
+read at most:
 
 ```json
 {
@@ -271,6 +272,7 @@ colours instead of fixed white. Only for apps with `pwa: true`.
   "redirect_uris": ["https://danilo.apps.sempods.org/konsum/callback"],
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
+  "token_endpoint_auth_methods_supported": ["none"],
   "token_endpoint_auth_method": "none",
   "application_type": "web"
 }
@@ -279,9 +281,11 @@ colours instead of fixed white. Only for apps with `pwa: true`.
 - Language variants use RFC 7591's `#<tag>` suffix; the base value is in the
   app's `lang`.
 - No secrets, no keys: a browser app is a public client, and the draft forbids
-  shared secrets. RFC 7591's `token_endpoint_auth_method: "none"` says so;
-  `token_endpoint_auth_methods_supported` belongs to a server's metadata,
-  not to a client's (corrected on 2026-11-13).
+  shared secrets. `token_endpoint_auth_methods_supported: ["none"]` says so,
+  as draft-03 (2 November 2026) recommends for client metadata. The singular
+  RFC 7591 field `token_endpoint_auth_method: "none"`, which the draft still
+  allows for backwards compatibility, stays as well: a server that reads only
+  it would otherwise assume a client secret (corrected on 2026-11-13).
 - RFC 7591 has no description field; the description stays in the JSON-LD
   description, which `client_uri` leads to.
 - A preview build writes its own `client.json` with the preview origin.
