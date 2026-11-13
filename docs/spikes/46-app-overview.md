@@ -10,7 +10,9 @@ SDK 0.8.0, the
 [CIMD draft -03](https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/)
 of 2026-11-02 and sempods/sempods-kotlin#437. No prototype was built.
 **Decided on 2026-11-12** by the owner, decision by decision; see
-[Decisions](#decisions) at the end.
+[Decisions](#decisions) at the end. **Revised on 2026-11-13**: the store
+starts as a static page that reads one central list of app addresses
+([Phase 0](#phase-0-a-static-page)); the Pod store follows later.
 
 ## Answer
 
@@ -42,13 +44,16 @@ of 2026-11-02 and sempods/sempods-kotlin#437. No prototype was built.
 6. **Trust comes from the origin and the publisher, not from app keys.** HTTPS
    and DNS prove who serves an app; the store re-fetches what it lists; the
    publisher confirms each published build in their own Pod, which listing
-   requires; a review vouches for the publisher, not for every build. Apps hold no signing keys. The Pod's consent stays the
-   safety boundary, so the store shows which data an app asks for.
-7. **The store at `apps.sempods.org` is a Pod plus a sempods app.** It imports
-   each site's catalog `/apps.jsonld`, keeps one record per app IRI with its
-   provenance in a public Context, and its UI reads that Context without
-   sign-in. It is a project of its own; this template only publishes what it
-   needs.
+   requires once the store has its Pod; a review vouches for the publisher,
+   not for every build. Apps hold no signing keys. The Pod's consent stays
+   the safety boundary, so the store shows which data an app asks for.
+7. **The store at `apps.sempods.org` starts as a static page.** One central
+   file lists the address of each registered app's `app.jsonld`; the page
+   loads name, texts and icon in the browser from the app's own origin.
+   Later the store becomes a Pod plus a sempods app: it imports each site's
+   catalog `/apps.jsonld`, keeps one record per app IRI with its provenance
+   in a public Context, and its UI reads that Context without sign-in. It is
+   a project of its own; this template only publishes what it needs.
 
 ## Baseline
 
@@ -344,6 +349,15 @@ description links the identifiers instead.
 }
 ```
 
+`app.jsonld` must be readable from other origins, because the store's page
+loads it in the browser ([Phase 0](#phase-0-a-static-page)). It is served
+with `Access-Control-Allow-Origin: *`: GitHub Pages sends that header for
+every file; for Netlify and Cloudflare Pages, which both read a `_headers`
+file, `build-site` writes one that adds it for each `app.jsonld` and for
+`/apps.jsonld`. The files are public and the request carries no
+credentials, so the header exposes nothing new. Icons need no header: a
+page may show an image from another origin.
+
 The app's `index.html` links it with
 `<link rel="alternate" type="application/ld+json" href="/konsum/app.jsonld">`,
 an absolute path built from the app's `path`. A relative `href` would break:
@@ -435,6 +449,12 @@ own domain? The formats in the request answer different parts of it:
 | WebID ↔ site link                            | A known person or team once claimed the site                       | Not enough alone: after a takeover, the old catalog and the unchanged link can be replayed                                                               |
 | Build confirmation in the publisher's Pod    | Whoever controls the WebID's Pod confirmed this build at this site | **Yes**, as "publisher confirmed", without keys: a Pod sign-in is the proof of control                                                                   |
 | A store-signed attestation                   | The store reviewed this app at this state                          | **Yes**, as the "certificate": signed by `did:web:apps.sempods.org`, not by the app                                                                       |
+
+In [phase 0](#phase-0-a-static-page) the store fetches nothing itself: the
+visitor's browser loads each description from the app's origin over HTTPS,
+so what the page shows comes from that origin, and an app is listed when a
+maintainer of the store accepts it into the central file. The levels below
+need the Pod store and come with it.
 
 The resulting levels a store entry can show:
 
@@ -591,8 +611,31 @@ operation, not template tooling: the template only needs the origin in
 
 ## The store at `apps.sempods.org`
 
-A sketch, so that this template publishes the right things; the store is its
-own project:
+The store is its own project. It starts as a static page and grows into a
+Pod store; this section says enough of both for this template to publish
+the right things.
+
+### Phase 0: a static page
+
+As static as it gets, decided on 2026-11-13:
+
+- **One central file** in the store's repository lists the address of each
+  registered app's `app.jsonld`, nothing else. An app is registered by a pull
+  request that adds its address; a maintainer merges it.
+- **One static page** reads that file and, in the visitor's browser, each
+  listed `app.jsonld` from the app's origin. It shows the store front of
+  [The overview](#the-overview): cards with icon, name, short description
+  and category, a detail view with the Markdown text, the visitor's
+  language where the app has it, and "Open" on the app's own address.
+- **What the page checks**: the description's `@id` lies at the origin it
+  was loaded from, and its `image` too; an entry that does not load or does
+  not pass is left out. Names and texts are untrusted: the page escapes them
+  and renders the Markdown in the restricted subset, as every reader must.
+- **Nothing else.** No build job, no copies of the descriptions, no Pod, no
+  importer and no `store-check`. They would be stopgaps that the Pod store
+  replaces, so they are not built.
+
+### Later: the Pod store
 
 - **A Pod** holds one record per app IRI in a public Context: the imported
   JSON-LD description, plus provenance (`prov:wasDerivedFrom` the fetched
@@ -612,7 +655,8 @@ own project:
 
 ### Getting listed
 
-Submitting should be easy for someone who has never published anything:
+In phase 0, an owner gets listed by a pull request to the store's central
+file. With the Pod store, submitting should be easy for someone who has never published anything:
 
 1. The owner publishes their site as today (`configure-site`, `build-site`,
    their host) on a durable HTTPS origin.
@@ -654,7 +698,8 @@ document** (phase 2; sempods/sempods-apps-template#159).
       without an ID.
    5. The declared kinds of data in `app.json`, and `store-check` with the
       build confirmation in the owner's Pod and the submission link, once
-      the store's import format is fixed. A Pod sign-in after every deploy
+      the Pod store's import format is fixed; phase 0 of the store needs
+      none of it. A Pod sign-in after every deploy
       must not cost the next app its ease: try the routine with a real owner
       who publishes several times before fixing it.
 2. **Sign-in by metadata document**, after sempods-kotlin#437 and the spec
@@ -662,9 +707,11 @@ document** (phase 2; sempods/sempods-apps-template#159).
    SDK runtime, and a `configure-site` choice between `did:web` and the
    document. Switching changes the client identity, so it needs fresh sign-in
    and consent, and goes into the changelog as such.
-3. **The store**, its own repository: Pod, importer and UI with publisher
-   confirmation required for listing; then build checks, moves, publisher
-   reviews, terms and a report path.
+3. **The store**, its own repository: first the static page of
+   [phase 0](#phase-0-a-static-page), once step 3 publishes `app.jsonld`;
+   then Pod, importer and UI with publisher confirmation required for
+   listing; then build checks, moves, publisher reviews, terms and a report
+   path.
 
 ## Decisions
 
@@ -699,3 +746,12 @@ Taken by the owner on 2026-11-12:
    of data an app uses. The store supports moves; after a takeover, a
    changed build loses the listing, and the owner withdraws the
    confirmation for the unchanged one.
+
+Taken by the owner on 2026-11-13:
+
+10. **Store phase 0**: a static page and one central file with the address
+    of each registered app's `app.jsonld`, read in the browser. Listing is a
+    merged pull request; the Pod, the importer, `store-check` and the build
+    confirmation wait for the Pod store, and no stopgap is built for them.
+    `app.jsonld` and `/apps.jsonld` are therefore served with
+    `Access-Control-Allow-Origin: *`.
