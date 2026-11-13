@@ -2,7 +2,10 @@
 // Builds every app with a published profile into its path of one static site
 // folder, site-dist/, with a page for each route, and writes the overview and
 // the host's routing files: 404.html, and _redirects for resource patterns.
-// apps/<id>/dist keeps the app's local build.
+// Beside each app it publishes the app's descriptions (app.jsonld,
+// client.json, did.json) and the list of its files (build.json), and at the
+// root the site catalog (apps.jsonld) and _headers. apps/<id>/dist keeps the
+// app's local build.
 // Usage: pnpm run build-site [--profile production|preview]
 //        (or SEMPODS_SITE_PROFILE=<profile> in the host's environment)
 import {
@@ -19,11 +22,26 @@ import { parseArgs } from 'node:util';
 import { AUTO, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { describedApps } from './lib/describe.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
+import { PNG_ICONS } from './lib/icon.mjs';
 import { ifPresent, readJson, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
+import {
+  APP_DESCRIPTION,
+  appDescription,
+  appIri,
+  BUILD_LIST,
+  buildList,
+  CLIENT_DOCUMENT,
+  clientDocument,
+  headersFile,
+  identifierProblems,
+  SITE_CATALOG,
+  siteCatalog,
+} from './lib/published.mjs';
 import { SDK } from './lib/sdk.mjs';
+import { textCompleteness } from './lib/texts.mjs';
 
 export const SITE_DIR = 'site-dist';
 
@@ -40,13 +58,17 @@ function appBuild(appDir, mode, outDir) {
 }
 
 // Paths build-site reserves in each app's output, so an app's own copies are
-// left out: did.json (written here), host files that hosts read only at the
-// site root (Cloudflare would serve a nested 404.html), and the callback:
+// left out: the documents written here, host files that hosts read only at
+// the site root (Cloudflare would serve a nested 404.html), and the callback:
 // `callback.html` is written here, and an extensionless `callback` would
 // answer the callback path before it.
 const RESERVED = [
   'did.json',
+  APP_DESCRIPTION,
+  CLIENT_DOCUMENT,
+  BUILD_LIST,
   '_redirects',
+  '_headers',
   '404.html',
   'callback',
   'callback.html',
@@ -103,7 +125,7 @@ function overviewEntry(app, outDir) {
 export function buildSite(root, { profile = 'production', build = appBuild } = {}) {
   if (!SITE_PROFILES.includes(profile))
     throw new Error(`The profile is one of ${SITE_PROFILES.join(', ')}.`);
-  const { apps, site } = describedApps(root);
+  const { apps, site, catalog } = describedApps(root);
   if (!site?.[profile])
     throw new Error(
       `apps.json has no site.${profile}; run pnpm run configure-site first.`,
@@ -120,7 +142,15 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       throw new Error(
         `apps/${app.id}/${stale[0]} does not match apps.json, apps/${app.id}/app.json or the app's theme; run pnpm run regenerate.`,
       );
+    // Readers get every text in every language the app is shown in.
+    const problems = textCompleteness(root, app);
+    if (problems.length > 0)
+      throw new Error(
+        `${problems.join('; ')}. Fix the texts as pnpm run check explains, then build again.`,
+      );
   }
+  const origin = site[profile];
+  const descriptions = [];
 
   const entries = [];
   const warnings = [];
@@ -144,11 +174,31 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
         );
 
     // Some Pods resolve the did:web document before they accept the app.
-    const { clientId, redirectUri } = siteIdentity(site[profile], app);
-    writeJson(join(appOut, 'did.json'), {
-      '@context': 'https://www.w3.org/ns/did/v1',
-      id: clientId,
+    const { clientId, redirectUri } = siteIdentity(origin, app);
+    const did = { '@context': 'https://www.w3.org/ns/did/v1', id: clientId };
+    writeJson(join(appOut, 'did.json'), did);
+    // The largest icon, at a fixed address the store and the client document
+    // point to.
+    const icon = existsSync(join(appOut, PNG_ICONS.at(-1)))
+      ? `${appIri(origin, app)}${PNG_ICONS.at(-1)}`
+      : undefined;
+    const description = appDescription(root, app, origin, {
+      icon,
+      publisher: catalog?.publisher,
     });
+    const client = clientDocument(app, origin, { icon });
+    const problems = identifierProblems(app, origin, {
+      description,
+      client,
+      did,
+      manifest: ifPresent(() =>
+        readJson(join(appOut, 'manifest.webmanifest')),
+      ),
+    });
+    if (problems.length > 0) throw new Error(problems.join('; '));
+    writeJson(join(appOut, APP_DESCRIPTION), description);
+    writeJson(join(appOut, CLIENT_DOCUMENT), client);
+    descriptions.push(description);
     copyLicences([appDir, root], appOut, app.id);
 
     // The callback must answer 200 at its exact path with its query intact.
@@ -175,7 +225,12 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       rewrites.push(`${app.path}${pattern} ${app.path}index.html 200`);
 
     entries.push(overviewEntry(app, appOut));
+    // Last, so it lists every file the app publishes.
+    writeJson(join(appOut, BUILD_LIST), buildList(appOut, app));
   }
+
+  writeJson(join(out, SITE_CATALOG), siteCatalog(origin, descriptions, catalog));
+  writeFileSync(join(out, '_headers'), headersFile(apps));
 
   writeFileSync(join(out, 'index.html'), renderOverview(entries));
   // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve

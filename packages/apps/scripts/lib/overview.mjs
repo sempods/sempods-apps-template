@@ -38,13 +38,13 @@ const STYLE = `
   .description { font-size: 0.9rem; }
 `;
 
-function page(language, title, body) {
+function page(language, title, body, head = '') {
   return `<!doctype html>
 <html lang="${escape(language)}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escape(title)}</title>
+    <title>${escape(title)}</title>${head}
     <style>${STYLE}</style>
   </head>
   <body>
@@ -92,7 +92,15 @@ export function renderOverview(entries) {
   const list = entries.length
     ? `      <ul>\n${entries.map(card).join('\n')}\n      </ul>`
     : `      <p>${escape(text.empty)}</p>`;
-  return page(language, text.title, `      <h1>${escape(text.title)}</h1>\n${list}`);
+  // Machines find the same list in the site catalog.
+  const catalog =
+    '\n    <link rel="alternate" type="application/ld+json" href="/apps.jsonld" />';
+  return page(
+    language,
+    text.title,
+    `      <h1>${escape(text.title)}</h1>\n${list}`,
+    catalog,
+  );
 }
 
 /** The page for unknown paths, so no host falls back to an app or the overview. */

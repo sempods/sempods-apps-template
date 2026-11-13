@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -12,6 +13,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { buildSite } from '../scripts/build-site.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { renderNotFound, renderOverview } from '../scripts/lib/overview.mjs';
+import { CLIENT_LIMIT, manifestAddresses } from '../scripts/lib/published.mjs';
 import { createApp } from '../scripts/new-app.mjs';
 import { regenerate } from '../scripts/regenerate.mjs';
 import { tempRepository } from './fixture.mjs';
@@ -31,6 +33,14 @@ describe('build-site', () => {
       join(outDir, 'index.html'),
       `<!doctype html><html><head><title>x</title></head><p>${mode}</p></html>`,
     );
+    // The PWA plugin writes the manifest from the generated configuration.
+    const vite = readFileSync(join(appDir, 'vite.sempods.generated.ts'), 'utf8');
+    const scope = vite.match(/^  scope: (".*"),$/m)?.[1];
+    if (scope)
+      writeFileSync(
+        join(outDir, 'manifest.webmanifest'),
+        JSON.stringify({ id: JSON.parse(scope), start_url: JSON.parse(scope), scope: JSON.parse(scope) }),
+      );
     return true;
   };
   beforeEach(() => {
@@ -108,7 +118,226 @@ describe('build-site', () => {
     assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
     assert.equal(exists('_redirects'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
-    assert.equal(exists('_headers'), false);
+    // The only headers: the descriptions may be read from any origin.
+    assert.equal(
+      read('_headers').replace(/^#.*\n/gm, ''),
+      '/apps.jsonld\n  Access-Control-Allow-Origin: *\n/konsum/app.jsonld\n  Access-Control-Allow-Origin: *\n/notes/app.jsonld\n  Access-Control-Allow-Origin: *\n',
+    );
+  });
+
+  it("publishes each app's descriptions under its IRI", () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.catalog = {
+      lang: 'de',
+      name: 'Danilos Apps',
+      name_localized: { en: "Danilo's apps" },
+      publisher: 'https://pod.example.org/profile/card#me',
+    };
+    writeFileSync(file, JSON.stringify(manifest));
+    const konsum = join(root, 'apps', 'konsum');
+    writeFileSync(
+      join(konsum, 'app.json'),
+      JSON.stringify({
+        lang: 'de',
+        name: 'Einkauf',
+        description: 'Was fehlt.',
+        categories: ['shopping'],
+      }),
+    );
+    writeFileSync(join(konsum, 'details.md'), '## Wofür\n\nFür alle.\n');
+    regenerate(root);
+    buildSite(root, { build });
+    const json = (path) => JSON.parse(read(path));
+    const iri = 'https://apps.example.org/konsum/';
+    const description = json('konsum/app.jsonld');
+    assert.deepEqual(description, {
+      '@context': [
+        'https://schema.org/',
+        {
+          name: { '@container': '@language' },
+          description: { '@container': '@language' },
+        },
+      ],
+      '@id': iri,
+      '@type': 'WebApplication',
+      name: { de: 'Einkauf' },
+      description: { de: 'Was fehlt.' },
+      subjectOf: [
+        {
+          '@type': 'TextObject',
+          inLanguage: 'de',
+          encodingFormat: 'text/markdown',
+          text: '## Wofür\n\nFür alle.\n',
+        },
+      ],
+      applicationCategory: ['shopping'],
+      inLanguage: ['de'],
+      url: iri,
+      image: `${iri}icon-512.png`,
+      isPartOf: { '@id': 'https://apps.example.org/' },
+      publisher: { '@id': 'https://pod.example.org/profile/card#me' },
+      identifier: [
+        'did:web:apps.example.org:konsum',
+        `${iri}client.json`,
+      ],
+    });
+    assert.deepEqual(json('konsum/client.json'), {
+      client_id: `${iri}client.json`,
+      client_name: 'Einkauf',
+      client_uri: iri,
+      logo_uri: `${iri}icon-512.png`,
+      redirect_uris: [`${iri}callback`],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      token_endpoint_auth_methods_supported: ['none'],
+      token_endpoint_auth_method: 'none',
+      application_type: 'web',
+    });
+    const catalog = json('apps.jsonld');
+    assert.equal(catalog['@id'], 'https://apps.example.org/');
+    assert.deepEqual(catalog.name, { de: 'Danilos Apps', en: "Danilo's apps" });
+    assert.deepEqual(
+      catalog.itemListElement.map(({ position, item }) => [position, item['@id'], item.name]),
+      [
+        [1, iri, { de: 'Einkauf' }],
+        [2, 'https://apps.example.org/notes/', { en: 'Notes' }],
+      ],
+    );
+    assert.equal('subjectOf' in catalog.itemListElement[0].item, false);
+    assert.match(read('index.html'), /<link rel="alternate" type="application\/ld\+json" href="\/apps\.jsonld" \/>/);
+  });
+
+  it('lists every published file of an app with its digest', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    buildSite(root, { build });
+    const { files } = JSON.parse(read('konsum/build.json'));
+    const paths = files.map((entry) => entry.path);
+    assert.deepEqual(paths, [...paths].sort());
+    for (const path of [
+      '/konsum/index.html',
+      '/konsum/callback.html',
+      '/konsum/app.jsonld',
+      '/konsum/client.json',
+      '/konsum/did.json',
+      '/konsum/manifest.webmanifest',
+      '/konsum/icon-maskable-512.png',
+    ])
+      assert.ok(paths.includes(path), path);
+    assert.equal(paths.includes('/konsum/build.json'), false);
+    for (const { path, sha256 } of files)
+      assert.equal(
+        createHash('sha256').update(readFileSync(join(root, 'site-dist', path))).digest('hex'),
+        sha256,
+        path,
+      );
+  });
+
+  it("refuses an app whose documents name it differently", () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const withManifest = (fields) => (appDir, mode, outDir) => {
+      build(appDir, mode, outDir);
+      if (existsSync(join(outDir, 'manifest.webmanifest')))
+        writeFileSync(
+          join(outDir, 'manifest.webmanifest'),
+          JSON.stringify({ id: './', start_url: './', scope: './', ...fields }),
+        );
+      return true;
+    };
+    const differs = (key, actual) =>
+      new RegExp(
+        `apps/konsum: manifest\\.webmanifest ${key} is ${actual}, not "https://apps\\.example\\.org/konsum/"`,
+      );
+    assert.throws(
+      () => buildSite(root, { build: withManifest({ id: '/other/' }) }),
+      differs('id', '"https://apps\\.example\\.org/other/"'),
+    );
+    // The id resolves against the start URL's origin, not the manifest's
+    // address: "./" names the site root, which every app would share.
+    assert.throws(
+      () => buildSite(root, { build: withManifest({ id: './' }) }),
+      differs('id', '"https://apps\\.example\\.org/"'),
+    );
+    // Without a start URL, the browser starts at whichever page linked the
+    // manifest.
+    assert.throws(
+      () => buildSite(root, { build: withManifest({ id: 'konsum/', start_url: '' }) }),
+      differs('start_url', '""'),
+    );
+    // "konsum/" is the app, although it reads like a relative path. An empty
+    // id falls back to the start URL, an empty scope to its directory.
+    for (const fields of [{ id: 'konsum/' }, { id: '' }, { id: '', scope: '' }])
+      buildSite(root, { build: withManifest(fields) });
+  });
+
+  it('reads the addresses of a manifest as a browser does', () => {
+    const at = 'https://apps.example.org/konsum/manifest.webmanifest';
+    const app = 'https://apps.example.org/konsum/';
+    const read = (fields) => manifestAddresses({ start_url: './', ...fields }, at);
+    assert.deepEqual(read({ id: 'konsum/#a', scope: '.?x#y' }), {
+      id: app,
+      start_url: app,
+      scope: app,
+    });
+    // An id that is unset, empty, no string, invalid or of another origin
+    // is the start URL.
+    for (const id of [undefined, '', 7, 'https://other.example/', 'http://[x'])
+      assert.equal(read({ id }).id, app, String(id));
+    // A scope that is unset, empty, no string, invalid or does not contain
+    // the start URL is the start URL's directory.
+    for (const scope of [undefined, '', 1, 'http://[x', '/other/'])
+      assert.equal(read({ scope, start_url: 'start.html?a' }).scope, app, String(scope));
+    // Without a usable start URL, the addresses depend on the linking page.
+    for (const start_url of [undefined, '', 'https://other.example/'])
+      assert.deepEqual(read({ id: 'konsum/', start_url }), { start_url });
+  });
+
+  it('keeps client.json within the read limit as it is written', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const named = (name) => {
+      writeFileSync(
+        join(root, 'apps', 'konsum', 'app.json'),
+        JSON.stringify({ lang: 'de', name, description: 'Was fehlt.' }),
+      );
+      regenerate(root);
+    };
+    named('E');
+    buildSite(root, { build });
+    const written = Buffer.byteLength(read('konsum/client.json'));
+    // A name that fills the limit exactly, as written with its indentation.
+    const name = 'E'.repeat(1 + CLIENT_LIMIT - written);
+    named(name);
+    buildSite(root, { build });
+    assert.equal(Buffer.byteLength(read('konsum/client.json')), CLIENT_LIMIT);
+    // The compact form of one byte more would still fit.
+    named(`${name}E`);
+    assert.ok(
+      Buffer.byteLength(JSON.stringify(JSON.parse(read('konsum/client.json')))) + 1 <=
+        CLIENT_LIMIT,
+    );
+    assert.throws(
+      () => buildSite(root, { build }),
+      /apps\/konsum: client\.json is larger than 5000 bytes; shorten the app's names/,
+    );
+  });
+
+  it('refuses texts a reader would miss', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.apps[0].language = 'auto';
+    writeFileSync(file, JSON.stringify(manifest));
+    writeFileSync(
+      join(root, 'apps', 'konsum', 'app.json'),
+      JSON.stringify({ lang: 'de', name: 'Einkauf', description: 'Was fehlt.' }),
+    );
+    regenerate(root);
+    assert.throws(
+      () => buildSite(root, { build }),
+      /description_localized\.en is missing[\s\S]*pnpm run check/,
+    );
+    assert.equal(builds.length, 0);
   });
 
   it('serves each route from a file at its path, without rewrites', () => {

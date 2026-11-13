@@ -234,12 +234,19 @@ import type { ${app.pwa ? 'ManifestOptions, ' : ''}VitePWAOptions } from 'vite-p
 ${app.pwa ? manifestSource(app, colours) : ''}
 export const base = ${json(p)};
 
-// The page title from app.json, added to the head of every page Vite serves
-// or builds; index.html has no <title> of its own.
+// The page title from app.json and the link to the app's published
+// description, added to the head of every page Vite serves or builds;
+// index.html has no <title> of its own. The link's path is absolute, since
+// the same page answers the app's routes.
 export const pageTitle: Plugin = {
   name: 'sempods-page-title',
   transformIndexHtml: () => [
     { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
+    {
+      tag: 'link',
+      attrs: { rel: 'alternate', type: 'application/ld+json', href: ${json(`${p}app.jsonld`)} },
+      injectTo: 'head',
+    },
   ],
 };
 

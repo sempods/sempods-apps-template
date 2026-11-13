@@ -42,8 +42,15 @@ writes the overview, `did.json` per app (`/<id>/did.json`, needed by some
 Pods), the SDK's licence notices, `<id>/callback.html` for each callback,
 `<id>/<route>.html` for each route an app lists in `apps.json` (in subfolders
 for a route such as `tasks/add`), a top-level `404.html` for unknown paths,
-and `_redirects` when an app declares resource patterns. The layout is the
-same for every host.
+and `_redirects` when an app declares resource patterns. It also publishes
+what the app is, from its `app.json`: `<id>/app.jsonld` (its description for
+the overview, the app store and other readers), `<id>/client.json` (its
+client metadata for sign-in servers, not used for sign-in yet),
+`<id>/build.json` (every published file of the app with its digest), the
+site's list `apps.jsonld` and `_headers`, which lets other sites read the
+descriptions. It stops when a text is missing in a language an app is shown
+in, as `pnpm run check` reports it, and when an app's names make
+`client.json` larger than 5,000 bytes, more than a sign-in server reads. The layout is the same for every host.
 `site-dist/` is build output; do not commit it. `apps/<id>/dist` is not
 touched, so `pnpm run build` and `pnpm run preview` in an app keep the local
 identity.
@@ -72,6 +79,10 @@ Every host, whatever it is:
   `/<id>/tasks/<id>`, answers with the app's page and `200`, after the
   published files;
 - answers `/<id>/did.json` with the JSON document, not with an app page;
+- lets any site read `/apps.jsonld` and each `/<id>/app.jsonld` with the
+  header `Access-Control-Allow-Origin: *`. GitHub Pages sends it for every
+  file, and Netlify and Cloudflare Pages take it from the generated
+  `_headers`; on another host, set it for these files only;
 - does not rewrite every path to an `index.html`, which would also replace
   scripts, `sw.js` and `did.json`. Unknown paths show the not-found page;
 - keeps the browser's default referrer policy or a stricter one, loads no
@@ -184,6 +195,9 @@ SDK's `deployment.md`.
      (a GET, as the browser sends it) returns `200` and no `Location`;
    - `curl -s 'https://<host>/<id>/did.json'` returns the JSON with
      `"id": "did:web:<host>:<id>"`;
+   - `curl -s -D - 'https://<host>/<id>/app.jsonld'` returns the JSON with
+     `"@id": "https://<host>/<id>/"` and the header
+     `access-control-allow-origin: *`;
    - each route, `curl -s -o /dev/null -D - 'https://<host>/<id>/<route>'`,
      returns `200` and no `Location`;
    - for each resource pattern, one address with an identifier, for example

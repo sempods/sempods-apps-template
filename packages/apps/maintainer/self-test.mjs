@@ -12,6 +12,7 @@
 // (pnpm --filter @sempods/apps exec playwright install chromium).
 // Usage: pnpm run self-test
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import {
   cpSync,
@@ -25,7 +26,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
@@ -254,6 +255,11 @@ function publish(repo) {
     `${FIXTURE}/callback.html`,
     `${FIXTURE}/sw.js`,
     `${FIXTURE}/manifest.webmanifest`,
+    `${FIXTURE}/app.jsonld`,
+    `${FIXTURE}/client.json`,
+    `${FIXTURE}/build.json`,
+    'apps.jsonld',
+    '_headers',
     `${FIXTURE}/licenses/app-sdk/NOTICE`,
     `${FIXTURE}/licenses/app-ui/NOTICE`,
   ])
@@ -281,6 +287,30 @@ function publish(repo) {
   const did = readJson(join(site, FIXTURE, 'did.json'));
   if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
     throw new Error(`unexpected did.json id ${did.id}`);
+  // The published descriptions name the app by its IRI, and build.json lists
+  // every file the real build wrote, with its digest.
+  const iri = `${production}/${FIXTURE}/`;
+  const description = readJson(join(site, FIXTURE, 'app.jsonld'));
+  if (
+    description['@id'] !== iri ||
+    description.name?.de !== 'Selbsttest' ||
+    !description.identifier?.includes(did.id)
+  )
+    throw new Error(`unexpected app.jsonld ${JSON.stringify(description)}`);
+  if (readJson(join(site, FIXTURE, 'client.json')).client_uri !== iri)
+    throw new Error('client.json names another app');
+  if (!readFileSync(join(site, FIXTURE, 'index.html'), 'utf8').includes(`href="/${FIXTURE}/app.jsonld"`))
+    throw new Error('the app page does not link its description');
+  const listed = readJson(join(site, FIXTURE, 'build.json')).files;
+  const built = readdirSync(join(site, FIXTURE), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name !== 'build.json')
+    .map((entry) => `/${FIXTURE}/${relative(join(site, FIXTURE), join(entry.parentPath, entry.name)).split(sep).join('/')}`)
+    .sort();
+  if (JSON.stringify(listed.map((entry) => entry.path).sort()) !== JSON.stringify(built))
+    throw new Error('build.json does not list exactly the built files');
+  for (const { path, sha256 } of listed)
+    if (createHash('sha256').update(readFileSync(join(site, path))).digest('hex') !== sha256)
+      throw new Error(`build.json has another digest for ${path}`);
   if (assets(join(dir, 'dist')).join() !== localBuild)
     throw new Error('build-site changed the local build in dist/');
   // The shipped bundle itself must select the profile: Vite inlines the build
