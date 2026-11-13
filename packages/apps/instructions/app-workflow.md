@@ -468,9 +468,11 @@ optionally `routes` and `resources`. An optional `site` records where the
 apps are published; only `pnpm run configure-site` writes it, and it
 regenerates every app's configuration from it. An optional `catalog` names
 the whole site for its overview: `lang`, `name`, an optional `description`
-(both translatable as in `app.json`) and an optional `publisher`, the HTTPS
-WebID of the person or team behind the site. Do not add other deployment
-fields.
+(both translatable as in `app.json`), an optional `publisher`, the HTTPS
+WebID of the person or team behind the site, and an optional `theme` for the
+overview's colours: `calm`, `fresh` (the default), `playful` or `warm`, the
+skeleton's themes. Offer the theme most of the apps use. Do not add other
+deployment fields.
 
 ### Describe the app in app.json
 

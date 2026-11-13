@@ -7,6 +7,27 @@ import {
   SITE_THEME,
   siteLanguages,
 } from '../scripts/lib/overview.mjs';
+import { SKELETON } from '../scripts/lib/paths.mjs';
+import { themeCss, themeNames, tokenColours } from '../scripts/lib/themes.mjs';
+
+/** A role's light and dark colour, following `--role: var(--other)`. */
+function role(css, name) {
+  const alias = css.match(new RegExp(`--${name}:\\s*var\\(--([a-z-]+)\\)`));
+  return alias ? role(css, alias[1]) : tokenColours(css, name);
+}
+
+/** The WCAG contrast ratio of two #rrggbb colours. */
+function contrast(a, b) {
+  const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
 
 // An overview entry as build-site makes it from an app's description.
 const entry = (id, name, { lang = 'de', languages = [lang], ...rest } = {}) => ({
@@ -128,6 +149,40 @@ describe('overview page', () => {
     assert.match(html, /--primary: light-dark\(#0a6680, #5ec6e4\);/);
     assert.match(html, /<header class="bar">/);
     assert.match(html, /<li class="app-row">/);
+  });
+
+  it("uses the catalog's theme on the overview and the not-found page", () => {
+    const themed = { ...catalog, theme: 'warm' };
+    for (const html of [
+      renderOverview([entry('a', 'A')], themed),
+      renderNotFound([entry('a', 'A')], themed),
+    ]) {
+      assert.match(html, /--primary: light-dark\(#9c4128, #f0a184/);
+      assert.doesNotMatch(html, /#0a6680/);
+    }
+  });
+
+  it("keeps the overview's text readable in every theme a catalog can pick", () => {
+    // Text pairs the overview uses beyond those check:theme covers in an app.
+    const pairs = [
+      ['foreground', 'muted'],
+      ['muted-foreground', 'muted'],
+      ['muted-foreground', 'card'],
+      ['muted-foreground', 'secondary'],
+      ['secondary-foreground', 'secondary'],
+      ['primary', 'card'],
+      ['primary', 'muted'],
+      ['primary', 'accent'],
+      ['primary-foreground', 'primary'],
+    ];
+    for (const theme of themeNames(SKELETON)) {
+      const css = themeCss(SKELETON, theme);
+      for (const [text, surface] of pairs)
+        for (const scheme of ['light', 'dark']) {
+          const ratio = contrast(role(css, text)[scheme], role(css, surface)[scheme]);
+          assert.ok(ratio >= 4.5, `${theme} ${scheme}: ${text} on ${surface} is ${ratio.toFixed(2)}:1`);
+        }
+    }
   });
 
   it('renders Markdown without raw HTML or unsafe links', () => {
