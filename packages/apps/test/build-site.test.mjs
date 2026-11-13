@@ -236,55 +236,61 @@ describe('build-site', () => {
 
   it("refuses an app whose documents name it differently", () => {
     configureSite(root, { production: 'https://apps.example.org' });
-    const withId = (id) => (appDir, mode, outDir) => {
+    const withManifest = (fields) => (appDir, mode, outDir) => {
       build(appDir, mode, outDir);
       if (existsSync(join(outDir, 'manifest.webmanifest')))
         writeFileSync(
           join(outDir, 'manifest.webmanifest'),
-          JSON.stringify({ id, start_url: './', scope: './' }),
+          JSON.stringify({ id: './', start_url: './', scope: './', ...fields }),
         );
       return true;
     };
-    const differs = (actual) =>
+    const differs = (key, actual) =>
       new RegExp(
-        `apps/konsum: manifest\\.webmanifest id is "${actual}", not "https://apps\\.example\\.org/konsum/"`,
+        `apps/konsum: manifest\\.webmanifest ${key} is ${actual}, not "https://apps\\.example\\.org/konsum/"`,
       );
     assert.throws(
-      () => buildSite(root, { build: withId('/other/') }),
-      differs('https://apps\\.example\\.org/other/'),
+      () => buildSite(root, { build: withManifest({ id: '/other/' }) }),
+      differs('id', '"https://apps\\.example\\.org/other/"'),
     );
     // The id resolves against the start URL's origin, not the manifest's
     // address: "./" names the site root, which every app would share.
     assert.throws(
-      () => buildSite(root, { build: withId('./') }),
-      differs('https://apps\\.example\\.org/'),
+      () => buildSite(root, { build: withManifest({ id: './' }) }),
+      differs('id', '"https://apps\\.example\\.org/"'),
     );
-    // "konsum/" is the app, although it reads like a relative path.
-    buildSite(root, { build: withId('konsum/') });
+    // Without a start URL, the browser starts at whichever page linked the
+    // manifest.
+    assert.throws(
+      () => buildSite(root, { build: withManifest({ id: 'konsum/', start_url: '' }) }),
+      differs('start_url', '""'),
+    );
+    // "konsum/" is the app, although it reads like a relative path. An empty
+    // id falls back to the start URL, an empty scope to its directory.
+    for (const fields of [{ id: 'konsum/' }, { id: '' }, { id: '', scope: '' }])
+      buildSite(root, { build: withManifest(fields) });
   });
 
   it('reads the addresses of a manifest as a browser does', () => {
     const at = 'https://apps.example.org/konsum/manifest.webmanifest';
-    assert.deepEqual(
-      manifestAddresses({ id: 'konsum/#a', start_url: './', scope: '.' }, at),
-      {
-        id: 'https://apps.example.org/konsum/',
-        start_url: 'https://apps.example.org/konsum/',
-        scope: 'https://apps.example.org/konsum/',
-      },
-    );
-    // Without an id, or with one of another origin, the start URL stands in.
-    assert.equal(manifestAddresses({ start_url: './' }, at).id, 'https://apps.example.org/konsum/');
-    assert.equal(
-      manifestAddresses({ id: 'https://other.example/', start_url: './' }, at).id,
-      'https://apps.example.org/konsum/',
-    );
-    // A field that is no address keeps its raw value for the message.
-    assert.deepEqual(manifestAddresses({ id: 7, scope: 1 }, at), {
-      id: 7,
-      start_url: undefined,
-      scope: 1,
+    const app = 'https://apps.example.org/konsum/';
+    const read = (fields) => manifestAddresses({ start_url: './', ...fields }, at);
+    assert.deepEqual(read({ id: 'konsum/#a', scope: '.?x#y' }), {
+      id: app,
+      start_url: app,
+      scope: app,
     });
+    // An id that is unset, empty, no string, invalid or of another origin
+    // is the start URL.
+    for (const id of [undefined, '', 7, 'https://other.example/', 'http://[x'])
+      assert.equal(read({ id }).id, app, String(id));
+    // A scope that is unset, empty, no string, invalid or does not contain
+    // the start URL is the start URL's directory.
+    for (const scope of [undefined, '', 1, 'http://[x', '/other/'])
+      assert.equal(read({ scope, start_url: 'start.html?a' }).scope, app, String(scope));
+    // Without a usable start URL, the addresses depend on the linking page.
+    for (const start_url of [undefined, '', 'https://other.example/'])
+      assert.deepEqual(read({ id: 'konsum/', start_url }), { start_url });
   });
 
   it('keeps client.json within the read limit as it is written', () => {

@@ -243,9 +243,13 @@ ${[`/${SITE_CATALOG}`, ...apps.map((app) => `${app.path}${APP_DESCRIPTION}`)]
 `;
 }
 
-/** `value` as a URL resolved against `base`, or undefined. */
+/**
+ * `value` as a URL resolved against `base`, or undefined for anything a
+ * manifest processor skips: a value that is not a string, the empty string
+ * and an address that does not parse.
+ */
 function parsed(value, base) {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== 'string' || value === '') return undefined;
   try {
     return new URL(value, base);
   } catch {
@@ -255,25 +259,38 @@ function parsed(value, base) {
 
 /**
  * The addresses a browser takes from a web app manifest served at
- * `manifestUrl`: `start_url` and `scope` resolve against the manifest's
- * address, the `id` against the start URL's origin and without its fragment.
- * An `id` that is missing, invalid or of another origin falls back to the
- * start URL. A field that does not resolve keeps its raw value.
+ * `manifestUrl`, step by step as the W3C manifest processing defines them:
+ * - `start_url` resolves against the manifest's address. Unset, invalid or
+ *   of another origin, it becomes the address of the page that links the
+ *   manifest; that differs by page, so only the raw value is returned then.
+ * - `id` resolves against the start URL's origin, without its fragment.
+ *   Unset, invalid or of another origin, it is the start URL.
+ * - `scope` resolves against the manifest's address, without query and
+ *   fragment. Unset, invalid or not containing the start URL, it is the
+ *   start URL's directory.
  */
 export function manifestAddresses(manifest, manifestUrl) {
   const start = parsed(manifest.start_url, manifestUrl);
-  const scope = parsed(manifest.scope, manifestUrl);
-  let id;
-  if (start) {
-    const own = parsed(manifest.id, start.origin);
-    id = new URL(own?.origin === start.origin ? own : start);
-    id.hash = '';
+  if (start?.origin !== new URL(manifestUrl).origin)
+    return { start_url: manifest.start_url };
+  let id = start;
+  const ownId = parsed(manifest.id, start.origin);
+  if (ownId?.origin === start.origin) {
+    ownId.hash = '';
+    id = ownId;
   }
-  return {
-    id: id?.href ?? manifest.id,
-    start_url: start?.href ?? manifest.start_url,
-    scope: scope?.href ?? manifest.scope,
-  };
+  let scope = new URL('.', start);
+  const ownScope = parsed(manifest.scope, manifestUrl);
+  if (ownScope) {
+    ownScope.search = '';
+    ownScope.hash = '';
+    if (
+      ownScope.origin === start.origin &&
+      start.pathname.startsWith(ownScope.pathname)
+    )
+      scope = ownScope;
+  }
+  return { id: id.href, start_url: start.href, scope: scope.href };
 }
 
 /**
@@ -309,8 +326,8 @@ export function identifierProblems(app, origin, { description, client, did, mani
       problems.push(`${where}: the build wrote no manifest.webmanifest`);
     else {
       const addresses = manifestAddresses(manifest, `${iri}manifest.webmanifest`);
-      for (const key of ['id', 'start_url', 'scope'])
-        expect(`manifest.webmanifest ${key}`, addresses[key], iri);
+      for (const [key, address] of Object.entries(addresses))
+        expect(`manifest.webmanifest ${key}`, address, iri);
     }
   }
   // Measured as build-site writes it.
