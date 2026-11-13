@@ -74,11 +74,12 @@ Published descriptions (sempods/sempods-apps-template#46, step 3):
 
 The overview (sempods/sempods-apps-template#46, step 4):
 
-- The site's overview at `/` looks like an app store: a header with the
+- The site's overview at `/` looks like an app store: a band with the
   catalog's name and description, a card per app with its icon, name,
   description, first category, "Can be installed" for a PWA and "Open", and
-  from eight apps a group per first category. Its colours are the default
-  theme's, in light and dark mode.
+  from eight apps a group per first category. It has one colour, the
+  skeleton's `fresh` theme, in light and dark mode; the apps' icons bring
+  their own.
 - Each card leads to the app's detail view at `/#<id>`: its detail text
   from `details.md`, categories, languages, the catalog's publisher, "Open"
   and, for a PWA, how to install it. The view works without script.

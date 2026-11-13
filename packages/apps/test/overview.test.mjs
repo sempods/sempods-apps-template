@@ -5,6 +5,7 @@ import {
   renderMarkdown,
   renderNotFound,
   renderOverview,
+  SITE_THEME,
   siteLanguages,
 } from '../scripts/lib/overview.mjs';
 
@@ -100,7 +101,7 @@ describe('overview page', () => {
     );
     assert.match(html, /<h2><a href="#konsum">/);
     assert.match(html, /<a class="open" href="\/konsum\/">/);
-    assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt="" width="64" height="64" \/>/);
+    assert.match(html, /<img class="icon" src="\/konsum\/icon-192\.png" alt="" width="56" height="56" \/>/);
     const [cards, details] = html.split('<article class="detail" id="konsum">');
     assert.ok(details);
     // The first category on the card, all of them in the detail view.
@@ -113,6 +114,18 @@ describe('overview page', () => {
     assert.equal(html.match(/<section class="install">/g).length, 1);
     assert.match(cards, /<p class="note" data-l="de" lang="de">Installierbar<\/p>/);
     assert.equal(cards.split('<li class="card">')[2].includes('class="note"'), false);
+  });
+
+  it("takes its one colour from the site theme's palette", () => {
+    const html = renderOverview([entry('a', 'A')]);
+    assert.equal(SITE_THEME, 'fresh');
+    // The fresh theme's roles, and the band's pairs taken from them.
+    assert.match(html, /--primary: light-dark\(#0a6680, #5ec6e4\);/);
+    assert.match(html, /--band: light-dark\(#0a6680, #1a2d38\);/);
+    assert.match(html, /--on-band: light-dark\(#ffffff, #e1edf3\);/);
+    assert.match(html, /<header class="band">/);
+    // The apps' cards carry no colours of their own.
+    assert.match(html, /<li class="card">/);
   });
 
   it('renders Markdown without raw HTML or unsafe links', () => {
@@ -138,6 +151,6 @@ describe('overview page', () => {
     assert.match(renderOverview([]), /No apps yet\./);
     const missing = renderNotFound([entry('a', 'A')], catalog);
     assert.match(missing, /<title>Seite nicht gefunden<\/title>/);
-    assert.match(missing, /<a href="\/"><span data-l="de" lang="de">Alle Apps<\/span><span data-l="en" lang="en">All apps<\/span><\/a>/);
+    assert.match(missing, /<a class="back" href="\/"><svg [^>]*>.*<\/svg><span data-l="de" lang="de">Alle Apps<\/span><span data-l="en" lang="en">All apps<\/span><\/a>/);
   });
 });

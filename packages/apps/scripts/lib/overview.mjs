@@ -9,7 +9,7 @@ import { micromark } from 'micromark';
 import { LANGUAGES } from './apps.mjs';
 import { escapeHtml as escape } from './html.mjs';
 import { SKELETON } from './paths.mjs';
-import { DEFAULT_THEME, themeCss } from './themes.mjs';
+import { themeCss, tokenColours } from './themes.mjs';
 
 // The overview's own words.
 const TEXT = {
@@ -158,79 +158,150 @@ function localized(languages, tag, pick, { attrs = '', html = false } = {}) {
 const word = (languages, key, tag = 'span', attrs = '') =>
   localized(languages, tag, (language) => ({ text: TEXT[language][key], lang: language }), { attrs });
 
-// The theme's palette, from the skeleton's default theme, and the page's
-// layout. Text pairs keep the theme's checked contrast in both modes.
+// The page's look: one colour, the primary of a skeleton theme, on the band
+// at the top and on the actions; everything else in that theme's neutrals.
+// The apps' icons bring their own colours. Text pairs keep the theme's
+// checked contrast in both modes.
+export const SITE_THEME = 'fresh';
+
+/**
+ * The site theme's palette and the band's colours taken from it: its primary
+ * in light mode and its quiet secondary surface in dark mode, with the text
+ * pairs the theme checks for those roles.
+ */
+function palette() {
+  const css = themeCss(SKELETON, SITE_THEME);
+  const token = (name) => tokenColours(css, name);
+  const [primary, onPrimary, secondary, foreground] = [
+    'primary',
+    'primary-foreground',
+    'secondary',
+    'foreground',
+  ].map(token);
+  return `${css}
+:root {
+  --band: light-dark(${primary.light}, ${secondary.dark});
+  --on-band: light-dark(${onPrimary.light}, ${foreground.dark});
+  --band-action: light-dark(${onPrimary.light}, ${primary.dark});
+  --on-band-action: light-dark(${primary.light}, ${onPrimary.dark});
+}`;
+}
+
 const STYLE = `
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.5; }
-  body { margin: 0; background: var(--background); color: var(--foreground); }
-  .bar, .intro, main { max-width: 64rem; margin: 0 auto; padding: 0 1rem; }
-  .bar { display: flex; justify-content: flex-end; padding-top: 1rem; }
-  .intro { padding-top: 1rem; padding-bottom: 1.5rem; }
-  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 0.5rem; }
-  .intro p { margin: 0; color: var(--muted-foreground); font-size: 1.1rem; }
-  main { padding-bottom: 3rem; }
-  h2 { font-size: 1.25rem; margin: 2rem 0 1rem; }
-  ul.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
-            grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
-  .card { position: relative; display: grid; grid-template-columns: 4rem 1fr;
-          grid-template-rows: auto auto auto 1fr; gap: 0.25rem 1rem; padding: 1rem;
-          background: var(--card); color: var(--card-foreground);
-          border: 1px solid var(--border); border-radius: 1rem; }
-  .card:hover { border-color: var(--ring); }
-  .card .icon { grid-row: 1 / 4; }
-  .card h2, .card h3 { font-size: 1.05rem; margin: 0; align-self: end; }
-  .card h2 a, .card h3 a { color: inherit; text-decoration: none; }
-  .card h2 a::after, .card h3 a::after { content: ''; position: absolute; inset: 0;
-                                         border-radius: 1rem; }
-  .card .summary { margin: 0; color: var(--muted-foreground); font-size: 0.9rem; }
-  .card .note { margin: 0; }
-  .card .meta { grid-column: 1 / -1; grid-row: 4; align-self: end; display: flex;
-                flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
-  .card .open { margin-left: auto; position: relative; }
-  .icon { width: 4rem; height: 4rem; border-radius: 22%; object-fit: cover;
-          box-shadow: 0 1px 3px rgb(0 0 0 / 0.2), 0 4px 12px rgb(0 0 0 / 0.08); }
-  .letter { display: grid; place-items: center; font-size: 2rem; font-weight: 600;
-            background: var(--primary); color: var(--primary-foreground); }
-  .chip { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px;
-          background: var(--secondary); color: var(--secondary-foreground); font-size: 0.8rem; }
-  .note { color: var(--muted-foreground); font-size: 0.8rem; }
-  .open { display: inline-block; padding: 0.35rem 1rem; border-radius: 999px;
-          background: var(--primary); color: var(--primary-foreground);
-          font-weight: 600; text-decoration: none; }
+  :root { color-scheme: light dark; font: 1rem/1.55 system-ui, sans-serif; }
+  body { margin: 0; background: var(--muted); color: var(--foreground); }
   a { color: inherit; }
-  a:focus-visible, button:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
-  .card h2 a:focus-visible, .card h3 a:focus-visible { outline: none; }
-  .card:has(h2 a:focus-visible, h3 a:focus-visible) { outline: 3px solid var(--ring);
-                                                       outline-offset: 3px; }
-  .switch { display: flex; gap: 0.25rem; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  .bar, .intro, main { box-sizing: border-box; max-width: 68rem; margin: 0 auto;
+                       padding-inline: 1.5rem; }
+
+  .band { color: var(--on-band);
+          background: radial-gradient(48rem 22rem at 88% -20%,
+                        color-mix(in oklab, var(--on-band) 13%, transparent), transparent 70%),
+                      var(--band); }
+  .band a:focus-visible, .band button:focus-visible { outline-color: var(--on-band); }
+  .bar { display: flex; justify-content: flex-end; padding-top: 1.25rem; min-height: 2.25rem; }
+  .intro { padding-block: 2.5rem 4.5rem; }
+  .intro h1 { font-size: clamp(2.25rem, 5.5vw, 3.75rem); line-height: 1.08; font-weight: 650;
+              letter-spacing: -0.025em; margin: 0; max-width: 20ch; text-wrap: balance; }
+  .intro p { margin: 1rem 0 0; max-width: 34rem; font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+             color: color-mix(in oklab, var(--on-band) 82%, var(--band)); text-wrap: pretty; }
+  main { padding-block: 2.5rem 5rem; }
+
+  .switch { display: flex; gap: 0.15rem; padding: 0.2rem; border-radius: 999px;
+            background: color-mix(in oklab, var(--on-band) 12%, transparent); }
   .switch[hidden] { display: none; }
-  .switch button { font: inherit; font-size: 0.9rem; padding: 0.25rem 0.75rem;
-                   border: 1px solid var(--border); border-radius: 999px;
-                   background: transparent; color: var(--foreground); cursor: pointer; }
-  .switch button[aria-pressed='true'] { background: var(--secondary); border-color: var(--input); }
+  .switch button { font: inherit; font-size: 0.875rem; padding: 0.25rem 0.85rem; border: 0;
+                   border-radius: 999px; background: transparent; color: inherit; cursor: pointer; }
+  .switch button[aria-pressed='true'] { background: var(--band-action); color: var(--on-band-action); }
+
+  .icon { display: block; flex: none; box-sizing: border-box; width: 3.5rem; height: 3.5rem;
+          border-radius: 23%; object-fit: cover;
+          box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 8%, transparent); }
+  .letter { display: grid; place-items: center; font-weight: 650; font-size: 1.6rem;
+            background: var(--primary); color: var(--primary-foreground); }
+
+  .apps h2 { font-size: 1.05rem; font-weight: 600; margin: 2.5rem 0 1rem;
+             color: var(--muted-foreground); }
+  .apps h2:first-child { margin-top: 0; }
+  ul.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); }
+  .card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr);
+          grid-template-rows: auto auto auto 1fr; gap: 0.15rem 1rem; padding: 1.25rem;
+          border-radius: 1rem; background: var(--card); color: var(--card-foreground);
+          border: 1px solid var(--border);
+          box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent);
+          transition: border-color 0.15s, box-shadow 0.15s; }
+  .card:hover { border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
+                box-shadow: 0 10px 28px -16px color-mix(in oklab, var(--foreground) 35%, transparent); }
+  .card .icon { grid-row: 1 / 4; }
+  .card h2, .card h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.3; margin: 0;
+                       color: var(--card-foreground); }
+  .card h2 a, .card h3 a { text-decoration: none; }
+  .card h2 a::after, .card h3 a::after { content: ''; position: absolute; inset: 0;
+                                         border-radius: inherit; }
+  .card h2 a:focus-visible, .card h3 a:focus-visible { outline: none; }
+  .card:has(h2 a:focus-visible, h3 a:focus-visible) { outline: 2px solid var(--ring);
+                                                       outline-offset: 3px; }
+  .summary { margin: 0; color: var(--muted-foreground); font-size: 0.95rem; }
+  .note { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--muted-foreground); }
+  .card .meta { grid-column: 1 / -1; grid-row: 4; align-self: end; display: flex; flex-wrap: wrap;
+                align-items: center; gap: 0.5rem; padding-top: 1.1rem; }
+  .chip { display: inline-block; padding: 0.1rem 0.65rem; border-radius: 999px; font-size: 0.8rem;
+          background: var(--secondary); color: var(--secondary-foreground); }
+  .open { display: inline-block; padding: 0.4rem 1.1rem; border-radius: 999px;
+          font-weight: 600; font-size: 0.95rem; text-decoration: none;
+          background: var(--primary); color: var(--primary-foreground); }
+  .card .open { position: relative; margin-left: auto; padding: 0.3rem 0.95rem;
+                background: transparent; color: var(--primary);
+                box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent); }
+  .card .open:hover { background: var(--primary); color: var(--primary-foreground); }
+
   .detail { display: none; }
   .detail:target { display: block; }
   body:has(.detail:target) .intro, body:has(.detail:target) .apps { display: none; }
-  .detail .back { display: inline-block; margin: 1rem 0 1.5rem; }
-  .detail header { display: grid; grid-template-columns: 6rem 1fr; gap: 0 1.25rem;
-                   align-items: center; }
-  .detail header .icon { width: 6rem; height: 6rem; grid-row: span 3; }
-  .detail header p { margin: 0 0 0.75rem; color: var(--muted-foreground); }
-  .detail header .open { justify-self: start; }
-  .text { max-width: 40rem; margin-top: 1.5rem; }
-  .text img { max-width: 100%; height: auto; border-radius: 0.5rem; }
-  .facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem;
-           margin: 2rem 0 0; }
-  .facts dt { color: var(--muted-foreground); }
-  .facts dd { margin: 0; overflow-wrap: anywhere; }
-  .facts .chip + .chip { margin-left: 0.5rem; }
-  .install { max-width: 40rem; margin-top: 2rem; padding: 1rem 1.25rem;
-             background: var(--muted); border-radius: 1rem; }
-  .install h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  body:has(.detail:target) main { padding-top: 0; }
+  body:has(.detail:target) .band { background: var(--band); }
+  .hero { color: var(--on-band); background: var(--band);
+          box-shadow: 0 0 0 100vmax var(--band); clip-path: inset(0 -100vmax);
+          padding-block: 0.75rem 3rem; }
+  .back { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.95rem;
+          text-decoration: none; padding: 0.3rem 0.85rem 0.3rem 0.55rem; border-radius: 999px;
+          background: color-mix(in oklab, var(--on-band) 12%, transparent); }
+  .hero-main { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+               gap: 0.35rem 1.75rem; margin-top: 2rem; }
+  .hero .icon { width: 6.5rem; height: 6.5rem; grid-row: span 3;
+                box-shadow: 0 12px 30px -14px rgb(0 0 0 / 0.5); }
+  .hero .letter { font-size: 3rem; background: var(--band-action); color: var(--on-band-action); }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; font-weight: 650;
+             letter-spacing: -0.02em; margin: 0; }
+  .hero p { margin: 0; font-size: 1.1rem; color: color-mix(in oklab, var(--on-band) 82%, var(--band)); }
+  .hero .open { justify-self: start; margin-top: 0.85rem;
+                background: var(--band-action); color: var(--on-band-action); }
+  .about { display: grid; grid-template-columns: minmax(0, 40rem) minmax(14rem, 18rem);
+           justify-content: space-between; gap: 2.5rem 3rem; margin-top: 2.5rem; }
+  .text { font-size: 1.05rem; }
+  .text > :first-child { margin-top: 0; }
+  .text h2, .text h3 { font-weight: 650; line-height: 1.3; margin: 1.75rem 0 0.5rem; }
+  .text a { color: var(--primary); }
+  .text img { max-width: 100%; height: auto; border-radius: 0.75rem; }
+  .facts { margin: 0; }
+  .facts dt { font-size: 0.8rem; color: var(--muted-foreground); }
+  .facts dd { margin: 0.2rem 0 1.1rem; overflow-wrap: anywhere; }
+  .facts .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .install { padding: 1rem 1.15rem; border-radius: 1rem; font-size: 0.925rem;
+             background: var(--card); border: 1px solid var(--border); }
+  .install h2 { font-size: 1rem; font-weight: 600; margin: 0; }
   .install p { margin: 0.5rem 0 0; }
+
+  @media (max-width: 44rem) {
+    .intro { padding-block: 1.5rem 3rem; }
+    .about { grid-template-columns: 1fr; }
+  }
   @media (max-width: 30rem) {
-    .detail header { grid-template-columns: 4.5rem 1fr; }
-    .detail header .icon { width: 4.5rem; height: 4.5rem; }
+    .bar, .intro, main { padding-inline: 1rem; }
+    .hero-main { gap: 0.35rem 1rem; }
+    .hero .icon { width: 4.5rem; height: 4.5rem; }
   }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden;
         clip-path: inset(50%); white-space: nowrap; }
@@ -292,7 +363,7 @@ function page(languages, { title, heading, intro = '', body, head = '' }) {
     )
     .join('');
   const nav = several
-    ? `\n      <div class="bar"><nav class="switch" hidden aria-label="${escape(TEXT[languages[0]].language)}">${buttons}</nav></div>`
+    ? `<nav class="switch" hidden aria-label="${escape(TEXT[languages[0]].language)}">${buttons}</nav>`
     : '';
   const script = several ? `\n    <script>${SWITCH}</script>` : '';
   return `<!doctype html>
@@ -302,11 +373,12 @@ function page(languages, { title, heading, intro = '', body, head = '' }) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>${escape(title)}</title>${head}${choose}
-    <style>${themeCss(SKELETON, DEFAULT_THEME)}${STYLE}${languageRules(languages)}
+    <style>${palette()}${STYLE}${languageRules(languages)}
     </style>
   </head>
   <body>
-    <header>${nav}
+    <header class="band">
+      <div class="bar">${nav}</div>
       <div class="intro">
         <h1>${heading}</h1>${intro}
       </div>
@@ -361,7 +433,7 @@ function card(languages, entry, level) {
     ? `\n            ${word(languages, 'installable', 'p', ' class="note"')}`
     : '';
   return `          <li class="card">
-            ${icon(entry, 64)}
+            ${icon(entry, 56)}
             <h${level}><a href="#${escape(entry.id)}">${localized(languages, 'span', name)}</a></h${level}>${summary}${installable}
             <div class="meta">${chip}<a class="open" href="${escape(entry.href)}">${word(languages, 'open')}<span class="vh"> ${localized(languages, 'span', name)}</span></a></div>
           </li>`;
@@ -408,13 +480,16 @@ function list(languages, entries) {
  */
 export const renderMarkdown = (text) => micromark(text);
 
+const BACK_ICON =
+  '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 function detail(languages, entry, publisher) {
   const name = (language) => textIn(entry.name, language, entry.lang);
   const summary = entry.description
     ? `\n            ${localized(languages, 'p', (language) => textIn(entry.description, language, entry.lang))}`
     : '';
   const text = entry.details
-    ? `\n        ${localized(
+    ? `\n          ${localized(
         languages,
         'div',
         (language) => {
@@ -423,11 +498,13 @@ function detail(languages, entry, publisher) {
         },
         { attrs: ' class="text"', html: true },
       )}`
-    : '';
-  const fact = (key, value) =>
-    `\n          <dt>${word(languages, key)}</dt>\n          <dd>${value}</dd>`;
+    : '\n          <div></div>';
+  const fact = (key, value, attrs = '') =>
+    `\n              <dt>${word(languages, key)}</dt>\n              <dd${attrs}>${value}</dd>`;
   const facts = [
-    entry.categories?.length ? fact('categories', categoryChips(languages, entry.categories)) : '',
+    entry.categories?.length
+      ? fact('categories', categoryChips(languages, entry.categories), ' class="chips"')
+      : '',
     fact(
       'languages',
       entry.languages
@@ -437,21 +514,27 @@ function detail(languages, entry, publisher) {
     publisher ? fact('publisher', `<a href="${escape(publisher)}">${escape(publisher)}</a>`) : '',
   ].join('');
   const install = entry.installable
-    ? `\n        <section class="install">
-          <h2>${word(languages, 'install')}</h2>
-          ${word(languages, 'installSteps', 'p')}
-          ${word(languages, 'installCaveat', 'p')}
-        </section>`
+    ? `\n            <section class="install">
+              <h2>${word(languages, 'install')}</h2>
+              ${word(languages, 'installSteps', 'p')}
+              ${word(languages, 'installCaveat', 'p')}
+            </section>`
     : '';
   return `      <article class="detail" id="${escape(entry.id)}">
-        <a class="back" href="#">← ${word(languages, 'back')}</a>
-        <header>
-          ${icon(entry, 96)}
-          <h1>${localized(languages, 'span', name)}</h1>${summary}
-          <a class="open" href="${escape(entry.href)}">${word(languages, 'open')}</a>
-        </header>${text}
-        <dl class="facts">${facts}
-        </dl>${install}
+        <div class="hero">
+          <a class="back" href="#">${BACK_ICON}${word(languages, 'back')}</a>
+          <div class="hero-main">
+            ${icon(entry, 104)}
+            <h1>${localized(languages, 'span', name)}</h1>${summary}
+            <a class="open" href="${escape(entry.href)}">${word(languages, 'open')}</a>
+          </div>
+        </div>
+        <div class="about">${text}
+          <aside>
+            <dl class="facts">${facts}
+            </dl>${install}
+          </aside>
+        </div>
       </article>`;
 }
 
@@ -479,6 +562,6 @@ export function renderNotFound(entries, catalog) {
   return page(languages, {
     title: TEXT[languages[0]].missing,
     heading: word(languages, 'missing'),
-    body: `      <p><a href="/">${word(languages, 'back')}</a></p>`,
+    body: `      <p><a class="back" href="/">${BACK_ICON}${word(languages, 'back')}</a></p>`,
   });
 }
