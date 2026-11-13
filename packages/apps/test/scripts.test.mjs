@@ -221,6 +221,11 @@ describe('generated configuration', () => {
     assert.match(runtime, /development: 'loopback-http'/);
     const vite = files['vite.sempods.generated.ts'];
     assert.match(vite, /export const base = "\/demo\/"/);
+    // Every page links the app's description by an absolute path.
+    assert.match(
+      vite,
+      /attrs: \{ rel: 'alternate', type: 'application\/ld\+json', href: "\/demo\/app\.jsonld" \}/,
+    );
     assert.match(vite, /port: 5180/);
     assert.match(vite, /scope: "\/demo\/"/);
     // The start page, with any query: Workbox matches path and query.

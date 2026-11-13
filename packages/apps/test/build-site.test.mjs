@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -31,6 +32,14 @@ describe('build-site', () => {
       join(outDir, 'index.html'),
       `<!doctype html><html><head><title>x</title></head><p>${mode}</p></html>`,
     );
+    // The PWA plugin writes the manifest from the generated configuration.
+    const vite = readFileSync(join(appDir, 'vite.sempods.generated.ts'), 'utf8');
+    const scope = vite.match(/^  scope: (".*"),$/m)?.[1];
+    if (scope)
+      writeFileSync(
+        join(outDir, 'manifest.webmanifest'),
+        JSON.stringify({ id: JSON.parse(scope), start_url: JSON.parse(scope), scope: JSON.parse(scope) }),
+      );
     return true;
   };
   beforeEach(() => {
@@ -108,7 +117,154 @@ describe('build-site', () => {
     assert.equal(read('konsum/callback.html'), read('konsum/index.html'));
     assert.equal(exists('_redirects'), false);
     assert.match(read('404.html'), /<h1>Page not found<\/h1>/);
-    assert.equal(exists('_headers'), false);
+    // The only headers: the descriptions may be read from any origin.
+    assert.equal(
+      read('_headers').replace(/^#.*\n/gm, ''),
+      '/apps.jsonld\n  Access-Control-Allow-Origin: *\n/konsum/app.jsonld\n  Access-Control-Allow-Origin: *\n/notes/app.jsonld\n  Access-Control-Allow-Origin: *\n',
+    );
+  });
+
+  it("publishes each app's descriptions under its IRI", () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.catalog = {
+      lang: 'de',
+      name: 'Danilos Apps',
+      name_localized: { en: "Danilo's apps" },
+      publisher: 'https://pod.example.org/profile/card#me',
+    };
+    writeFileSync(file, JSON.stringify(manifest));
+    const konsum = join(root, 'apps', 'konsum');
+    writeFileSync(
+      join(konsum, 'app.json'),
+      JSON.stringify({
+        lang: 'de',
+        name: 'Einkauf',
+        description: 'Was fehlt.',
+        categories: ['shopping'],
+      }),
+    );
+    writeFileSync(join(konsum, 'details.md'), '## Wofür\n\nFür alle.\n');
+    regenerate(root);
+    buildSite(root, { build });
+    const json = (path) => JSON.parse(read(path));
+    const iri = 'https://apps.example.org/konsum/';
+    const description = json('konsum/app.jsonld');
+    assert.deepEqual(description, {
+      '@context': [
+        'https://schema.org/',
+        {
+          name: { '@container': '@language' },
+          description: { '@container': '@language' },
+        },
+      ],
+      '@id': iri,
+      '@type': 'WebApplication',
+      name: { de: 'Einkauf' },
+      description: { de: 'Was fehlt.' },
+      subjectOf: [
+        {
+          '@type': 'TextObject',
+          inLanguage: 'de',
+          encodingFormat: 'text/markdown',
+          text: '## Wofür\n\nFür alle.\n',
+        },
+      ],
+      applicationCategory: ['shopping'],
+      inLanguage: ['de'],
+      url: iri,
+      image: `${iri}icon-512.png`,
+      isPartOf: { '@id': 'https://apps.example.org/' },
+      publisher: { '@id': 'https://pod.example.org/profile/card#me' },
+      identifier: [
+        'did:web:apps.example.org:konsum',
+        `${iri}client.json`,
+      ],
+    });
+    assert.deepEqual(json('konsum/client.json'), {
+      client_id: `${iri}client.json`,
+      client_name: 'Einkauf',
+      client_uri: iri,
+      logo_uri: `${iri}icon-512.png`,
+      redirect_uris: [`${iri}callback`],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+      application_type: 'web',
+    });
+    const catalog = json('apps.jsonld');
+    assert.equal(catalog['@id'], 'https://apps.example.org/');
+    assert.deepEqual(catalog.name, { de: 'Danilos Apps', en: "Danilo's apps" });
+    assert.deepEqual(
+      catalog.itemListElement.map(({ position, item }) => [position, item['@id'], item.name]),
+      [
+        [1, iri, { de: 'Einkauf' }],
+        [2, 'https://apps.example.org/notes/', { en: 'Notes' }],
+      ],
+    );
+    assert.equal('subjectOf' in catalog.itemListElement[0].item, false);
+    assert.match(read('index.html'), /<link rel="alternate" type="application\/ld\+json" href="\/apps\.jsonld" \/>/);
+  });
+
+  it('lists every published file of an app with its digest', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    buildSite(root, { build });
+    const { files } = JSON.parse(read('konsum/build.json'));
+    const paths = files.map((entry) => entry.path);
+    assert.deepEqual(paths, [...paths].sort());
+    for (const path of [
+      '/konsum/index.html',
+      '/konsum/callback.html',
+      '/konsum/app.jsonld',
+      '/konsum/client.json',
+      '/konsum/did.json',
+      '/konsum/manifest.webmanifest',
+      '/konsum/icon-maskable-512.png',
+    ])
+      assert.ok(paths.includes(path), path);
+    assert.equal(paths.includes('/konsum/build.json'), false);
+    for (const { path, sha256 } of files)
+      assert.equal(
+        createHash('sha256').update(readFileSync(join(root, 'site-dist', path))).digest('hex'),
+        sha256,
+        path,
+      );
+  });
+
+  it("refuses an app whose documents name it differently", () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const other = (appDir, mode, outDir) => {
+      build(appDir, mode, outDir);
+      if (existsSync(join(outDir, 'manifest.webmanifest')))
+        writeFileSync(
+          join(outDir, 'manifest.webmanifest'),
+          JSON.stringify({ id: '/other/', start_url: '/konsum/', scope: '/konsum/' }),
+        );
+      return true;
+    };
+    assert.throws(
+      () => buildSite(root, { build: other }),
+      /apps\/konsum: manifest\.webmanifest id is "https:\/\/apps\.example\.org\/other\/", not "https:\/\/apps\.example\.org\/konsum\/"/,
+    );
+  });
+
+  it('refuses texts a reader would miss', () => {
+    configureSite(root, { production: 'https://apps.example.org' });
+    const file = join(root, 'apps.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    manifest.apps[0].language = 'auto';
+    writeFileSync(file, JSON.stringify(manifest));
+    writeFileSync(
+      join(root, 'apps', 'konsum', 'app.json'),
+      JSON.stringify({ lang: 'de', name: 'Einkauf', description: 'Was fehlt.' }),
+    );
+    regenerate(root);
+    assert.throws(
+      () => buildSite(root, { build }),
+      /description_localized\.en is missing[\s\S]*pnpm run check/,
+    );
+    assert.equal(builds.length, 0);
   });
 
   it('serves each route from a file at its path, without rewrites', () => {

@@ -499,7 +499,9 @@ field names of a web app manifest:
   `shopping`, `productivity` or `lifestyle`.
 - The installed app's manifest takes these texts, their translations and the
   categories; a browser shows the translation for its language where it
-  supports them.
+  supports them. `pnpm run build-site` also publishes them, with the detail
+  text, as the app's description `app.jsonld`, which the overview, an app
+  store and other sites read.
 - An optional longer text for the app's detail page goes into `details.md`
   next to `app.json`, in `lang`, and into `details.en.md` or `details.de.md`
   for the other language. Write plain Markdown: headings from `##`, links

@@ -53,11 +53,31 @@ The installed app (sempods/sempods-apps-template#46, step 2):
 - `migrate` draws the maskable icon of an app that shows the tooling's
   monogram, and notes each app with an icon of its own.
 
+Published descriptions (sempods/sempods-apps-template#46, step 3):
+
+- `build-site` publishes per app `app.jsonld`, its schema.org
+  `WebApplication` description with the texts per language, the detail
+  texts as Markdown, categories, icon, publisher and identifiers;
+  `client.json`, its Client ID Metadata Document (published only; sign-in
+  still uses `did:web`); and `build.json`, every published file with its
+  SHA-256 digest. At the site root it writes the catalog `apps.jsonld` and
+  `_headers`, which lets any origin read the descriptions on Netlify and
+  Cloudflare Pages.
+- Every page links its description, `<link rel="alternate"
+  type="application/ld+json">`, through the generated `pageTitle` plugin;
+  the overview links `apps.jsonld`.
+- `build-site` checks that the descriptions, the client document, `did.json`
+  and the built web app manifest name the app the same way, and stops when
+  an app's texts miss a language it is shown in. An app's own `app.jsonld`,
+  `client.json`, `build.json` or `_headers` in `public/` is not published.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
   `catalog` and `--text-language`; the app workflow describes `icon.svg` and
-  what the installed app takes from `app.json` and the theme.
+  what the installed app takes from `app.json` and the theme. The publishing
+  guide lists the published descriptions, the cross-origin header a host must
+  send for them, and how to check it.
 
 ### Upgrade notes
 
@@ -79,6 +99,11 @@ Instructions:
    square SVG, save it as `apps/<id>/icon.svg` and run
    `pnpm run icon <id>`, or run it without that file to draw the monogram.
    Until then `pnpm run check` reports the missing maskable icon.
+4. `build-site` now refuses what `pnpm run check` reports about texts, so
+   fix those before the next publication. A site on a host other than
+   GitHub Pages, Netlify or Cloudflare Pages needs the header
+   `Access-Control-Allow-Origin: *` for `/apps.jsonld` and each
+   `/<id>/app.jsonld`, as the publishing guide describes.
 
 ## 0.10.1 (in preparation)
 
