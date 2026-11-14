@@ -8,6 +8,18 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+Palette and PWA defaults (sempods/sempods-apps-template#173):
+
+- The personal overview now defaults to sage, like new apps. Sage, fresh
+  (petrol) and warm (terracotta) are the recommended light/dark palettes;
+  calm and playful remain available.
+- The manifest's static `theme_color` takes the theme's light primary instead
+  of its light background. It supplies an intentional brand colour where an
+  installed browser uses the manifest for system bars. The running page's
+  marked theme-colour meta elements still follow the resolved background.
+  This does not promise control over Android/iOS system UI.
+
+
 Shared login appearance (sempods/sempods-apps-template#169):
 
 - New apps use sage, outlined main actions and text secondary actions across
@@ -140,6 +152,15 @@ Instructions:
   send for them, and how to check it, and describes the overview.
 
 ### Upgrade notes
+
+For the palette/PWA changes, run `pnpm run regenerate` and review each
+manifest. Existing app palettes remain owned by the app; new defaults do not
+replace them. To adopt the standard, import the shipped sage theme and
+follow the browser-theme steps below. A catalog with no explicit theme now
+uses sage; set `catalog.theme` to `fresh` to retain its previous appearance.
+See the [colour workflow](instructions/colours.md) for role ownership,
+customization and installed-device limits.
+
 
 1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
    and `description` from `apps.json`. For an app whose `language` is
