@@ -246,7 +246,7 @@ export function viteSource(app, colours = PLAIN_COLOURS, icons = {}) {
     : 'null';
   const assets = Object.entries(icons).map(([file, path]) => [path, file]);
   return `${HEADER}
-${assets.length ? `import { readFileSync } from 'node:fs';
+${assets.length ? `import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';` : ''}
 import type { Plugin } from 'vite';
 import type { ${app.pwa ? 'ManifestOptions, ' : ''}VitePWAOptions } from 'vite-plugin-pwa';
@@ -257,7 +257,10 @@ ${assets.length ? `
 // Originals remain the inputs; never derive an icon from an installed icon.
 const iconFiles: Readonly<Record<string, string>> = ${json(Object.fromEntries(assets))};
 function readIcon(path: string): Buffer {
-  const bytes = readFileSync(new URL('./public/' + iconFiles[path], import.meta.url));
+  const file = new URL('./public/' + iconFiles[path], import.meta.url);
+  if (!existsSync(file))
+    throw new Error('Icon missing: public/' + iconFiles[path] + '. Restore it with pnpm run icon ${app.id}, then run pnpm run regenerate before building or serving.');
+  const bytes = readFileSync(file);
   const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
   if (!path.endsWith('-' + digest + '.png'))
     throw new Error('Icon changed: run pnpm run regenerate before building or serving.');

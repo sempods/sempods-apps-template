@@ -37,10 +37,8 @@ Run `pnpm run icon <id>` after changing the source, name or theme. This writes
 the SVG/PNG outputs, records custom rendering inputs in `.sempods-icon.json`
 and refreshes the generated configuration. Commit the sources, generated
 outputs, record and configuration together. `check` detects changed custom
-sources/backgrounds and missing or modified PNG outputs. An existing custom
-icon rendered by older tooling needs one regeneration to create the record.
-Keep any intentional owner `apple-touch-icon` link; the generated head does
-not replace it.
+sources/backgrounds and missing or modified PNG outputs. Keep any intentional
+owner `apple-touch-icon` link; the generated head does not replace it.
 
 ## Publish and verify
 
@@ -71,11 +69,6 @@ available), and use its update action or the app's offered identity update.
 Record browser/OS versions and the before/after result. Do not routinely clear
 site data or uninstall: that can remove device-local drafts and preferences.
 An iOS/iPadOS device check is still needed before claiming installed support.
-
-The future static HTML splash should use the same unpadded SVG as AppAccess.
-The OS launch screen and its installed icon are controlled by the platform;
-they are separate from that HTML splash. Notification/monochrome icons need
-their own design when notifications are introduced.
 
 References: [maskable icon design](https://web.dev/articles/maskable-icon),
 [Chrome icon updates](https://developer.chrome.com/blog/improvements-to-web-app-updates),

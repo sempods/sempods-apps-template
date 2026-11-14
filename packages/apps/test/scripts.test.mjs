@@ -710,7 +710,7 @@ describe('owner icon', () => {
   const SVG =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30"/></svg>\n';
   // Stands in for Chromium: records what it is asked to draw.
-  const fakeBrowser = (calls) => async () => ({
+  const fakeBrowser = (calls, decode = () => true) => async () => ({
     newPage: async () => {
       let size;
       let html;
@@ -722,7 +722,7 @@ describe('owner icon', () => {
         setContent: async (content) => {
           html = content;
         },
-        locator: () => ({ evaluate: async () => true }),
+        locator: () => ({ evaluate: async () => decode(html) }),
         screenshot: async ({ omitBackground }) => {
           calls.push({ size, omitBackground, html });
           return Buffer.from(`png ${size} ${omitBackground}`);
@@ -803,6 +803,39 @@ describe('owner icon', () => {
       /icon\.svg needs a square viewBox/,
     );
     assert.match(staticProblems(root).join(), /apps\/demo\/icon\.svg needs a square viewBox/);
+  });
+
+  it('names the SVG that cannot be decoded and preserves existing output', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    const original = readFileSync(join(dir, 'public/icon-192.png'));
+    const broken = '<svg viewBox="0 0 100 100"><broken></svg>';
+    for (const name of ['icon.svg', 'icon-maskable.svg']) {
+      writeFileSync(join(dir, 'icon.svg'), SVG);
+      writeFileSync(join(dir, name), broken);
+      const calls = [];
+      await assert.rejects(
+        drawIcon(root, 'demo', {
+          browser: fakeBrowser(calls, html => !html.includes(Buffer.from(broken).toString('base64'))),
+        }),
+        { message: `${name} cannot be drawn as an image` },
+      );
+      assert.deepEqual(readFileSync(join(dir, 'public/icon-192.png')), original);
+      assert.equal(calls.at(-1), 'closed');
+    }
+  });
+
+  it('removes the custom generation record when returning to a monogram', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    writeFileSync(join(dir, 'icon.svg'), SVG);
+    await drawIcon(root, 'demo', { browser: fakeBrowser([]) });
+    assert.ok(existsSync(join(dir, '.sempods-icon.json')));
+    rmSync(join(dir, 'icon.svg'));
+    await drawIcon(root, 'demo');
+    assert.equal(existsSync(join(dir, '.sempods-icon.json')), false);
+    assert.notEqual(readFileSync(join(dir, 'public/favicon.svg'), 'utf8'), SVG);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
   });
 
   it('names the command that installs the browser', async () => {

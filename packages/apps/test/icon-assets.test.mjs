@@ -72,5 +72,11 @@ it('keeps icon pixels and URLs stable across regenerations, and versions actual 
     assert.notEqual(changed['icon-192.png'], assets['icon-192.png']);
     for (const file of ['icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'])
       assert.equal(changed[file], assets[file]);
+    // Missing inputs get a recovery command, not an opaque filesystem error.
+    rmSync(join(dir, 'public/icon-192.png'));
+    assert.throws(
+      () => config.pageTitle.generateBundle.call({ emitFile() {} }),
+      /Icon missing: public\/icon-192\.png.*pnpm run icon demo.*pnpm run regenerate/,
+    );
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

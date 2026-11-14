@@ -579,6 +579,12 @@ function adoptMaskableIcon(dir, app, report) {
     (file) => !existsSync(join(dir, 'public', file)),
   );
   if (!missing.length) return;
+  if (existsSync(join(dir, OWNER_ICON))) {
+    report.notes.push(
+      `apps/${app.id}/public/${missing.join(', ')} is missing; run pnpm run icon ${app.id} to draw it from the existing apps/${app.id}/${OWNER_ICON}.`,
+    );
+    return;
+  }
   const theme = appTheme(dir);
   let colours;
   try {
@@ -592,7 +598,6 @@ function adoptMaskableIcon(dir, app, report) {
   );
   if (
     colours &&
-    !existsSync(join(dir, OWNER_ICON)) &&
     favicon === monogramSvg(letter, colours)
   ) {
     for (const file of missing) {

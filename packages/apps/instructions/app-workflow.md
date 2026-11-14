@@ -221,7 +221,9 @@ for one fixed UI language, which is then also the text language, and
 app shown in both languages needs the description in the other one too, as
 in [the app's description](#describe-the-app-in-appjson). It never
 overwrites an app: check `apps.json` and the folder before invoking it; for
-an existing app, work in its folder and skip generation. Use the [icon workflow](icons.md) for the shared artwork and platform
+an existing app, work in its folder and skip generation.
+
+Use the [icon workflow](icons.md) for the shared artwork and platform
 variants. `icon.svg` is the optional owner source; `icon-maskable.svg` can
 adapt its launcher composition. Otherwise the tooling draws the monogram.
 After changing the name, artwork or theme, run `pnpm run icon <id>`; it also

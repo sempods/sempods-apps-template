@@ -72,7 +72,7 @@ The installed app (sempods/sempods-apps-template#46, step 2):
 - `migrate` draws the maskable icon of an app that shows the tooling's
   monogram, and notes each app with an icon of its own.
 
-Icon generation and installed updates (#171):
+Icon generation and installed updates (sempods/sempods-apps-template#171):
 
 - Generic and maskable manifest icons have separate purposes. The generated
   page head links an opaque 180 px Apple touch icon, preserving owner links.
@@ -155,10 +155,10 @@ Instructions:
    `name_localized` only when the name differs in that language.
 3. `migrate` regenerates `vite.sempods.generated.ts` of every PWA with the
    new manifest; app code is unchanged. For an app whose icon is not the
-   tooling's monogram, its notes say so: ask the owner for the icon as a
-   square SVG, save it as `apps/<id>/icon.svg` and run
-   `pnpm run icon <id>`, or run it without that file to draw the monogram.
-   Until then `pnpm run check` reports the missing maskable icon.
+   tooling's monogram, run `pnpm run icon <id>` from its existing
+   `apps/<id>/icon.svg`. If that source is missing, ask the owner for the
+   icon as a square SVG and save it there, or draw the monogram instead.
+   Until then `pnpm run check` reports the missing launcher icons.
 4. `build-site` now refuses what `pnpm run check` reports about texts, so
    fix those before the next publication. A site on a host other than
    GitHub Pages, Netlify or Cloudflare Pages needs the header

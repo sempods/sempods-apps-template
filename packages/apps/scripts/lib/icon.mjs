@@ -6,7 +6,7 @@
 // of 80 % in the middle, so any mask shape keeps it whole.
 import { createHash } from 'node:crypto';
 import { manifestColours } from './themes.mjs';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import { ifPresent } from './json.mjs';
@@ -214,6 +214,7 @@ export function writeAppIcons(appDir, title, colours = CALM) {
     join(pub, TOUCH_ICON),
     monogramPng(letter, 180, colours, { maskable: true }),
   );
+  rmSync(join(appDir, ICON_RECORD), { force: true });
   return ['favicon.svg', ...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON].map(
     (file) => `public/${file}`,
   );
@@ -251,11 +252,13 @@ export function ownerIconProblem(svg, name = OWNER_ICON) {
  * and loads nothing. Returns the files as paths inside the app.
  */
 export async function writeOwnerIcons(
-  appDir, svg, background, browser, maskableSvg = svg,
+  appDir, svg, background, browser, maskableSvg,
 ) {
   const problem = ownerIconProblem(svg);
   if (problem) throw new Error(problem);
-  const maskProblem = ownerIconProblem(maskableSvg, OWNER_MASKABLE_ICON);
+  const maskableName = maskableSvg === undefined ? OWNER_ICON : OWNER_MASKABLE_ICON;
+  maskableSvg ??= svg;
+  const maskProblem = ownerIconProblem(maskableSvg, maskableName);
   if (maskProblem) throw new Error(maskProblem);
   const pub = join(appDir, 'public');
   mkdirSync(pub, { recursive: true });
@@ -268,7 +271,7 @@ export async function writeOwnerIcons(
     // SVG image mode isolates scripts and external resources. Fix pixel scale
     // and colour scheme as well: deployment must not change an icon's pixels.
     await page.route('**/*', (route) => route.abort());
-    const draw = async (size, fill, artwork = svg) => {
+    const draw = async (size, fill, artwork = svg, name = OWNER_ICON) => {
       await page.setViewportSize({ width: size, height: size });
       await page.setContent(
         `<!doctype html><body style="margin:0;background:${fill ?? 'transparent'}"><img src="${source(artwork)}" width="${size}" height="${size}" style="display:block" alt=""></body>`,
@@ -276,7 +279,7 @@ export async function writeOwnerIcons(
       const drawn = await page
         .locator('img')
         .evaluate((img) => img.decode().then(() => true, () => false));
-      if (!drawn) throw new Error(`${OWNER_ICON} cannot be drawn as an image`);
+      if (!drawn) throw new Error(`${name} cannot be drawn as an image`);
       return page.screenshot({
         omitBackground: fill === undefined, animations: 'disabled', scale: 'css',
       });
@@ -285,8 +288,8 @@ export async function writeOwnerIcons(
     const drawn = {
       'icon-192.png': await draw(192),
       'icon-512.png': await draw(512),
-      [MASKABLE_ICON]: await draw(512, background, maskableSvg),
-      [TOUCH_ICON]: await draw(180, background, maskableSvg),
+      [MASKABLE_ICON]: await draw(512, background, maskableSvg, maskableName),
+      [TOUCH_ICON]: await draw(180, background, maskableSvg, maskableName),
     };
     writeFileSync(join(pub, 'favicon.svg'), svg);
     for (const [file, png] of Object.entries(drawn))
