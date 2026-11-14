@@ -402,13 +402,13 @@ describe('generated configuration', () => {
       categories: ['shopping', 'lifestyle'],
     };
     const vite = generatedFiles({ ...app, about }, undefined, {
-      background: '#fdfaf6',
+      background: '#fdfaf6', theme: '#9c4128',
     })['vite.sempods.generated.ts'];
     assert.match(vite, /^  name_localized: \{"en":"Shopping"\},$/m);
     assert.match(vite, /^  description_localized: \{"en":"What is missing\."\},$/m);
     assert.match(vite, /^  categories: \["shopping","lifestyle"\],$/m);
     assert.match(vite, /^  background_color: "#fdfaf6",$/m);
-    assert.match(vite, /^  theme_color: "#fdfaf6",$/m);
+    assert.match(vite, /^  theme_color: "#9c4128",$/m);
     assert.match(
       vite,
       /src: "\/demo\/icon-maskable-512\.png", sizes: '512x512', type: 'image\/png', purpose: 'maskable'/,

@@ -8,6 +8,18 @@ configuration choices and the SDK migration.
 
 ### Changes
 
+Palette and PWA defaults (sempods/sempods-apps-template#173):
+
+- The personal overview now defaults to sage, like new apps. Sage, fresh
+  (petrol) and warm (terracotta) are the recommended light/dark palettes;
+  calm and playful remain available.
+- The manifest's static `theme_color` takes the theme's light primary instead
+  of its light background. It supplies an intentional brand colour where an
+  installed browser uses the manifest for system bars. The running page's
+  marked theme-colour meta elements still follow the resolved background.
+  This does not promise control over Android/iOS system UI.
+
+
 Shared login appearance (sempods/sempods-apps-template#169):
 
 - New apps use sage, outlined main actions and text secondary actions across
@@ -59,8 +71,8 @@ The installed app (sempods/sempods-apps-template#46, step 2):
   `categories` from `app.json`. Its `lang` is the language of those texts,
   also for an app that follows the browser's language, which named none
   before.
-- The manifest's `background_color` and `theme_color` are the light
-  background of the app's theme instead of a fixed white.
+- The manifest's `background_color` takes the app's light background;
+  `theme_color` takes its light primary as an installed-app brand colour.
 - Every PWA has a maskable icon, `public/icon-maskable-512.png`, which a
   launcher cuts into its own shape; the monogram fills the whole square with
   the letter inside the safe zone. `new-app` and `icon` draw it.
@@ -141,6 +153,15 @@ Instructions:
 
 ### Upgrade notes
 
+After completing the migration below, run `pnpm run regenerate` for the
+palette/PWA changes and review each manifest. Existing app palettes remain owned by the app; new defaults do not
+replace them. To adopt the standard, import the shipped sage theme and
+follow the browser-theme steps below. A catalog with no explicit theme now
+uses sage; set `catalog.theme` to `fresh` to retain its previous appearance.
+See the [colour workflow](instructions/colours.md) for role ownership,
+customization and installed-device limits.
+
+
 1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
    and `description` from `apps.json`. For an app whose `language` is
    `auto`, it takes the texts as English (`"lang": "en"`) and says so in its
@@ -168,7 +189,7 @@ Instructions:
    name and description and offers the catalog's languages; without a
    `catalog` in `apps.json` it is titled "Apps". If the repository has none,
    offer the owner to add one as the app workflow describes. Its colours
-   come from the `fresh` theme; offer `catalog.theme` with the theme most of
+   come from the `sage` theme; offer `catalog.theme` with the theme most of
    the apps use.
 6. Existing app source is not replaced by the update. After migration, add
    `build.cssTarget: 'esnext'` to `vite.config.ts` for every app with an
