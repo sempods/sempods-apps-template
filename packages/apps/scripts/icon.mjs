@@ -3,14 +3,16 @@
 // is one, otherwise the monogram of its name in app.json in the accent of the
 // theme its src/index.css imports, for example after a rename or a theme
 // change. It replaces public/favicon.svg, icon-192.png, icon-512.png and
-// icon-maskable-512.png. Usage: pnpm run icon <id>
+// icon-maskable-512.png and apple-touch-icon.png, then regenerates config.
+// Usage: pnpm run icon <id>
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launch, MISSING_BROWSER } from './check-theme.mjs';
 import { readApps } from './lib/apps.mjs';
+import { writeGenerated } from './lib/generate.mjs';
 import { describedApp } from './lib/describe.mjs';
-import { OWNER_ICON, writeAppIcons, writeOwnerIcons } from './lib/icon.mjs';
+import { OWNER_ICON, OWNER_MASKABLE_ICON, writeAppIcons, writeOwnerIcons } from './lib/icon.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { scriptArgs } from './lib/pnpm.mjs';
 import {
@@ -25,12 +27,16 @@ import {
  * starts the browser that draws an owner's icon.svg.
  */
 export async function drawIcon(root, id, { browser: start = launch } = {}) {
-  const entry = readApps(root).apps.find((candidate) => candidate.id === id);
+  const { apps, site } = readApps(root);
+  const entry = apps.find((candidate) => candidate.id === id);
   if (!entry) throw new Error(`apps.json lists no app "${id}"`);
   const dir = join(root, 'apps', id);
   if (!existsSync(dir)) throw new Error(`apps/${id} is missing`);
   const app = describedApp(root, entry);
-  const inside = (files) => files.map((file) => `apps/${id}/${file}`);
+  const inside = (files) => {
+    writeGenerated(dir, app, site);
+    return files.map((file) => `apps/${id}/${file}`);
+  };
   const own = join(dir, OWNER_ICON);
   if (existsSync(own)) {
     let browser;
@@ -50,12 +56,17 @@ export async function drawIcon(root, id, { browser: start = launch } = {}) {
           readFileSync(own, 'utf8'),
           manifestColours(dir).background,
           browser,
+          existsSync(join(dir, OWNER_MASKABLE_ICON))
+            ? readFileSync(join(dir, OWNER_MASKABLE_ICON), 'utf8')
+            : undefined,
         ),
       );
     } finally {
       await browser.close();
     }
   }
+  if (existsSync(join(dir, OWNER_MASKABLE_ICON)))
+    throw new Error(`${OWNER_MASKABLE_ICON} needs ${OWNER_ICON} as the primary icon source`);
   const theme = appTheme(dir);
   if (!theme || !existsSync(join(dir, 'src', 'themes', `${theme}.css`)))
     throw new Error(

@@ -41,6 +41,7 @@ import {
 import { GENERATED_FILES } from './lib/generate.mjs';
 import {
   MASKABLE_ICON,
+  TOUCH_ICON,
   monogramLetter,
   monogramPng,
   monogramSvg,
@@ -573,8 +574,17 @@ function updateApps(root, report) {
  * left to them with a note.
  */
 function adoptMaskableIcon(dir, app, report) {
-  if (!app.pwa || existsSync(join(dir, 'public', MASKABLE_ICON))) return;
-  const file = `apps/${app.id}/public/${MASKABLE_ICON}`;
+  if (!app.pwa) return;
+  const missing = [MASKABLE_ICON, TOUCH_ICON].filter(
+    (file) => !existsSync(join(dir, 'public', file)),
+  );
+  if (!missing.length) return;
+  if (existsSync(join(dir, OWNER_ICON))) {
+    report.notes.push(
+      `apps/${app.id}/public/${missing.join(', ')} is missing; run pnpm run icon ${app.id} to draw it from the existing apps/${app.id}/${OWNER_ICON}.`,
+    );
+    return;
+  }
   const theme = appTheme(dir);
   let colours;
   try {
@@ -588,18 +598,19 @@ function adoptMaskableIcon(dir, app, report) {
   );
   if (
     colours &&
-    !existsSync(join(dir, OWNER_ICON)) &&
     favicon === monogramSvg(letter, colours)
   ) {
-    writeFileSync(
-      join(dir, 'public', MASKABLE_ICON),
-      monogramPng(letter, 512, colours, { maskable: true }),
-    );
-    report.updated.push(file);
+    for (const file of missing) {
+      writeFileSync(
+        join(dir, 'public', file),
+        monogramPng(letter, file === TOUCH_ICON ? 180 : 512, colours, { maskable: true }),
+      );
+      report.updated.push(`apps/${app.id}/public/${file}`);
+    }
     return;
   }
   report.notes.push(
-    `${file} is missing, and the app's icon is not the monogram the tooling draws. Put the icon as a square SVG, its content inside the middle 80 %, into apps/${app.id}/${OWNER_ICON} and run pnpm run icon ${app.id}; or run it without that file to draw the monogram.`,
+    `apps/${app.id}/public/${missing.join(', ')} is missing, and the app's icon is not the monogram the tooling draws. Put the icon as a square SVG, its essential artwork inside the centred circle of radius 40 % of its width, into apps/${app.id}/${OWNER_ICON} and run pnpm run icon ${app.id}; or run it without that file to draw the monogram.`,
   );
 }
 

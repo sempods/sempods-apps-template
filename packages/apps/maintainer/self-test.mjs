@@ -205,6 +205,8 @@ const OWNER_SVG =
 function ownerIcon(repo) {
   const dir = join(repo, 'apps', FIXTURE);
   writeFileSync(join(dir, 'icon.svg'), OWNER_SVG);
+  const maskable = OWNER_SVG.replace('#c2410c', '#176354');
+  writeFileSync(join(dir, 'icon-maskable.svg'), maskable);
   pnpmRun(repo, 'icon', FIXTURE);
   const pub = (file) => join(dir, 'public', file);
   if (readFileSync(pub('favicon.svg'), 'utf8') !== OWNER_SVG)
@@ -213,6 +215,7 @@ function ownerIcon(repo) {
     ['icon-192.png', 192],
     ['icon-512.png', 512],
     ['icon-maskable-512.png', 512],
+    ['apple-touch-icon.png', 180],
   ]) {
     const png = readFileSync(pub(file));
     if (png.readUInt32BE(16) !== size || png.readUInt32BE(20) !== size)
@@ -220,6 +223,15 @@ function ownerIcon(repo) {
   }
   if (readFileSync(pub('icon-512.png')).equals(readFileSync(pub('icon-maskable-512.png'))))
     throw new Error('the maskable icon has no background of its own');
+  const pictures = ['favicon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
+  const before = pictures.map(file => readFileSync(pub(file)));
+  // Regeneration is always from the immutable SVGs, not a previous PNG.
+  for (let i = 0; i < 2; i++) {
+    pnpmRun(repo, 'icon', FIXTURE);
+    pictures.forEach((file, n) => assert.deepEqual(readFileSync(pub(file)), before[n]));
+    assert.equal(readFileSync(join(dir, 'icon.svg'), 'utf8'), OWNER_SVG);
+    assert.equal(readFileSync(join(dir, 'icon-maskable.svg'), 'utf8'), maskable);
+  }
   const about = join(dir, 'app.json');
   writeJson(about, {
     ...readJson(about),
@@ -248,6 +260,7 @@ async function appThemeCheck(repo) {
     '.svg': 'image/svg+xml',
     '.json': 'application/json',
     '.webmanifest': 'application/manifest+json',
+    '.png': 'image/png',
   };
   try {
     for (const javascript of [false, true]) {
@@ -287,6 +300,48 @@ async function appThemeCheck(repo) {
           .getByText('Eine kleine Test-App.', { exact: true })
           .waitFor();
         assert.equal(await page.locator('html').getAttribute('lang'), 'de');
+        const manifest = readJson(join(site, FIXTURE, 'manifest.webmanifest'));
+        const touch = page.locator('link[rel="apple-touch-icon"]');
+        assert.equal(await touch.count(), 1);
+        const icons = [...manifest.icons, { src: await touch.getAttribute('href'), purpose: 'touch' }];
+        for (const icon of icons) {
+          assert.match(icon.src, /\/sempods-icons\/[^/]+-[a-f0-9]{16}\.png$/);
+          const pixels = await page.evaluate(async (url) => {
+            const image = new Image(); image.src = url; await image.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+            const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const size = canvas.width;
+            const at = (x, y) => Array.from(data.slice(4 * (y * size + x), 4 * (y * size + x) + 4));
+            let opaque = true, safe = true, left = size, right = 0;
+            for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+              const i = 4 * (y * size + x);
+              if (data[i + 3] !== 255) opaque = false;
+              // The two fixture marks are orange and green; background is sage.
+              const mark = data[i + 3] > 128 && data[i] < 220;
+              if (mark) {
+                left = Math.min(left, x); right = Math.max(right, x);
+                if (Math.hypot(x + .5 - size / 2, y + .5 - size / 2) > size * .4) safe = false;
+              }
+            }
+            return { size, corner: at(0, 0), centre: at(Math.floor(size / 2), Math.floor(size / 2)), opaque, safe, coverage: (right - left + 1) / size };
+          }, icon.src);
+          assert.equal(pixels.size, icon.purpose === 'touch' ? 180 : Number(icon.sizes.split('x')[0]));
+          assert.ok(Math.abs(pixels.coverage - .6) < .02, JSON.stringify(pixels));
+          assert.equal(pixels.safe, true);
+          if (icon.purpose === 'any') {
+            assert.equal(pixels.corner[3], 0);
+            assert.deepEqual(pixels.centre, [194, 65, 12, 255]);
+          } else {
+            assert.equal(pixels.opaque, true);
+            assert.deepEqual(pixels.corner, [247, 249, 247, 255]);
+            assert.deepEqual(pixels.centre, [23, 99, 84, 255]);
+          }
+          // The worker precaches the hashed URL used by the installed app.
+          assert.ok(readFileSync(join(site, FIXTURE, 'sw.js'), 'utf8').includes(icon.src.split('/').at(-1)));
+        }
+
         const expectChrome = async (colour) => {
           await page
             .waitForFunction(

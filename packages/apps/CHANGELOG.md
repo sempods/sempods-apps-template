@@ -72,6 +72,21 @@ The installed app (sempods/sempods-apps-template#46, step 2):
 - `migrate` draws the maskable icon of an app that shows the tooling's
   monogram, and notes each app with an icon of its own.
 
+Icon generation and installed updates (sempods/sempods-apps-template#171):
+
+- Generic and maskable manifest icons have separate purposes. The generated
+  page head links an opaque 180 px Apple touch icon, preserving owner links.
+  An optional `icon-maskable.svg` supplies launcher-specific composition;
+  the main SVG still supplies the favicon, header, login and app splash.
+- `icon` always draws from the original SVG or monogram, with no added
+  padding. Custom rasterization fixes light mode and pixel scale. Its
+  `.sempods-icon.json` record lets `check` detect changed inputs or outputs.
+- Builds emit launcher files under `sempods-icons/` with content digests in
+  their names. Unchanged artwork retains its URL; changed artwork updates
+  the manifest URLs without changing app identity. `icon` refreshes generated
+  configuration too. Direct builds reject stale digests; dev serves the same
+  paths, and the worker precaches the emitted assets.
+
 Published descriptions (sempods/sempods-apps-template#46, step 3):
 
 - `build-site` publishes per app `app.jsonld`, its schema.org
@@ -140,10 +155,10 @@ Instructions:
    `name_localized` only when the name differs in that language.
 3. `migrate` regenerates `vite.sempods.generated.ts` of every PWA with the
    new manifest; app code is unchanged. For an app whose icon is not the
-   tooling's monogram, its notes say so: ask the owner for the icon as a
-   square SVG, save it as `apps/<id>/icon.svg` and run
-   `pnpm run icon <id>`, or run it without that file to draw the monogram.
-   Until then `pnpm run check` reports the missing maskable icon.
+   tooling's monogram, run `pnpm run icon <id>` from its existing
+   `apps/<id>/icon.svg`. If that source is missing, ask the owner for the
+   icon as a square SVG and save it there, or draw the monogram instead.
+   Until then `pnpm run check` reports the missing launcher icons.
 4. `build-site` now refuses what `pnpm run check` reports about texts, so
    fix those before the next publication. A site on a host other than
    GitHub Pages, Netlify or Cloudflare Pages needs the header
@@ -185,6 +200,19 @@ Instructions:
      generated colours. Run `pnpm run check:theme <id>` and inspect light/dark
      browser chrome. The manifest keeps its light background;
      installed-device behavior still needs device evidence.
+
+7. Run `pnpm run icon <id>` for each existing app, after preserving any custom
+   artwork as `icon.svg`. Do not replace a custom icon with a monogram without
+   the owner choosing that change. For different launcher composition add
+   `icon-maskable.svg`; its essential mark belongs inside the centred circle
+   of radius 40% of the width, not merely the middle 80% square. Review the
+   PNGs and commit the generated `.sempods-icon.json` for custom artwork.
+   Migration creates missing maskable/Apple variants only for recognized
+   monograms; custom icons need this explicit generation. Rebuild to emit the
+   versioned files and Apple link, preserving any deliberate owner link.
+   Test an installed-app update as well as a fresh install. Browser identity
+   updates may need acceptance; do not clear local app data as a routine fix.
+   See the packaged icon workflow for platform-specific checks and limits.
 
 ## 0.10.1 (in preparation)
 

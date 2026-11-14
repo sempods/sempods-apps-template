@@ -710,18 +710,19 @@ describe('owner icon', () => {
   const SVG =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30"/></svg>\n';
   // Stands in for Chromium: records what it is asked to draw.
-  const fakeBrowser = (calls) => async () => ({
+  const fakeBrowser = (calls, decode = () => true) => async () => ({
     newPage: async () => {
       let size;
       let html;
       return {
+        route: async () => {},
         setViewportSize: async (viewport) => {
           size = viewport.width;
         },
         setContent: async (content) => {
           html = content;
         },
-        locator: () => ({ evaluate: async () => true }),
+        locator: () => ({ evaluate: async () => decode(html) }),
         screenshot: async ({ omitBackground }) => {
           calls.push({ size, omitBackground, html });
           return Buffer.from(`png ${size} ${omitBackground}`);
@@ -737,6 +738,8 @@ describe('owner icon', () => {
     assert.match(ownerIconProblem('<svg viewBox="0 0 10 12"/>'), /square viewBox/);
     assert.match(ownerIconProblem('<svg width="10" height="10"/>'), /square viewBox/);
     assert.match(ownerIconProblem('<png/>'), /holds no <svg> element/);
+    for (const viewBox of ['0 0 Infinity Infinity', 'x 0 100 100', '0 0 100 100 100'])
+      assert.match(ownerIconProblem(`<svg viewBox="${viewBox}"/>`), /square viewBox/);
     assert.match(
       ownerIconProblem(`<svg viewBox="0 0 1 1">${' '.repeat(64 * 1024)}</svg>`),
       /larger than 64 KB/,
@@ -757,6 +760,7 @@ describe('owner icon', () => {
       'apps/demo/public/icon-192.png',
       'apps/demo/public/icon-512.png',
       'apps/demo/public/icon-maskable-512.png',
+      'apps/demo/public/apple-touch-icon.png',
     ]);
     assert.equal(readFileSync(join(dir, 'public', 'favicon.svg'), 'utf8'), SVG);
     assert.equal(
@@ -777,12 +781,61 @@ describe('owner icon', () => {
     assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
     assert.deepEqual(staticProblems(root), []);
 
+    const launcher = SVG.replace('r="30"', 'r="25"');
+    writeFileSync(join(dir, 'icon-maskable.svg'), launcher);
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+    const launcherCalls = [];
+    await drawIcon(root, 'demo', { browser: fakeBrowser(launcherCalls) });
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    assert.ok(launcherCalls[2].html.includes(Buffer.from(launcher).toString('base64')));
+    assert.equal(launcherCalls[3].size, 180);
+    assert.equal(launcherCalls[3].omitBackground, false);
+    writeFileSync(join(dir, 'public/icon-512.png'), 'stale PNG');
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+    await drawIcon(root, 'demo', { browser: fakeBrowser([]) });
+    const palette = join(dir, 'src/themes/warm.css');
+    writeFileSync(palette, readFileSync(palette, 'utf8').replace('#fdfaf6', '#ffffff'));
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+
     writeFileSync(join(dir, 'icon.svg'), '<svg viewBox="0 0 2 1"/>');
     await assert.rejects(
       drawIcon(root, 'demo', { browser: fakeBrowser([]) }),
       /icon\.svg needs a square viewBox/,
     );
     assert.match(staticProblems(root).join(), /apps\/demo\/icon\.svg needs a square viewBox/);
+  });
+
+  it('names the SVG that cannot be decoded and preserves existing output', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    const original = readFileSync(join(dir, 'public/icon-192.png'));
+    const broken = '<svg viewBox="0 0 100 100"><broken></svg>';
+    for (const name of ['icon.svg', 'icon-maskable.svg']) {
+      writeFileSync(join(dir, 'icon.svg'), SVG);
+      writeFileSync(join(dir, name), broken);
+      const calls = [];
+      await assert.rejects(
+        drawIcon(root, 'demo', {
+          browser: fakeBrowser(calls, html => !html.includes(Buffer.from(broken).toString('base64'))),
+        }),
+        { message: `${name} cannot be drawn as an image` },
+      );
+      assert.deepEqual(readFileSync(join(dir, 'public/icon-192.png')), original);
+      assert.equal(calls.at(-1), 'closed');
+    }
+  });
+
+  it('removes the custom generation record when returning to a monogram', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    writeFileSync(join(dir, 'icon.svg'), SVG);
+    await drawIcon(root, 'demo', { browser: fakeBrowser([]) });
+    assert.ok(existsSync(join(dir, '.sempods-icon.json')));
+    rmSync(join(dir, 'icon.svg'));
+    await drawIcon(root, 'demo');
+    assert.equal(existsSync(join(dir, '.sempods-icon.json')), false);
+    assert.notEqual(readFileSync(join(dir, 'public/favicon.svg'), 'utf8'), SVG);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
   });
 
   it('names the command that installs the browser', async () => {
@@ -1316,6 +1369,7 @@ describe('app theme and icon', () => {
       'apps/demo/public/icon-192.png',
       'apps/demo/public/icon-512.png',
       'apps/demo/public/icon-maskable-512.png',
+      'apps/demo/public/apple-touch-icon.png',
     ]);
     const fresh = iconColours(themeCss(SKELETON, 'fresh'));
     assert.match(

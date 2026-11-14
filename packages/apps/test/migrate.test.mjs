@@ -769,21 +769,43 @@ describe('migrate', () => {
     const pub = (id, file) => join(repo, 'apps', id, 'public', file);
     // The state an older tooling left: no maskable icon.
     for (const id of ['demo', 'own', 'page'])
-      rmSync(pub(id, 'icon-maskable-512.png'), { force: true });
+      for (const file of ['icon-maskable-512.png', 'apple-touch-icon.png'])
+        rmSync(pub(id, file), { force: true });
     writeFileSync(pub('own', 'favicon.svg'), '<svg viewBox="0 0 1 1"/>');
     install(repo, '1.0.1');
     const report = migrateTo(repo, '1.0.1');
-    assert.deepEqual(report.updated, ['apps/demo/public/icon-maskable-512.png']);
+    assert.deepEqual(report.updated, [
+      'apps/demo/public/icon-maskable-512.png',
+      'apps/demo/public/apple-touch-icon.png',
+    ]);
     assert.ok(existsSync(pub('demo', 'icon-maskable-512.png')));
     assert.equal(existsSync(pub('own', 'icon-maskable-512.png')), false);
     assert.equal(existsSync(pub('page', 'icon-maskable-512.png')), false);
     assert.match(
       report.notes.join('\n'),
-      /apps\/own\/public\/icon-maskable-512\.png is missing, and the app's icon is not the monogram/,
+      /apps\/own\/public\/icon-maskable-512\.png, apple-touch-icon\.png is missing, and the app's icon is not the monogram/,
     );
     assert.deepEqual(staticProblems(repo), [
       'apps/own/public/icon-maskable-512.png is missing; run pnpm run icon own',
+      'apps/own/public/apple-touch-icon.png is missing; run pnpm run icon own',
     ]);
+  });
+
+  it('asks to redraw an existing owner source when launcher variants are missing', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'own' });
+    const dir = join(repo, 'apps/own');
+    const svg = '<svg viewBox="0 0 100 100"/>';
+    writeFileSync(join(dir, 'icon.svg'), svg);
+    rmSync(join(dir, 'public/apple-touch-icon.png'));
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.ok(report.notes.includes(
+      'apps/own/public/apple-touch-icon.png is missing; run pnpm run icon own to draw it from the existing apps/own/icon.svg.',
+    ));
+    assert.equal(readFileSync(join(dir, 'icon.svg'), 'utf8'), svg);
+    assert.equal(existsSync(join(dir, 'public/apple-touch-icon.png')), false);
   });
 
   it('keeps the texts of a schema 1 apps.json when app.json holds something else', () => {

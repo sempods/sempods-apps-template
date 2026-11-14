@@ -4,7 +4,9 @@
 // the same strokes, so no font or image tool is needed. The maskable variant
 // fills the whole square; the letter stays inside its safe zone, the circle
 // of 80 % in the middle, so any mask shape keeps it whole.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { manifestColours } from './themes.mjs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import { ifPresent } from './json.mjs';
@@ -13,6 +15,8 @@ import { ifPresent } from './json.mjs';
 // the same picture for launchers that cut it into their own shape.
 export const PNG_ICONS = ['icon-192.png', 'icon-512.png'];
 export const MASKABLE_ICON = 'icon-maskable-512.png';
+export const TOUCH_ICON = 'apple-touch-icon.png';
+export const OWNER_MASKABLE_ICON = 'icon-maskable.svg';
 
 const VIEW = 64;
 const RADIUS = 14;
@@ -206,7 +210,12 @@ export function writeAppIcons(appDir, title, colours = CALM) {
     join(pub, MASKABLE_ICON),
     monogramPng(letter, 512, colours, { maskable: true }),
   );
-  return ['favicon.svg', ...PNG_ICONS, MASKABLE_ICON].map(
+  writeFileSync(
+    join(pub, TOUCH_ICON),
+    monogramPng(letter, 180, colours, { maskable: true }),
+  );
+  rmSync(join(appDir, ICON_RECORD), { force: true });
+  return ['favicon.svg', ...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON].map(
     (file) => `public/${file}`,
   );
 }
@@ -214,63 +223,85 @@ export function writeAppIcons(appDir, title, colours = CALM) {
 // The owner's own icon, apps/<id>/icon.svg, replaces the monogram.
 export const OWNER_ICON = 'icon.svg';
 const OWNER_ICON_LIMIT = 64 * 1024;
+const ICON_RECORD = '.sempods-icon.json';
+const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 /**
  * Why `svg` cannot be the app's icon, otherwise undefined: it must be an SVG
  * document with a square viewBox, at most 64 KB.
  */
-export function ownerIconProblem(svg) {
+export function ownerIconProblem(svg, name = OWNER_ICON) {
   if (Buffer.byteLength(svg) > OWNER_ICON_LIMIT)
-    return `${OWNER_ICON} is larger than ${OWNER_ICON_LIMIT / 1024} KB`;
+    return `${name} is larger than ${OWNER_ICON_LIMIT / 1024} KB`;
   const tag = svg.match(/<svg\b[^>]*>/);
-  if (!tag) return `${OWNER_ICON} holds no <svg> element`;
+  if (!tag) return `${name} holds no <svg> element`;
   const box = tag[0].match(/\bviewBox\s*=\s*["']([^"']*)["']/);
-  const [, , width, height] = (box?.[1].trim().split(/[\s,]+/) ?? []).map(
-    Number,
-  );
-  if (!(width > 0 && width === height))
-    return `${OWNER_ICON} needs a square viewBox, such as viewBox="0 0 512 512"`;
+  const values = (box?.[1].trim().split(/[\s,]+/) ?? []).map(Number);
+  const [, , width, height] = values;
+  if (!(values.length === 4 && values.every(Number.isFinite) && width > 0 && width === height))
+    return `${name} needs a square viewBox, such as viewBox="0 0 512 512"`;
   return undefined;
 }
 
 /**
  * Draws the owner's icon into public/ with a browser from Playwright: the SVG
  * itself as favicon.svg, the PNG sizes with its transparency, and the maskable
- * variant on `background`. The SVG is shown as an image, so it runs no script
+ * variant and Apple touch icon on `background`. An optional maskable source
+ * changes only those launcher variants. No image gets extra padding or is
+ * read back from an earlier output. The SVG is an image, so it runs no script
  * and loads nothing. Returns the files as paths inside the app.
  */
-export async function writeOwnerIcons(appDir, svg, background, browser) {
+export async function writeOwnerIcons(
+  appDir, svg, background, browser, maskableSvg,
+) {
   const problem = ownerIconProblem(svg);
   if (problem) throw new Error(problem);
+  const maskableName = maskableSvg === undefined ? OWNER_ICON : OWNER_MASKABLE_ICON;
+  maskableSvg ??= svg;
+  const maskProblem = ownerIconProblem(maskableSvg, maskableName);
+  if (maskProblem) throw new Error(maskProblem);
   const pub = join(appDir, 'public');
   mkdirSync(pub, { recursive: true });
-  const source = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  const page = await browser.newPage();
+  const source = (text) =>
+    `data:image/svg+xml;base64,${Buffer.from(text).toString('base64')}`;
+  const page = await browser.newPage({
+    colorScheme: 'light', deviceScaleFactor: 1, reducedMotion: 'reduce',
+  });
   try {
-    const draw = async (size, fill) => {
+    // SVG image mode isolates scripts and external resources. Fix pixel scale
+    // and colour scheme as well: deployment must not change an icon's pixels.
+    await page.route('**/*', (route) => route.abort());
+    const draw = async (size, fill, artwork = svg, name = OWNER_ICON) => {
       await page.setViewportSize({ width: size, height: size });
       await page.setContent(
-        `<!doctype html><body style="margin:0;background:${fill ?? 'transparent'}"><img src="${source}" width="${size}" height="${size}" style="display:block" alt=""></body>`,
+        `<!doctype html><body style="margin:0;background:${fill ?? 'transparent'}"><img src="${source(artwork)}" width="${size}" height="${size}" style="display:block" alt=""></body>`,
       );
       const drawn = await page
         .locator('img')
         .evaluate((img) => img.decode().then(() => true, () => false));
-      if (!drawn) throw new Error(`${OWNER_ICON} cannot be drawn as an image`);
-      return page.screenshot({ omitBackground: fill === undefined });
+      if (!drawn) throw new Error(`${name} cannot be drawn as an image`);
+      return page.screenshot({
+        omitBackground: fill === undefined, animations: 'disabled', scale: 'css',
+      });
     };
     // Every picture is drawn before any file changes.
     const drawn = {
       'icon-192.png': await draw(192),
       'icon-512.png': await draw(512),
-      [MASKABLE_ICON]: await draw(512, background),
+      [MASKABLE_ICON]: await draw(512, background, maskableSvg, maskableName),
+      [TOUCH_ICON]: await draw(180, background, maskableSvg, maskableName),
     };
     writeFileSync(join(pub, 'favicon.svg'), svg);
     for (const [file, png] of Object.entries(drawn))
       writeFileSync(join(pub, file), png);
+    writeFileSync(join(appDir, ICON_RECORD), JSON.stringify({
+      source: digest(svg), maskable: digest(maskableSvg), background,
+      outputs: Object.fromEntries(Object.entries(drawn).map(([file, png]) => [file, digest(png)])),
+    }, null, 2) + '\n');
   } finally {
     await page.close();
   }
-  return ['favicon.svg', ...PNG_ICONS, MASKABLE_ICON].map(
+  return ['favicon.svg', ...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON].map(
     (file) => `public/${file}`,
   );
 }
@@ -279,24 +310,41 @@ export async function writeOwnerIcons(appDir, svg, background, browser) {
  * The problems `check` reports for an app's icons: an owner's icon.svg that
  * cannot be one or that was not drawn yet, and a PWA's missing PNG icons.
  */
+function ownerIconsCurrent(appDir, svg, maskableSvg) {
+  try {
+    const record = JSON.parse(readFileSync(join(appDir, ICON_RECORD), 'utf8'));
+    if (record.source !== digest(svg) || record.maskable !== digest(maskableSvg) ||
+        record.background !== manifestColours(appDir).background) return false;
+    for (const file of [...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON])
+      if (record.outputs?.[file] !== digest(readFileSync(join(appDir, 'public', file)))) return false;
+    return readFileSync(join(appDir, 'public', 'favicon.svg'), 'utf8') === svg;
+  } catch { return false; }
+}
+
 export function iconProblems(appDir, app) {
   const where = `apps/${app.id}`;
   const draw = `run pnpm run icon ${app.id}`;
   const problems = [];
   const own = ifPresent(() => readFileSync(join(appDir, OWNER_ICON), 'utf8'));
+  const mask = ifPresent(() => readFileSync(join(appDir, OWNER_MASKABLE_ICON), 'utf8'));
   if (own !== undefined) {
     const problem = ownerIconProblem(own);
     if (problem) problems.push(`${where}/${problem}`);
     else if (
-      ifPresent(() => readFileSync(join(appDir, 'public', 'favicon.svg'), 'utf8')) !==
-      own
+      !ownerIconsCurrent(appDir, own, mask ?? own)
     )
       problems.push(
         `${where}/${OWNER_ICON} is not drawn into public/ yet; ${draw}`,
       );
   }
+  if (mask !== undefined) {
+    if (own === undefined)
+      problems.push(`${where}/${OWNER_MASKABLE_ICON} needs ${OWNER_ICON} as the primary icon source`);
+    const problem = ownerIconProblem(mask, OWNER_MASKABLE_ICON);
+    if (problem) problems.push(`${where}/${problem}`);
+  }
   if (app.pwa)
-    for (const file of [...PNG_ICONS, MASKABLE_ICON])
+    for (const file of [...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON])
       if (!existsSync(join(appDir, 'public', file)))
         problems.push(`${where}/public/${file} is missing; ${draw}`);
   return problems;
