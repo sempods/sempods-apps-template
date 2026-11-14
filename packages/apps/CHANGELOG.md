@@ -155,16 +155,20 @@ Instructions:
    offer the owner to add one as the app workflow describes. Its colours
    come from the `fresh` theme; offer `catalog.theme` with the theme most of
    the apps use.
-6. Existing app source is not replaced by the update. After migration, offer
-   the owner the shared sage/outline appearance and agree which visible
-   changes to adopt; keep their palette and layout unless they choose a
-   change. Apply the agreed skeleton changes:
+6. Existing app source is not replaced by the update. After migration, add
+   `build.cssTarget: 'esnext'` to `vite.config.ts` for every app with an
+   appearance setting, such as the Preferences example. Preserve the other
+   build options. This fixes production builds ignoring an explicit
+   light/dark choice, regardless of the palette or button style; it uses the
+   modern CSS already required by the SDK/UI kit. Check the built app with
+   an explicit appearance opposite to the device preference.
+
+   Separately, offer the owner the shared sage/outline appearance and agree
+   which visible changes to adopt; keep their palette and layout unless
+   they choose a change. Apply the agreed skeleton changes:
    - For sage, copy `src/themes/sage.css` and import it from `src/index.css`.
      For outlined primary and text secondary actions, set
      `data-actions="inverted"` and `data-secondary="text"` on `<html>`.
-   - Keep `build.cssTarget: 'esnext'` in `vite.config.ts` so production CSS
-     does not turn `light-dark()` into system-only media queries. This uses
-     the modern CSS already required by the SDK/UI kit.
    - Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
      and copy the skeleton's two marked theme-colour meta elements with their
      `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements
@@ -175,10 +179,12 @@ Instructions:
      Use the same identity for the header. Keep owner translations and
      layout choices. The generated browser tab title remains the source
      name from `app.json`; it does not follow an in-app language change.
-   - After changing the palette, run `pnpm run regenerate` to refresh the
-     generated colours. Run `check:theme` and inspect light/dark browser
-     chrome. The manifest keeps its light background; installed-device
-     behavior still needs device evidence.
+   - After changing the palette, run `pnpm run icon <id>` to redraw the
+     monogram in the new theme's colours (an owner's `icon.svg` remains the
+     source when present), then `pnpm run regenerate` to refresh the
+     generated colours. Run `pnpm run check:theme <id>` and inspect light/dark
+     browser chrome. The manifest keeps its light background;
+     installed-device behavior still needs device evidence.
 
 ## 0.10.1 (in preparation)
 

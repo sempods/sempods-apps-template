@@ -338,11 +338,11 @@ Keep the screen consistent with the SDK's UI:
   and text secondary actions (`data-secondary="text"`). These are defaults, not
   requirements. The app's colours come from its theme,
   `src/themes/<name>.css`, imported in `src/index.css`: palette roles of the
-  UI kit's theme contract (`--primary`,
-  `--background`, `--muted-foreground`, …), which colour the app's
-  components and, through the kit's bridge, the SDK's. A request about the
-  look changes roles or variants, never single components: "a warmer
-  palette" changes the palette roles, "filled action buttons" sets
+  UI kit's theme contract (`--primary`, `--background`,
+  `--muted-foreground`, …), which colour the app's components and, through
+  the kit's bridge, the SDK's. A request about the look changes roles or
+  variants, never single components: "a warmer palette" changes the palette
+  roles, "filled action buttons" sets
   `data-actions="solid"` on `<html>` in `index.html`, "outlined secondary
   actions" `data-secondary="outline"`. Do not set the `--sempods-*` tokens or
   give components colour values of their own. After any change to the theme
