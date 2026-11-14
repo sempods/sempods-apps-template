@@ -291,7 +291,7 @@ ${assets.length ? `  generateBundle() {
       .replaceAll('__THEME_LIGHT__', ${json(colours.background)})
       .replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)}),
     tags: [
-${icons[TOUCH_ICON] ? `      ...(/<link\\b[^>]*\\brel=["'][^"']*\\bapple-touch-icon\\b/i.test(html) ? [] : [{
+${icons[TOUCH_ICON] ? `      ...(/<link\\b[^>]*\\srel\\s*=\\s*(?:"(?:[^"]*\\s)?apple-touch-icon(?:\\s[^"]*)?"|'(?:[^']*\\s)?apple-touch-icon(?:\\s[^']*)?'|apple-touch-icon(?=[\\s>]))/i.test(html) ? [] : [{
         tag: 'link',
         attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: ${json(`${p}${icons[TOUCH_ICON]}`)} },
         injectTo: 'head' as const,

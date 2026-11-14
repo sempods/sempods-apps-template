@@ -42,8 +42,16 @@ it('keeps icon pixels and URLs stable across regenerations, and versions actual 
     assert.ok(touch.attrs.href.includes(assets['apple-touch-icon.png']));
     for (const html of [
       '<link rel="apple-touch-icon" href="/own.png">',
+      '<link rel=apple-touch-icon href=/own.png>',
+      '<link rel = "apple-touch-icon" href="/own.png">',
+      '<link rel="alternate apple-touch-icon" href="/own.png">',
       "<LINK HREF='/own.png' REL='apple-touch-icon'>",
     ]) assert.equal(config.pageTitle.transformIndexHtml(html).tags.some(tag => tag.attrs?.rel === 'apple-touch-icon'), false);
+
+    for (const html of [
+      '<link data-rel="apple-touch-icon" href="/own.png">',
+      '<link rel="not-apple-touch-icon" href="/own.png">',
+    ]) assert.equal(config.pageTitle.transformIndexHtml(html).tags.some(tag => tag.attrs?.rel === 'apple-touch-icon'), true);
 
     // Dev serves the exact same bytes at the exact same URL, including on routes.
     let handler;
