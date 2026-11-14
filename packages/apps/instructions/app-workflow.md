@@ -59,8 +59,9 @@ settles the first screen; the questions below about people and data still
 settle who reads and changes what.
 
 Propose a fitting layout, name, monogram and theme yourself. Offer "choose
-for me" with the calm theme; explain the other themes only if the owner
-wants a choice: fresh (teal), warm (terracotta on cream), playful (violet).
+for me" with the sage theme; explain the other themes only if the owner
+wants a choice: calm (neutral graphite), fresh (teal), warm (terracotta on
+cream), playful (violet).
 A vague request is enough to make routine visual choices. Show a working
 screen early and let the owner react to it; theme and icon approval need not
 hold up the data decisions. Record the purpose, audience and design choices
@@ -333,17 +334,31 @@ Never edit anything under `node_modules`.
 
 Keep the screen consistent with the SDK's UI:
 
-- The app's colours come from its theme, `src/themes/<name>.css`, imported in
-  `src/index.css`: palette roles of the UI kit's theme contract (`--primary`,
-  `--background`, `--muted-foreground`, …), which colour the app's
-  components and, through the kit's bridge, the SDK's. A request about the
-  look changes roles or variants, never single components: "a warmer
-  palette" changes the palette roles, "invert the action buttons" sets
-  `data-actions="inverted"` on `<html>` in `index.html`, "outlined secondary
+- New apps start with sage, outlined primary actions (`data-actions="inverted"`)
+  and text secondary actions (`data-secondary="text"`). These are defaults, not
+  requirements. The app's colours come from its theme,
+  `src/themes/<name>.css`, imported in `src/index.css`: palette roles of the
+  UI kit's theme contract (`--primary`, `--background`,
+  `--muted-foreground`, …), which colour the app's components and, through
+  the kit's bridge, the SDK's. A request about the look changes roles or
+  variants, never single components: "a warmer palette" changes the palette
+  roles, "filled action buttons" sets
+  `data-actions="solid"` on `<html>` in `index.html`, "outlined secondary
   actions" `data-secondary="outline"`. Do not set the `--sempods-*` tokens or
   give components colour values of their own. After any change to the theme
   or the variants, run `pnpm run check:theme <id>`; fix the roles it names
   and run it again until it passes.
+- Keep the skeleton's `build.cssTarget: 'esnext'` in `vite.config.ts`: native
+  `light-dark()` lets an app appearance choice override the device preference.
+- The generated HTML and PWA manifest take their initial colours from the
+  theme; run `pnpm run regenerate` after changing it. `src/browser-theme.ts`
+  keeps the browser's theme colour in step with the resolved `--background`
+  when the system changes appearance. After applying an explicit appearance
+  choice, call its `syncBrowserTheme()` (the Preferences example does this).
+  To own a browser colour independently, remove `data-sempods-theme` from its
+  `<meta name="theme-color">` and give it a colour instead of the placeholder.
+  The manifest keeps the light background; browser/installed chrome support
+  depends on the platform. Existing app files remain the owner's.
 - Keep `src/index.css` as the skeleton has it: the layer order first, then
   Tailwind, the UI kit and the theme. Put the app's own global rules in
   `@layer base`; an unlayered element rule (`button { … }`) overrides every
@@ -470,7 +485,7 @@ regenerates every app's configuration from it. An optional `catalog` names
 the whole site for its overview: `lang`, `name`, an optional `description`
 (both translatable as in `app.json`), an optional `publisher`, the HTTPS
 WebID of the person or team behind the site, and an optional `theme` for the
-overview's colours: `calm`, `fresh` (the default), `playful` or `warm`, the
+overview's colours: `sage`, `calm`, `fresh` (the default), `playful` or `warm`, the
 skeleton's themes. Offer the theme most of the apps use. Do not add other
 deployment fields.
 

@@ -424,6 +424,30 @@ describe('generated configuration', () => {
       /ManifestOptions|const manifest/,
     );
   });
+  it('resolves theme placeholders without replacing owner colours and exposes localized identity', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-identity-'));
+    try {
+      for (const pwa of [true, false]) {
+        const files = generatedFiles({ ...app, pwa, about: {
+          lang: 'de', name: 'Einkauf', description: 'Was fehlt.',
+          name_localized: { en: 'Shopping' }, description_localized: { en: 'What is missing.' },
+        } }, undefined, { background: '#fdfaf6', darkBackground: '#191817' });
+        const vite = join(dir, `vite-${pwa}.mts`);
+        writeFileSync(vite, files['vite.sempods.generated.ts']);
+        const { pageTitle } = await import(pathToFileURL(vite).href);
+        const original = '<meta name="theme-color" content="#123456"><meta content="__THEME_LIGHT__"><meta content="__THEME_DARK__">';
+        assert.equal(pageTitle.transformIndexHtml(original).html,
+          '<meta name="theme-color" content="#123456"><meta content="#fdfaf6"><meta content="#191817">');
+        const runtime = join(dir, `runtime-${pwa}.mts`);
+        writeFileSync(runtime, files['src/sempods.generated.ts']);
+        const { app: generated } = await import(pathToFileURL(runtime).href);
+        assert.deepEqual(generated.localized, {
+          en: { title: 'Shopping', description: 'What is missing.' },
+          de: { title: 'Einkauf', description: 'Was fehlt.' },
+        });
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
   it('has no PWA settings when the app opts out', () => {
     assert.match(
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
@@ -521,7 +545,7 @@ describe('new-app', () => {
       'konsum',
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
-    assert.match(html, /<html lang="de">/);
+    assert.match(html, /<html lang="de" data-actions="inverted" data-secondary="text">/);
     // The title comes from apps.json through the generated Vite plugin.
     assert.doesNotMatch(html, /<title/);
     assert.match(
@@ -568,7 +592,7 @@ describe('new-app', () => {
     assert.equal(second.language, 'auto');
     assert.match(
       readFileSync(join(root, 'apps', 'second', 'index.html'), 'utf8'),
-      /<html lang="en">/,
+      /<html lang="en" data-actions="inverted" data-secondary="text">/,
     );
   });
 
@@ -1181,7 +1205,7 @@ export default defineConfig({
       'utf8',
     );
     assert.match(page(), /interactive-widget=resizes-content/);
-    assert.match(page(), /prefers-color-scheme: dark\)" content="#111315"/);
+    assert.match(page(), /prefers-color-scheme: dark\)" content="__THEME_DARK__"/);
     assert.doesNotMatch(page(), /#176354/);
     for (const line of page().split('\n').filter((l) => l.includes('<meta')))
       assert.ok(skeleton.includes(line), line);
@@ -1211,8 +1235,8 @@ describe('themes', () => {
     return (high + 0.05) / (low + 0.05);
   };
 
-  it('ships calm as the default and three more', () => {
-    assert.deepEqual(themeNames(), ['calm', 'fresh', 'playful', 'warm']);
+  it('ships sage as the default while retaining the other themes', () => {
+    assert.deepEqual(themeNames(), ['sage', 'calm', 'fresh', 'playful', 'warm']);
   });
 
   // The rest states of the palette; check:theme checks every pair, hover
@@ -1276,17 +1300,17 @@ describe('app theme and icon', () => {
       new RegExp(`fill:${warm.light.background}`),
     );
     createApp(root, { id: 'plain', title: 'Plain' });
-    assert.match(file('plain', 'src', 'index.css'), /themes\/calm\.css/);
+    assert.match(file('plain', 'src', 'index.css'), /themes\/sage\.css/);
     assert.throws(
       () => createApp(root, { id: 'odd', theme: 'neon' }),
-      /theme must be one of calm, fresh, playful, warm/,
+      /theme must be one of sage, calm, fresh, playful, warm/,
     );
   });
 
   it('draws the icon again after a theme change', async () => {
     createApp(root, { id: 'demo', title: 'Demo' });
     const css = join(root, 'apps', 'demo', 'src', 'index.css');
-    writeFileSync(css, file('demo', 'src', 'index.css').replace('calm', 'fresh'));
+    writeFileSync(css, file('demo', 'src', 'index.css').replace('sage', 'fresh'));
     assert.deepEqual(await drawIcon(root, 'demo'), [
       'apps/demo/public/favicon.svg',
       'apps/demo/public/icon-192.png',
@@ -1331,7 +1355,7 @@ describe('app theme and icon', () => {
     );
     assert.match(
       file('demo', 'src', 'App.tsx'),
-      /description=\{app\.description\}/,
+      /description=\{identity\.description\}/,
     );
     createApp(root, { id: 'bare' });
     assert.match(

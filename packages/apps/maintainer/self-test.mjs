@@ -11,6 +11,7 @@
 // provides. Needs the npm registry and Playwright's Chromium
 // (pnpm --filter @sempods/apps exec playwright install chromium).
 // Usage: pnpm run self-test
+import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -26,7 +27,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, extname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
@@ -164,13 +165,13 @@ it('selects the profile of the build mode', () => {
  */
 function themeCheck(repo) {
   pnpmRun(repo, 'check:theme', FIXTURE);
-  const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'calm.css');
+  const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'sage.css');
   const original = readFileSync(theme, 'utf8');
   const broken = original.replace(
     /--muted-foreground: light-dark\([^)]*\)/,
     '--muted-foreground: light-dark(#f4f4f5, #a1a7b0)',
   );
-  if (broken === original) throw new Error('the calm theme sets no muted text');
+  if (broken === original) throw new Error('the sage theme sets no muted text');
   writeFileSync(theme, broken);
   try {
     const result = pnpm(['run', 'check:theme', FIXTURE], {
@@ -224,10 +225,136 @@ function ownerIcon(repo) {
     ...readJson(about),
     name_localized: { de: 'Selbsttest' },
     categories: ['utilities'],
+    description: 'A small test app.',
+    description_localized: { de: 'Eine kleine Test-App.' },
   });
   pnpmRun(repo, 'regenerate');
   pnpmRun(repo, 'check', '--standalone', FIXTURE);
   console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
+}
+
+// Exercise the shipped app, including CSS and JavaScript, without a real Pod.
+async function appThemeCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  const site = join(repo, 'site-dist');
+  const mime = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.svg': 'image/svg+xml',
+    '.json': 'application/json',
+    '.webmanifest': 'application/manifest+json',
+  };
+  try {
+    for (const javascript of [false, true]) {
+      const context = await browser.newContext({
+        locale: 'de-DE',
+        colorScheme: 'light',
+        javaScriptEnabled: javascript,
+        serviceWorkers: 'block',
+      });
+      await context.route('**/*', async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        const file = join(
+          site,
+          path.endsWith('/') ? path + 'index.html' : path,
+        );
+        if (!existsSync(file)) return route.abort();
+        await route.fulfill({
+          body: readFileSync(file),
+          contentType: mime[extname(file)] ?? 'application/octet-stream',
+        });
+      });
+      const page = await context.newPage();
+      page.setDefaultTimeout(5000);
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(`http://localhost/${FIXTURE}/`);
+      const meta = page.locator('meta[name="theme-color"][data-sempods-theme]');
+      assert.equal(await meta.count(), 2);
+      if (!javascript) {
+        assert.equal(await meta.nth(0).getAttribute('content'), '#f7f9f7');
+        assert.equal(await meta.nth(1).getAttribute('content'), '#131b18');
+      } else {
+        await page
+          .getByRole('heading', { name: 'Selbsttest', exact: true })
+          .waitFor();
+        await page
+          .getByText('Eine kleine Test-App.', { exact: true })
+          .waitFor();
+        assert.equal(await page.locator('html').getAttribute('lang'), 'de');
+        const expectChrome = async (colour) => {
+          await page
+            .waitForFunction(
+              (expected) =>
+                [
+                  ...document.querySelectorAll(
+                    'meta[name="theme-color"][data-sempods-theme]',
+                  ),
+                ].every((meta) => meta.content === expected),
+              colour,
+            )
+            .catch(async (cause) => {
+              throw new Error(
+                `Theme expected ${colour}, got ${await meta.evaluateAll((items) => items.map((item) => item.content))}; errors: ${errors.join('; ')}`,
+                { cause },
+              );
+            });
+        };
+        const appearance = async (colorScheme) => {
+          await page.evaluate(() => {
+            window.themeChanged = new Promise((resolve) =>
+              matchMedia('(prefers-color-scheme: dark)').addEventListener(
+                'change',
+                () => resolve(),
+                { once: true },
+              ),
+            );
+          });
+          await page.emulateMedia({ colorScheme });
+          await page.evaluate(() => window.themeChanged);
+        };
+        await expectChrome('rgb(247, 249, 247)');
+        await appearance('dark');
+        await expectChrome('rgb(19, 27, 24)');
+        // An explicit app preference wins over the device. A custom palette
+        // resolves through CSS, rather than a second list of colour constants.
+        await page.evaluate(() => {
+          document.documentElement.style.colorScheme = 'light';
+        });
+        await appearance('light');
+        await expectChrome('rgb(247, 249, 247)');
+        await appearance('dark');
+        await expectChrome('rgb(247, 249, 247)');
+        await page.evaluate(() => {
+          document.documentElement.style.setProperty('--background', '#fef8ee');
+          const owned = document.querySelector('meta[name="theme-color"]');
+          owned.removeAttribute('data-sempods-theme');
+          owned.content = '#123456';
+        });
+        await appearance('light');
+        await expectChrome('rgb(254, 248, 238)');
+        assert.equal(
+          await page
+            .locator('meta[name="theme-color"]')
+            .first()
+            .getAttribute('content'),
+          '#123456',
+        );
+        assert.deepEqual(errors, []);
+      }
+      await context.close();
+    }
+    console.log(
+      '✓ built app: localized identity, static theme colours, system/explicit appearance and owner overrides',
+    );
+  } finally {
+    await browser.close();
+  }
 }
 
 /**
@@ -342,7 +469,7 @@ function publish(repo) {
     name: 'Self test',
     name_localized: { de: 'Selbsttest' },
     categories: ['utilities'],
-    theme_color: '#ffffff',
+    theme_color: '#f7f9f7',
   };
   for (const [key, value] of Object.entries(expected))
     if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
@@ -628,6 +755,7 @@ try {
   console.log('✓ installed package creates and checks an app');
   publish(repo);
   await overviewCheck(repo);
+  await appThemeCheck(repo);
   // Without an ID, dev lists the apps instead of starting one.
   if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
     throw new Error('pnpm run dev without an ID does not list the app');

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 // Tailwind, the UI kit and the app's theme.
 import './index.css';
+import './browser-theme.ts';
 import App from './App.tsx';
 import { registerAppWorker } from './pwa.ts';
 import { app } from './sempods.generated.ts';
