@@ -389,6 +389,7 @@ describe('build-site', () => {
   it('shows every app on the overview as its description has it', () => {
     configureSite(root, { production: 'https://apps.example.org' });
     rmSync(join(root, 'apps', 'notes', 'public', 'icon-192.png'));
+    regenerate(root);
     writeFileSync(join(root, 'apps', 'konsum', 'details.md'), '## Wofür\n\nFür alle.\n');
     buildSite(root, { build });
     const html = read('index.html');

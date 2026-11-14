@@ -109,6 +109,9 @@ files alone do not:
   [UI primitives](spikes/120-ui-primitives.md) and
   [routing](spikes/114-routing.md).
 
+The [installed-icon investigation](spikes/171-icons.md) records the generation,
+update and device-evidence boundaries for the shared icon pipeline.
+
 ## Check
 
 ```sh

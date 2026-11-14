@@ -1,7 +1,8 @@
 // Generated configuration of one app. App code imports these files and never
 // edits them; new-app writes them, and later commands regenerate them from
 // apps.json, so tooling updates reach existing apps.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AUTO,
@@ -11,7 +12,7 @@ import {
   siteIdentity,
 } from './apps.mjs';
 import { escapeHtml } from './html.mjs';
-import { MASKABLE_ICON } from './icon.mjs';
+import { MASKABLE_ICON, PNG_ICONS, TOUCH_ICON } from './icon.mjs';
 import { manifestColours, PLAIN_COLOURS } from './themes.mjs';
 
 const HEADER = `// Generated from apps.json and app.json by @sempods/apps. Do not edit:
@@ -189,10 +190,10 @@ const ABOUT_KEYS = [
 const LOCALIZED_KEY = '`${string}_localized`';
 
 /** The web app manifest of a PWA, as TypeScript. */
-function manifestSource(app, colours) {
+function manifestSource(app, colours, icons) {
   const p = app.path;
   const icon = (file, size, purpose) =>
-    `    { src: ${json(`${p}${file}`)}, sizes: '${size}x${size}', type: 'image/png', purpose: '${purpose}' },`;
+    `    { src: ${json(`${p}${icons[file] ?? file}`)}, sizes: '${size}x${size}', type: 'image/png', purpose: '${purpose}' },`;
   const about = ABOUT_KEYS.filter((key) => app.about[key] !== undefined).map(
     (key) => `  ${key}: ${json(app.about[key])},`,
   );
@@ -219,7 +220,7 @@ ${icon(MASKABLE_ICON, 512, 'maskable')}
 }
 
 /** Vite base path, development server, page title and PWA settings. */
-export function viteSource(app, colours = PLAIN_COLOURS) {
+export function viteSource(app, colours = PLAIN_COLOURS, icons = {}) {
   const p = app.path;
   const pwa = app.pwa
     ? `{
@@ -243,23 +244,58 @@ export function viteSource(app, colours = PLAIN_COLOURS) {
     },
   }`
     : 'null';
+  const assets = Object.entries(icons).map(([file, path]) => [path, file]);
   return `${HEADER}
+${assets.length ? `import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';` : ''}
 import type { Plugin } from 'vite';
 import type { ${app.pwa ? 'ManifestOptions, ' : ''}VitePWAOptions } from 'vite-plugin-pwa';
-${app.pwa ? manifestSource(app, colours) : ''}
+${app.pwa ? manifestSource(app, colours, icons) : ''}
 export const base = ${json(p)};
-
+${assets.length ? `
+// Content-addressed copies are emitted at build time and served in dev.
+// Originals remain the inputs; never derive an icon from an installed icon.
+const iconFiles: Readonly<Record<string, string>> = ${json(Object.fromEntries(assets))};
+function readIcon(path: string): Buffer {
+  const bytes = readFileSync(new URL('./public/' + iconFiles[path], import.meta.url));
+  const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+  if (!path.endsWith('-' + digest + '.png'))
+    throw new Error('Icon changed: run pnpm run regenerate before building or serving.');
+  return bytes;
+}
+` : ''}
 // The static page title from app.json, the link to the app's published
 // description and the theme's initial light/dark browser colours, resolved
 // for every page Vite serves or builds. index.html has no <title> of its own.
-// The link's path is absolute, since the same page answers the app's routes.
+// Links are absolute, since the same page answers the app's routes. The
+// plugin also serves/emits versioned launcher icons and adds the Apple link.
 export const pageTitle: Plugin = {
   name: 'sempods-page-title',
-  transformIndexHtml: (html) => ({
+${assets.length ? `  generateBundle() {
+    for (const fileName of Object.keys(iconFiles))
+      this.emitFile({ type: 'asset', fileName, source: readIcon(fileName) });
+  },
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+      const file = path.startsWith(base) ? path.slice(base.length) : '';
+      if (!Object.hasOwn(iconFiles, file)) return next();
+      try {
+        response.setHeader('Content-Type', 'image/png');
+        response.end(readIcon(file));
+      } catch (error) { next(error); }
+    });
+  },
+` : ''}  transformIndexHtml: (html) => ({
     html: html
       .replaceAll('__THEME_LIGHT__', ${json(colours.background)})
       .replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)}),
     tags: [
+${icons[TOUCH_ICON] ? `      ...(/<link\\b[^>]*\\brel=["'][^"']*\\bapple-touch-icon\\b/i.test(html) ? [] : [{
+        tag: 'link',
+        attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: ${json(`${p}${icons[TOUCH_ICON]}`)} },
+        injectTo: 'head' as const,
+      }]),` : ''}
       { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
       {
         tag: 'link',
@@ -284,15 +320,26 @@ export const pwa: Partial<VitePWAOptions> | null = ${pwa};
  * The generated files of an app; `colours` are its theme's, as
  * manifestColours reads them from the app's folder.
  */
-export function generatedFiles(app, site, colours = PLAIN_COLOURS) {
+export function generatedFiles(app, site, colours = PLAIN_COLOURS, icons = {}) {
   return {
     'src/sempods.generated.ts': runtimeSource(app, site),
-    'vite.sempods.generated.ts': viteSource(app, colours),
+    'vite.sempods.generated.ts': viteSource(app, colours, icons),
   };
 }
 
+// Different bytes get a different URL; unrelated builds keep the exact URL.
+// Only PNG launcher assets are versioned. The app/header/splash uses the SVG.
+export function iconAssets(appDir) {
+  return Object.fromEntries([...PNG_ICONS, MASKABLE_ICON, TOUCH_ICON].flatMap((file) => {
+    const path = join(appDir, 'public', file);
+    if (!existsSync(path)) return [];
+    const hash = createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 16);
+    return [[file, `sempods-icons/${file.slice(0, -4)}-${hash}.png`]];
+  }));
+}
+
 const filesFor = (appDir, app, site) =>
-  generatedFiles(app, site, manifestColours(appDir));
+  generatedFiles(app, site, manifestColours(appDir), iconAssets(appDir));
 
 export function writeGenerated(appDir, app, site) {
   for (const [file, source] of Object.entries(filesFor(appDir, app, site)))
