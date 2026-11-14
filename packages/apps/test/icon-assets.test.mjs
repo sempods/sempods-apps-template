@@ -49,6 +49,8 @@ it('keeps icon pixels and URLs stable across regenerations, and versions actual 
     ]) assert.equal(config.pageTitle.transformIndexHtml(html).tags.some(tag => tag.attrs?.rel === 'apple-touch-icon'), false);
 
     for (const html of [
+      '<!-- <link rel="apple-touch-icon" href="/old.png"> -->',
+      '<!-- unfinished comment <link rel="apple-touch-icon" href="/old.png">',
       '<link data-rel="apple-touch-icon" href="/own.png">',
       '<link rel="not-apple-touch-icon" href="/own.png">',
     ]) assert.equal(config.pageTitle.transformIndexHtml(html).tags.some(tag => tag.attrs?.rel === 'apple-touch-icon'), true);
