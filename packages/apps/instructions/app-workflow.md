@@ -60,7 +60,8 @@ settle who reads and changes what.
 
 Propose a fitting layout, name, monogram and theme yourself. Offer "choose
 for me" with the sage theme; explain the other themes only if the owner
-wants a choice: fresh (teal), warm (terracotta on cream), playful (violet).
+wants a choice: calm (neutral graphite), fresh (teal), warm (terracotta on
+cream), playful (violet).
 A vague request is enough to make routine visual choices. Show a working
 screen early and let the owner react to it; theme and icon approval need not
 hold up the data decisions. Record the purpose, audience and design choices
@@ -335,13 +336,14 @@ Keep the screen consistent with the SDK's UI:
 
 - New apps start with sage, outlined primary actions (`data-actions="inverted"`)
   and text secondary actions (`data-secondary="text"`). These are defaults, not
-  requirements. The app's colours come from its theme, `src/themes/<name>.css`, imported in
-  `src/index.css`: palette roles of the UI kit's theme contract (`--primary`,
+  requirements. The app's colours come from its theme,
+  `src/themes/<name>.css`, imported in `src/index.css`: palette roles of the
+  UI kit's theme contract (`--primary`,
   `--background`, `--muted-foreground`, …), which colour the app's
   components and, through the kit's bridge, the SDK's. A request about the
   look changes roles or variants, never single components: "a warmer
-  palette" changes the palette roles, "invert the action buttons" sets
-  `data-actions="inverted"` on `<html>` in `index.html`, "outlined secondary
+  palette" changes the palette roles, "filled action buttons" sets
+  `data-actions="solid"` on `<html>` in `index.html`, "outlined secondary
   actions" `data-secondary="outline"`. Do not set the `--sempods-*` tokens or
   give components colour values of their own. After any change to the theme
   or the variants, run `pnpm run check:theme <id>`; fix the roles it names

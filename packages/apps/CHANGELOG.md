@@ -126,25 +126,6 @@ Instructions:
 
 ### Upgrade notes
 
-For the shared appearance, existing app source is not replaced by an update.
-Regenerate the configuration, then deliberately apply the skeleton changes:
-
-- Choose sage or keep the owner's palette; set `data-actions="inverted"` and
-  `data-secondary="text"` on `<html>` if the outlined style fits the app.
-- Keep `build.cssTarget: 'esnext'` in `vite.config.ts` so production CSS does
-  not turn `light-dark()` into system-only media queries. This uses the modern
-  CSS already required by the SDK/UI kit.
-- Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
-  and copy the skeleton's two marked theme-colour meta elements with their
-  `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements without
-  the marker remain independent. Appearance settings call `syncBrowserTheme()`.
-- Use `app.localized[useSdkLocale().language]` for the AppAccess name and
-  description, and pass its icon without the header's `size-7` class. Use the
-  same identity for the header. Keep owner translations and layout choices.
-- Run `check:theme` and inspect light/dark browser chrome. The manifest keeps
-  its light background; installed-device behavior still needs device evidence.
-
-
 1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
    and `description` from `apps.json`. For an app whose `language` is
    `auto`, it takes the texts as English (`"lang": "en"`) and says so in its
@@ -174,6 +155,30 @@ Regenerate the configuration, then deliberately apply the skeleton changes:
    offer the owner to add one as the app workflow describes. Its colours
    come from the `fresh` theme; offer `catalog.theme` with the theme most of
    the apps use.
+6. Existing app source is not replaced by the update. After migration, offer
+   the owner the shared sage/outline appearance and agree which visible
+   changes to adopt; keep their palette and layout unless they choose a
+   change. Apply the agreed skeleton changes:
+   - For sage, copy `src/themes/sage.css` and import it from `src/index.css`.
+     For outlined primary and text secondary actions, set
+     `data-actions="inverted"` and `data-secondary="text"` on `<html>`.
+   - Keep `build.cssTarget: 'esnext'` in `vite.config.ts` so production CSS
+     does not turn `light-dark()` into system-only media queries. This uses
+     the modern CSS already required by the SDK/UI kit.
+   - Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
+     and copy the skeleton's two marked theme-colour meta elements with their
+     `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements
+     without the marker remain independent. Appearance settings call
+     `syncBrowserTheme()`.
+   - Use `app.localized[useSdkLocale().language]` for the AppAccess name and
+     description, and pass its icon without the header's `size-7` class.
+     Use the same identity for the header. Keep owner translations and
+     layout choices. The generated browser tab title remains the source
+     name from `app.json`; it does not follow an in-app language change.
+   - After changing the palette, run `pnpm run regenerate` to refresh the
+     generated colours. Run `check:theme` and inspect light/dark browser
+     chrome. The manifest keeps its light background; installed-device
+     behavior still needs device evidence.
 
 ## 0.10.1 (in preparation)
 
