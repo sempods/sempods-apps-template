@@ -6,6 +6,9 @@ configuration choices and the SDK migration.
 
 ## 0.11.0
 
+Prerelease `0.11.0-dev.1` for acceptance testing against SDK `0.9.0-dev.1`.
+It also carries the Playwright pin planned for 0.10.1, which was not released.
+
 ### Changes
 
 Shared login appearance (sempods/sempods-apps-template#169):
@@ -177,6 +180,12 @@ Startup splash (sempods/sempods-apps-template#166):
 - `migrate` adds the splash to an app whose `index.html` still has the
   skeleton's empty `<div id="root"></div>` and uses the generated plugin.
 
+Tooling (sempods/sempods-apps-template#153):
+
+- Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
+  compatibility hold. Version 1.65 incorrectly treats controls in a native
+  modal dialog as inert when an ancestor is inert.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
@@ -292,21 +301,11 @@ and installed-device limits.
    session, light and dark, and check that the splash and the startup
    screen show the same icon and name in the same place.
 
-## 0.10.1 (in preparation)
-
-### Changes
-
-- Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
-  compatibility hold (#153). Version 1.65 incorrectly treats controls in
-  a native modal dialog as inert when an ancestor is inert.
-
-### Upgrade notes
-
-- After updating the tooling, install its matching Chromium with
-  `pnpm run check:theme --install-browser`. Keep normal locator clicks in
-  confirmation checks; do not bypass actionability with forced clicks.
-- App code and SDK versions are unchanged. A future Playwright update must
-  pass the native-modal check in the packed self-test and the SDK browser gate.
+10. After updating the tooling, install its matching Chromium with
+    `pnpm run check:theme --install-browser`. Keep normal locator clicks in
+    confirmation checks; do not bypass actionability with forced clicks. A
+    future Playwright update must pass the native-modal check in the packed
+    self-test and the SDK browser gate.
 
 ## 0.10.0
 
