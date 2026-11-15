@@ -22,12 +22,22 @@ import {
   validateApps,
 } from '../scripts/lib/apps.mjs';
 import { generatedFiles, staleGenerated } from '../scripts/lib/generate.mjs';
+import { describedApp } from '../scripts/lib/describe.mjs';
+import { readJson } from '../scripts/lib/json.mjs';
 import { configureSite } from '../scripts/configure-site.mjs';
 import { createApp } from '../scripts/new-app.mjs';
-import { monogramLetter, monogramPng } from '../scripts/lib/icon.mjs';
+import {
+  iconProblems,
+  monogramLetter,
+  monogramPng,
+  ownerIconProblem,
+} from '../scripts/lib/icon.mjs';
 import { drawIcon } from '../scripts/icon.mjs';
+import { appListing } from '../scripts/dev.mjs';
+import { MISSING_BROWSER } from '../scripts/check-theme.mjs';
 import {
   iconColours,
+  manifestColours,
   themeCss,
   themeNames,
   tokenColours,
@@ -72,19 +82,17 @@ describe('app IDs', () => {
 describe('apps.json', () => {
   const app = {
     id: 'konsum',
-    title: 'Einkaufsliste',
     language: 'de',
     path: '/konsum/',
     devPort: 5174,
     pwa: true,
   };
   it('accepts a valid manifest', () => {
-    assert.deepEqual(validateApps({ schemaVersion: 1, apps: [app] }), []);
+    assert.deepEqual(validateApps({ schemaVersion: 2, apps: [app] }), []);
   });
   it('accepts routes as distinct lowercase addresses', () => {
     const app = (routes) => ({
       id: 'konsum',
-      title: 'Konsum',
       language: 'de',
       path: '/konsum/',
       devPort: 5174,
@@ -92,7 +100,7 @@ describe('apps.json', () => {
       routes,
     });
     const problems = (routes) =>
-      validateApps({ schemaVersion: 1, apps: [app(routes)] });
+      validateApps({ schemaVersion: 2, apps: [app(routes)] });
     assert.deepEqual(problems(['open', 'bought', 'tasks/add']), []);
     assert.deepEqual(problems(undefined), []);
     assert.match(problems('bought').join(), /routes must be a list/);
@@ -108,7 +116,7 @@ describe('apps.json', () => {
   it('accepts resource patterns that start with a word', () => {
     const problems = (resources, routes) =>
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [{ ...app, resources, ...(routes ? { routes } : {}) }],
       });
     assert.deepEqual(
@@ -130,7 +138,7 @@ describe('apps.json', () => {
 
   it('reports duplicate IDs and ports, wrong paths and languages', () => {
     const problems = validateApps({
-      schemaVersion: 1,
+      schemaVersion: 2,
       apps: [
         app,
         { ...app },
@@ -145,7 +153,7 @@ describe('apps.json', () => {
   it('accepts a site with HTTPS origins and a known host', () => {
     assert.deepEqual(
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [app],
         site: {
           production: 'https://apps.example.org',
@@ -167,7 +175,7 @@ describe('apps.json', () => {
     ])
       assert.notEqual(invalidOrigin(origin), undefined, origin);
     const problems = validateApps({
-      schemaVersion: 1,
+      schemaVersion: 2,
       apps: [app],
       site: {
         preview: 'https://a.example.org',
@@ -178,7 +186,7 @@ describe('apps.json', () => {
     assert.ok(problems.some((p) => p.includes('site.host is not a known')));
     assert.ok(
       validateApps({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: [app],
         site: { production: 'https://a.org', preview: 'https://a.org' },
       }).some((p) => p.includes('must differ')),
@@ -201,6 +209,7 @@ describe('generated configuration', () => {
     path: '/demo/',
     devPort: 5180,
     pwa: true,
+    about: { lang: 'en', name: 'Demo "App"', short_name: 'Demo "App"' },
   };
   it('derives callback, return path, base and PWA scope from the app path', () => {
     const files = generatedFiles(app);
@@ -213,6 +222,11 @@ describe('generated configuration', () => {
     assert.match(runtime, /development: 'loopback-http'/);
     const vite = files['vite.sempods.generated.ts'];
     assert.match(vite, /export const base = "\/demo\/"/);
+    // Every page links the app's description by an absolute path.
+    assert.match(
+      vite,
+      /attrs: \{ rel: 'alternate', type: 'application\/ld\+json', href: "\/demo\/app\.jsonld" \}/,
+    );
     assert.match(vite, /port: 5180/);
     assert.match(vite, /scope: "\/demo\/"/);
     // The start page, with any query: Workbox matches path and query.
@@ -367,12 +381,72 @@ describe('generated configuration', () => {
     const runtime = files['src/sempods.generated.ts'];
     assert.match(runtime, /^  language: "auto",$/m);
     assert.match(runtime, /import type \{ BrowserRuntimeOptions \} from/);
-    // The plugin's default "en" must not fill the gap.
-    assert.match(files['vite.sempods.generated.ts'], /^      lang: undefined,$/m);
+    // The manifest names the language of its texts, from app.json.
+    const german = { ...app.about, lang: 'de' };
+    assert.match(
+      generatedFiles({ ...app, language: 'auto', about: german })[
+        'vite.sempods.generated.ts'
+      ],
+      /^  lang: "de",$/m,
+    );
+  });
+  it('writes the manifest from app.json and the theme', () => {
+    const about = {
+      lang: 'de',
+      name: 'Einkauf',
+      name_localized: { en: 'Shopping' },
+      short_name: 'Einkauf',
+      short_name_localized: { en: 'Shopping' },
+      description: 'Was fehlt.',
+      description_localized: { en: 'What is missing.' },
+      categories: ['shopping', 'lifestyle'],
+    };
+    const vite = generatedFiles({ ...app, about }, undefined, {
+      background: '#fdfaf6',
+    })['vite.sempods.generated.ts'];
+    assert.match(vite, /^  name_localized: \{"en":"Shopping"\},$/m);
+    assert.match(vite, /^  description_localized: \{"en":"What is missing\."\},$/m);
+    assert.match(vite, /^  categories: \["shopping","lifestyle"\],$/m);
+    assert.match(vite, /^  background_color: "#fdfaf6",$/m);
+    assert.match(vite, /^  theme_color: "#fdfaf6",$/m);
+    assert.match(
+      vite,
+      /src: "\/demo\/icon-maskable-512\.png", sizes: '512x512', type: 'image\/png', purpose: 'maskable'/,
+    );
+    assert.match(vite, /import type \{ ManifestOptions, VitePWAOptions \}/);
+    // Without a theme the tooling can read, the manifest stays white.
     assert.match(
       generatedFiles(app)['vite.sempods.generated.ts'],
-      /lang: "en",/,
+      /^  theme_color: "#ffffff",$/m,
     );
+    assert.doesNotMatch(
+      generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
+      /ManifestOptions|const manifest/,
+    );
+  });
+  it('resolves theme placeholders without replacing owner colours and exposes localized identity', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-identity-'));
+    try {
+      for (const pwa of [true, false]) {
+        const files = generatedFiles({ ...app, pwa, about: {
+          lang: 'de', name: 'Einkauf', description: 'Was fehlt.',
+          name_localized: { en: 'Shopping' }, description_localized: { en: 'What is missing.' },
+        } }, undefined, { background: '#fdfaf6', darkBackground: '#191817' });
+        const vite = join(dir, `vite-${pwa}.mts`);
+        writeFileSync(vite, files['vite.sempods.generated.ts']);
+        const { pageTitle } = await import(pathToFileURL(vite).href);
+        const original = '<meta name="theme-color" content="#123456"><meta content="__THEME_LIGHT__"><meta content="__THEME_DARK__">';
+        assert.equal(pageTitle.transformIndexHtml(original).html,
+          '<meta name="theme-color" content="#123456"><meta content="#fdfaf6"><meta content="#191817">');
+        const runtime = join(dir, `runtime-${pwa}.mts`);
+        writeFileSync(runtime, files['src/sempods.generated.ts']);
+        const { app: generated } = await import(pathToFileURL(runtime).href);
+        assert.deepEqual(generated.localized, {
+          en: { title: 'Shopping', description: 'What is missing.' },
+          de: { title: 'Einkauf', description: 'Was fehlt.' },
+        });
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   it('has no PWA settings when the app opts out', () => {
     assert.match(
@@ -471,7 +545,7 @@ describe('new-app', () => {
       'konsum',
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
-    assert.match(html, /<html lang="de">/);
+    assert.match(html, /<html lang="de" data-actions="inverted" data-secondary="text">/);
     // The title comes from apps.json through the generated Vite plugin.
     assert.doesNotMatch(html, /<title/);
     assert.match(
@@ -500,14 +574,25 @@ describe('new-app', () => {
       );
     assert.deepEqual(leftovers(dir), []);
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
-    assert.deepEqual(manifest.apps, [app]);
+    const { title, description, about, ...entry } = app;
+    assert.deepEqual(manifest.apps, [entry]);
+    assert.deepEqual(about, {
+      lang: 'de',
+      name: 'Einkaufs<liste>',
+      short_name: 'Einkaufs<liste>',
+    });
+    assert.equal(description, undefined);
+    assert.deepEqual(readJson(join(dir, 'app.json')), {
+      lang: 'de',
+      name: title,
+    });
     // By default an app follows the browser; its page starts in English.
     const second = createApp(root, { id: 'second' });
     assert.equal(second.devPort, 5175);
     assert.equal(second.language, 'auto');
     assert.match(
       readFileSync(join(root, 'apps', 'second', 'index.html'), 'utf8'),
-      /<html lang="en">/,
+      /<html lang="en" data-actions="inverted" data-secondary="text">/,
     );
   });
 
@@ -553,7 +638,7 @@ describe('new-app', () => {
   it('preserves other fields of apps.json when adding an app', () => {
     writeFileSync(
       join(root, 'apps.json'),
-      JSON.stringify({ schemaVersion: 1, apps: [], note: 'owner' }),
+      JSON.stringify({ schemaVersion: 2, apps: [], note: 'owner' }),
     );
     createApp(root, { id: 'konsum' });
     const manifest = JSON.parse(readFileSync(join(root, 'apps.json'), 'utf8'));
@@ -578,8 +663,8 @@ describe('app icon', () => {
   it('draws the letter in white on graphite, with transparent corners', () => {
     // RGBA of one pixel: the image data follows the 33 bytes of signature and
     // header and precedes the checksum and the end chunk.
-    const pixel = (letter) => {
-      const png = monogramPng(letter, 64);
+    const pixel = (letter, options) => {
+      const png = monogramPng(letter, 64, undefined, options);
       const rows = inflateSync(png.subarray(41, png.length - 16));
       return (x, y) => {
         const start = y * 257 + 1 + x * 4;
@@ -592,6 +677,188 @@ describe('app icon', () => {
     assert.deepEqual(at(32, 32), [255, 255, 255, 255]);
     // Without a letter, the square stays plain.
     assert.deepEqual(pixel(undefined)(32, 32), [0x1f, 0x29, 0x33, 255]);
+    // The maskable variant fills the corners too.
+    const mask = pixel('I', { maskable: true });
+    assert.deepEqual(mask(0, 0), [0x1f, 0x29, 0x33, 255]);
+    assert.deepEqual(mask(32, 32), [255, 255, 255, 255]);
+  });
+  it('keeps every letter inside the maskable safe zone', () => {
+    // The middle 80 %: a circle of radius 0.4 × 64 around the centre.
+    for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+      const png = monogramPng(letter, 64, undefined, { maskable: true });
+      const rows = inflateSync(png.subarray(41, png.length - 16));
+      for (let y = 0; y < 64; y++)
+        for (let x = 0; x < 64; x++) {
+          if (Math.hypot(x + 0.5 - 32, y + 0.5 - 32) <= 25.6) continue;
+          const start = y * 257 + 1 + x * 4;
+          assert.deepEqual(
+            [...rows.subarray(start, start + 3)],
+            [0x1f, 0x29, 0x33],
+            `${letter} at ${x},${y}`,
+          );
+        }
+    }
+  });
+});
+
+describe('owner icon', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-owner-icon-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  const SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30"/></svg>\n';
+  // Stands in for Chromium: records what it is asked to draw.
+  const fakeBrowser = (calls, decode = () => true) => async () => ({
+    newPage: async () => {
+      let size;
+      let html;
+      return {
+        route: async () => {},
+        setViewportSize: async (viewport) => {
+          size = viewport.width;
+        },
+        setContent: async (content) => {
+          html = content;
+        },
+        locator: () => ({ evaluate: async () => decode(html) }),
+        screenshot: async ({ omitBackground }) => {
+          calls.push({ size, omitBackground, html });
+          return Buffer.from(`png ${size} ${omitBackground}`);
+        },
+        close: async () => {},
+      };
+    },
+    close: async () => calls.push('closed'),
+  });
+
+  it('accepts a square SVG only', () => {
+    assert.equal(ownerIconProblem(SVG), undefined);
+    assert.match(ownerIconProblem('<svg viewBox="0 0 10 12"/>'), /square viewBox/);
+    assert.match(ownerIconProblem('<svg width="10" height="10"/>'), /square viewBox/);
+    assert.match(ownerIconProblem('<png/>'), /holds no <svg> element/);
+    for (const viewBox of ['0 0 Infinity Infinity', 'x 0 100 100', '0 0 100 100 100'])
+      assert.match(ownerIconProblem(`<svg viewBox="${viewBox}"/>`), /square viewBox/);
+    assert.match(
+      ownerIconProblem(`<svg viewBox="0 0 1 1">${' '.repeat(64 * 1024)}</svg>`),
+      /larger than 64 KB/,
+    );
+  });
+
+  it("draws the owner's icon.svg instead of the monogram", async () => {
+    createApp(root, { id: 'demo', title: 'Demo', theme: 'warm' });
+    const dir = join(root, 'apps', 'demo');
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    writeFileSync(join(dir, 'icon.svg'), SVG);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), [
+      'apps/demo/icon.svg is not drawn into public/ yet; run pnpm run icon demo',
+    ]);
+    const calls = [];
+    assert.deepEqual(await drawIcon(root, 'demo', { browser: fakeBrowser(calls) }), [
+      'apps/demo/public/favicon.svg',
+      'apps/demo/public/icon-192.png',
+      'apps/demo/public/icon-512.png',
+      'apps/demo/public/icon-maskable-512.png',
+      'apps/demo/public/apple-touch-icon.png',
+    ]);
+    assert.equal(readFileSync(join(dir, 'public', 'favicon.svg'), 'utf8'), SVG);
+    assert.equal(
+      readFileSync(join(dir, 'public', 'icon-maskable-512.png'), 'utf8'),
+      'png 512 false',
+    );
+    // Transparent PNGs, then the maskable one on the theme's background; the
+    // SVG is only ever an image.
+    const warm = manifestColours(dir).background;
+    assert.notEqual(warm, '#ffffff');
+    assert.deepEqual(
+      calls.slice(0, 3).map(({ size, omitBackground }) => [size, omitBackground]),
+      [[192, true], [512, true], [512, false]],
+    );
+    assert.match(calls[2].html, new RegExp(`background:${warm}`));
+    assert.match(calls[0].html, /<img src="data:image\/svg\+xml;base64,/);
+    assert.equal(calls.at(-1), 'closed');
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    assert.deepEqual(staticProblems(root), []);
+
+    const launcher = SVG.replace('r="30"', 'r="25"');
+    writeFileSync(join(dir, 'icon-maskable.svg'), launcher);
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+    const launcherCalls = [];
+    await drawIcon(root, 'demo', { browser: fakeBrowser(launcherCalls) });
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+    assert.ok(launcherCalls[2].html.includes(Buffer.from(launcher).toString('base64')));
+    assert.equal(launcherCalls[3].size, 180);
+    assert.equal(launcherCalls[3].omitBackground, false);
+    writeFileSync(join(dir, 'public/icon-512.png'), 'stale PNG');
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+    await drawIcon(root, 'demo', { browser: fakeBrowser([]) });
+    const palette = join(dir, 'src/themes/warm.css');
+    writeFileSync(palette, readFileSync(palette, 'utf8').replace('#fdfaf6', '#ffffff'));
+    assert.match(iconProblems(dir, { id: 'demo', pwa: true }).join(), /not drawn/);
+
+    writeFileSync(join(dir, 'icon.svg'), '<svg viewBox="0 0 2 1"/>');
+    await assert.rejects(
+      drawIcon(root, 'demo', { browser: fakeBrowser([]) }),
+      /icon\.svg needs a square viewBox/,
+    );
+    assert.match(staticProblems(root).join(), /apps\/demo\/icon\.svg needs a square viewBox/);
+  });
+
+  it('names the SVG that cannot be decoded and preserves existing output', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    const original = readFileSync(join(dir, 'public/icon-192.png'));
+    const broken = '<svg viewBox="0 0 100 100"><broken></svg>';
+    for (const name of ['icon.svg', 'icon-maskable.svg']) {
+      writeFileSync(join(dir, 'icon.svg'), SVG);
+      writeFileSync(join(dir, name), broken);
+      const calls = [];
+      await assert.rejects(
+        drawIcon(root, 'demo', {
+          browser: fakeBrowser(calls, html => !html.includes(Buffer.from(broken).toString('base64'))),
+        }),
+        { message: `${name} cannot be drawn as an image` },
+      );
+      assert.deepEqual(readFileSync(join(dir, 'public/icon-192.png')), original);
+      assert.equal(calls.at(-1), 'closed');
+    }
+  });
+
+  it('removes the custom generation record when returning to a monogram', async () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    writeFileSync(join(dir, 'icon.svg'), SVG);
+    await drawIcon(root, 'demo', { browser: fakeBrowser([]) });
+    assert.ok(existsSync(join(dir, '.sempods-icon.json')));
+    rmSync(join(dir, 'icon.svg'));
+    await drawIcon(root, 'demo');
+    assert.equal(existsSync(join(dir, '.sempods-icon.json')), false);
+    assert.notEqual(readFileSync(join(dir, 'public/favicon.svg'), 'utf8'), SVG);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), []);
+  });
+
+  it('names the command that installs the browser', async () => {
+    createApp(root, { id: 'demo' });
+    writeFileSync(join(root, 'apps', 'demo', 'icon.svg'), SVG);
+    await assert.rejects(
+      drawIcon(root, 'demo', {
+        browser: async () => {
+          throw new Error(MISSING_BROWSER);
+        },
+      }),
+      /run pnpm run check:theme --install-browser once, then pnpm run icon demo again/,
+    );
+  });
+
+  it("reports a PWA's missing icons", () => {
+    createApp(root, { id: 'demo' });
+    const dir = join(root, 'apps', 'demo');
+    rmSync(join(dir, 'public', 'icon-maskable-512.png'));
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: true }), [
+      'apps/demo/public/icon-maskable-512.png is missing; run pnpm run icon demo',
+    ]);
+    assert.deepEqual(iconProblems(dir, { id: 'demo', pwa: false }), []);
   });
 });
 
@@ -620,7 +887,10 @@ describe('configure-site', () => {
     });
     assert.match(runtime(), /did:web:apps\.example\.org:konsum/);
     const dir = join(root, 'apps', 'konsum');
-    assert.deepEqual(staleGenerated(dir, apps().apps[0], apps().site), []);
+    assert.deepEqual(
+      staleGenerated(dir, describedApp(root, apps().apps[0]), apps().site),
+      [],
+    );
     const before = [readFileSync(join(root, 'apps.json'), 'utf8'), runtime()];
     configureSite(root, {});
     assert.deepEqual(
@@ -690,7 +960,11 @@ describe('configure-site', () => {
     manifest.site.production = 'https://moved.example.org';
     writeFileSync(join(root, 'apps.json'), JSON.stringify(manifest));
     assert.deepEqual(
-      staleGenerated(join(root, 'apps', 'konsum'), manifest.apps[0], manifest.site),
+      staleGenerated(
+        join(root, 'apps', 'konsum'),
+        describedApp(root, manifest.apps[0]),
+        manifest.site,
+      ),
       ['src/sempods.generated.ts'],
     );
   });
@@ -984,7 +1258,7 @@ export default defineConfig({
       'utf8',
     );
     assert.match(page(), /interactive-widget=resizes-content/);
-    assert.match(page(), /prefers-color-scheme: dark\)" content="#111315"/);
+    assert.match(page(), /prefers-color-scheme: dark\)" content="__THEME_DARK__"/);
     assert.doesNotMatch(page(), /#176354/);
     for (const line of page().split('\n').filter((l) => l.includes('<meta')))
       assert.ok(skeleton.includes(line), line);
@@ -1014,8 +1288,8 @@ describe('themes', () => {
     return (high + 0.05) / (low + 0.05);
   };
 
-  it('ships calm as the default and three more', () => {
-    assert.deepEqual(themeNames(), ['calm', 'fresh', 'playful', 'warm']);
+  it('ships sage as the default while retaining the other themes', () => {
+    assert.deepEqual(themeNames(), ['sage', 'calm', 'fresh', 'playful', 'warm']);
   });
 
   // The rest states of the palette; check:theme checks every pair, hover
@@ -1079,21 +1353,23 @@ describe('app theme and icon', () => {
       new RegExp(`fill:${warm.light.background}`),
     );
     createApp(root, { id: 'plain', title: 'Plain' });
-    assert.match(file('plain', 'src', 'index.css'), /themes\/calm\.css/);
+    assert.match(file('plain', 'src', 'index.css'), /themes\/sage\.css/);
     assert.throws(
       () => createApp(root, { id: 'odd', theme: 'neon' }),
-      /theme must be one of calm, fresh, playful, warm/,
+      /theme must be one of sage, calm, fresh, playful, warm/,
     );
   });
 
-  it('draws the icon again after a theme change', () => {
+  it('draws the icon again after a theme change', async () => {
     createApp(root, { id: 'demo', title: 'Demo' });
     const css = join(root, 'apps', 'demo', 'src', 'index.css');
-    writeFileSync(css, file('demo', 'src', 'index.css').replace('calm', 'fresh'));
-    assert.deepEqual(drawIcon(root, 'demo'), [
+    writeFileSync(css, file('demo', 'src', 'index.css').replace('sage', 'fresh'));
+    assert.deepEqual(await drawIcon(root, 'demo'), [
       'apps/demo/public/favicon.svg',
       'apps/demo/public/icon-192.png',
       'apps/demo/public/icon-512.png',
+      'apps/demo/public/icon-maskable-512.png',
+      'apps/demo/public/apple-touch-icon.png',
     ]);
     const fresh = iconColours(themeCss(SKELETON, 'fresh'));
     assert.match(
@@ -1109,11 +1385,11 @@ describe('app theme and icon', () => {
       join(root, 'apps', 'demo', 'src', 'themes', 'old.css'),
       ':root {\n  --sempods-accent: light-dark(#176354, #7fd1bd);\n  --sempods-on-accent: light-dark(#ffffff, #0b2a23);\n}\n',
     );
-    drawIcon(root, 'demo');
+    await drawIcon(root, 'demo');
     assert.match(file('demo', 'public', 'favicon.svg'), /fill:#176354/);
     writeFileSync(main, "import './index.css';\n");
-    assert.throws(() => drawIcon(root, 'demo'), /imports no theme/);
-    assert.throws(() => drawIcon(root, 'none'), /lists no app "none"/);
+    await assert.rejects(drawIcon(root, 'demo'), /imports no theme/);
+    await assert.rejects(drawIcon(root, 'none'), /lists no app "none"/);
   });
 
   it('carries a description to the sign-in screen, manifest and overview', () => {
@@ -1133,7 +1409,7 @@ describe('app theme and icon', () => {
     );
     assert.match(
       file('demo', 'src', 'App.tsx'),
-      /description=\{app\.description\}/,
+      /description=\{identity\.description\}/,
     );
     createApp(root, { id: 'bare' });
     assert.match(
@@ -1162,5 +1438,30 @@ describe('script arguments', () => {
       'all',
     ]);
     assert.deepEqual(scriptArgs(['demo', '--', 'x']), ['demo', '--', 'x']);
+  });
+});
+
+describe('dev', () => {
+  let root;
+  beforeEach(() => {
+    root = tempRepository('sempods-dev-');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('lists every app with its address when no app is named', () => {
+    assert.match(appListing(root), /no apps yet[\s\S]*pnpm run new-app <id>/);
+    createApp(root, { id: 'konsum', title: 'Einkauf', language: 'de' });
+    createApp(root, { id: 'notes', title: 'Notes', language: 'en' });
+    const { apps } = readApps(root);
+    assert.equal(
+      appListing(root),
+      [
+        'Apps:',
+        `  konsum  Einkauf  http://127.0.0.1:${apps[0].devPort}/konsum/`,
+        `  notes   Notes  http://127.0.0.1:${apps[1].devPort}/notes/`,
+        '',
+        'Start one with pnpm run dev <id>, for example pnpm run dev konsum.',
+      ].join('\n'),
+    );
   });
 });

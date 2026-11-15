@@ -15,14 +15,21 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { readApps } from './lib/apps.mjs';
+import { appsFile, readApps } from './lib/apps.mjs';
+import {
+  adoptDescriptions,
+  describedApp,
+  DESCRIPTION_FILE,
+} from './lib/describe.mjs';
 import {
   isDirectory,
   isFile,
@@ -32,6 +39,14 @@ import {
   replaceFile,
 } from './lib/files.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
+import {
+  MASKABLE_ICON,
+  TOUCH_ICON,
+  monogramLetter,
+  monogramPng,
+  monogramSvg,
+  OWNER_ICON,
+} from './lib/icon.mjs';
 import { copiedKit, kitNote } from './lib/kit.mjs';
 import {
   adoptPageHead,
@@ -55,6 +70,7 @@ import {
   starterAt,
   writeBaseline,
 } from './lib/shared.mjs';
+import { appTheme, iconColours, themeCss } from './lib/themes.mjs';
 import { regenerate } from './regenerate.mjs';
 
 export const MIGRATION_DIR = '.sempods-migration';
@@ -80,12 +96,21 @@ export function refuseUnfinishedSdkUpdate(root) {
     );
 }
 
-// A broken apps.json names no apps here; regenerating reports it later.
+// A broken apps.json names no apps here; regenerating reports it later. A
+// schema 1 apps.json, which this migration converts, still names its apps.
 function appsOf(root) {
   try {
     return readApps(root).apps;
   } catch {
-    return [];
+    let apps;
+    try {
+      apps = ifPresent(() => readJson(appsFile(root)))?.apps;
+    } catch {
+      apps = undefined;
+    }
+    return Array.isArray(apps)
+      ? apps.filter((app) => typeof app?.id === 'string')
+      : [];
   }
 }
 
@@ -104,9 +129,13 @@ export function linkedPaths(root, files = []) {
     BASELINE_FILE,
     MIGRATION_DIR,
     ...apps.flatMap(({ id }) =>
-      [...GENERATED_FILES, PAGE, VITE_CONFIG].map(
-        (file) => `apps/${id}/${file}`,
-      ),
+      [
+        ...GENERATED_FILES,
+        PAGE,
+        VITE_CONFIG,
+        DESCRIPTION_FILE,
+        `public/${MASKABLE_ICON}`,
+      ].map((file) => `apps/${id}/${file}`),
     ),
     ...files,
   ]) {
@@ -516,15 +545,73 @@ export function migrate(
  * decision, such as a copied UI kit, stays as it is with a note.
  */
 function updateApps(root, report) {
-  for (const app of appsOf(root)) {
-    const dir = join(root, 'apps', app.id);
+  // Schema 1 kept titles and descriptions in apps.json (before 0.11.0).
+  const descriptions = adoptDescriptions(root);
+  report.updated.push(...descriptions.changed);
+  report.notes.push(...descriptions.notes);
+  for (const entry of appsOf(root)) {
+    const dir = join(root, 'apps', entry.id);
     if (!existsSync(dir)) continue;
+    let app;
+    try {
+      app = describedApp(root, entry);
+    } catch (error) {
+      report.notes.push(error.message);
+      continue;
+    }
     const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
     report.updated.push(...new Set(changed));
+    adoptMaskableIcon(dir, app, report);
     const kit = copiedKit(dir);
     if (kit) report.notes.push(kitNote(app.id, kit));
   }
   report.regenerated = regenerate(root);
+}
+
+/**
+ * Draws the maskable icon a PWA's manifest names since 0.11.0, when the app
+ * still shows the monogram the tooling drew; an icon of the owner's own is
+ * left to them with a note.
+ */
+function adoptMaskableIcon(dir, app, report) {
+  if (!app.pwa) return;
+  const missing = [MASKABLE_ICON, TOUCH_ICON].filter(
+    (file) => !existsSync(join(dir, 'public', file)),
+  );
+  if (!missing.length) return;
+  if (existsSync(join(dir, OWNER_ICON))) {
+    report.notes.push(
+      `apps/${app.id}/public/${missing.join(', ')} is missing; run pnpm run icon ${app.id} to draw it from the existing apps/${app.id}/${OWNER_ICON}.`,
+    );
+    return;
+  }
+  const theme = appTheme(dir);
+  let colours;
+  try {
+    colours = theme && iconColours(themeCss(dir, theme));
+  } catch {
+    // A theme without the icon's roles: the note below applies.
+  }
+  const letter = monogramLetter(app.title);
+  const favicon = ifPresent(() =>
+    readFileSync(join(dir, 'public', 'favicon.svg'), 'utf8'),
+  );
+  if (
+    colours &&
+    favicon === monogramSvg(letter, colours)
+  ) {
+    for (const file of missing) {
+      writeFileSync(
+        join(dir, 'public', file),
+        monogramPng(letter, file === TOUCH_ICON ? 180 : 512, colours, { maskable: true }),
+      );
+      report.updated.push(`apps/${app.id}/public/${file}`);
+    }
+    return;
+  }
+  report.notes.push(
+    `apps/${app.id}/public/${missing.join(', ')} is missing, and the app's icon is not the monogram the tooling draws. Put the icon as a square SVG, its essential artwork inside the centred circle of radius 40 % of its width, into apps/${app.id}/${OWNER_ICON} and run pnpm run icon ${app.id}; or run it without that file to draw the monogram.`,
+  );
 }
 
 export function formatMigration(report) {

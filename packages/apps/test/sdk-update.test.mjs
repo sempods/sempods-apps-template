@@ -63,10 +63,9 @@ describe('sdk-update (offline registry and pnpm fixtures)', () => {
     writeFileSync(
       join(root, 'apps.json'),
       JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         apps: ['one', 'two'].map((id, i) => ({
           id,
-          title: id,
           language: 'en',
           path: `/${id}/`,
           devPort: 5174 + i,

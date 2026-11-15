@@ -72,7 +72,8 @@ function Frame() {
   // `pod` is the active signed-in Pod; a remembered Pod after a sign-out has
   // none. `connections` includes remembered Pods, so the header stays.
   const { connections, pod } = useAppState();
-  const { messages } = useSdkLocale();
+  const { messages, language: shownLanguage } = useSdkLocale();
+  const identity = app.localized[shownLanguage];
   const t = useMessages(texts);
   const header = connections.length > 0;
   const { place } = nav;
@@ -83,7 +84,7 @@ function Frame() {
         <header className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             {icon}
-            {app.title}
+            {identity.title}
           </h1>
           <div className="flex items-center gap-2">
             {/* The app's own icon actions go here, as
@@ -104,9 +105,9 @@ function Frame() {
       {/* Below the header's h1, AppAccess uses h2. It explains sign-in and
           lost access; AccessNotice adds only that a context is read-only. */}
       <AppAccess
-        appName={app.title}
-        description={app.description}
-        icon={icon}
+        appName={identity.title}
+        description={identity.description}
+        icon={<img src={`${app.basePath}favicon.svg`} alt="" />}
         headingLevel={header ? 2 : 1}
         open={managing}
         onClose={() => setManaging(false)}

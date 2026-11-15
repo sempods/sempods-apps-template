@@ -16,6 +16,7 @@ import {
   validateApps,
   writeApps,
 } from './lib/apps.mjs';
+import { describedApp } from './lib/describe.mjs';
 import { writeGenerated } from './lib/generate.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { scriptArgs } from './lib/pnpm.mjs';
@@ -66,11 +67,13 @@ export function configureSite(
       );
     }
   }
+  // Read every description first, so a broken app.json changes nothing.
+  const described = next.apps
+    .filter((app) => existsSync(join(root, 'apps', app.id)))
+    .map((app) => describedApp(root, app));
   writeApps(root, next);
-  for (const app of next.apps) {
-    const dir = join(root, 'apps', app.id);
-    if (existsSync(dir)) writeGenerated(dir, app, site);
-  }
+  for (const app of described)
+    writeGenerated(join(root, 'apps', app.id), app, site);
   return next;
 }
 

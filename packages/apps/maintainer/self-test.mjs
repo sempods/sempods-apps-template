@@ -11,7 +11,10 @@
 // provides. Needs the npm registry and Playwright's Chromium
 // (pnpm --filter @sempods/apps exec playwright install chromium).
 // Usage: pnpm run self-test
+import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import {
   cpSync,
   existsSync,
@@ -19,11 +22,13 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import semver from 'semver';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
@@ -74,6 +79,38 @@ function run(command, args, cwd, capture = false) {
   return result.stdout;
 }
 const pnpmRun = (repo, ...args) => run('pnpm', ['run', ...args], repo);
+
+// Resolve the browser driver through the installed tarball, just as an owner
+// does. Native top-layer dialogs escape an inert ancestor; Playwright 1.65
+// incorrectly rejected ordinary clicks there (template #153 / SDK #264).
+async function nativeModalCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`
+      <main inert>
+        <dialog aria-label="Unsaved changes">
+          <form method="dialog"><button>Keep editing</button></form>
+        </dialog>
+      </main>
+    `);
+    await page.locator('dialog').evaluate((dialog) => dialog.showModal());
+    await page
+      .getByRole('button', { name: 'Keep editing', exact: true })
+      .click({ timeout: 5000 });
+    if (await page.locator('dialog').evaluate((dialog) => dialog.open))
+      throw new Error('the native confirmation did not close');
+    console.log(
+      '✓ installed Playwright clicks a native modal inside an inert ancestor',
+    );
+  } finally {
+    await browser.close();
+  }
+}
 
 function pack(dir, out) {
   const before = new Set(readdirSync(out));
@@ -133,13 +170,13 @@ it('selects the profile of the build mode', () => {
  */
 function themeCheck(repo) {
   pnpmRun(repo, 'check:theme', FIXTURE);
-  const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'calm.css');
+  const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'sage.css');
   const original = readFileSync(theme, 'utf8');
   const broken = original.replace(
     /--muted-foreground: light-dark\([^)]*\)/,
     '--muted-foreground: light-dark(#f4f4f5, #a1a7b0)',
   );
-  if (broken === original) throw new Error('the calm theme sets no muted text');
+  if (broken === original) throw new Error('the sage theme sets no muted text');
   writeFileSync(theme, broken);
   try {
     const result = pnpm(['run', 'check:theme', FIXTURE], {
@@ -161,6 +198,291 @@ function themeCheck(repo) {
     writeFileSync(theme, original);
   }
   console.log('✓ theme check in light and dark, and a failing control');
+}
+
+const OWNER_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#c2410c"/></svg>\n';
+
+/**
+ * Draws an owner's icon.svg in the tooling's browser and gives the app texts
+ * the manifest carries: a translated name and a category.
+ */
+function ownerIcon(repo) {
+  const dir = join(repo, 'apps', FIXTURE);
+  writeFileSync(join(dir, 'icon.svg'), OWNER_SVG);
+  const maskable = OWNER_SVG.replace('#c2410c', '#176354');
+  writeFileSync(join(dir, 'icon-maskable.svg'), maskable);
+  pnpmRun(repo, 'icon', FIXTURE);
+  const pub = (file) => join(dir, 'public', file);
+  if (readFileSync(pub('favicon.svg'), 'utf8') !== OWNER_SVG)
+    throw new Error('icon did not take icon.svg as favicon.svg');
+  for (const [file, size] of [
+    ['icon-192.png', 192],
+    ['icon-512.png', 512],
+    ['icon-maskable-512.png', 512],
+    ['apple-touch-icon.png', 180],
+  ]) {
+    const png = readFileSync(pub(file));
+    if (png.readUInt32BE(16) !== size || png.readUInt32BE(20) !== size)
+      throw new Error(`icon drew ${file} in another size than ${size}`);
+  }
+  if (readFileSync(pub('icon-512.png')).equals(readFileSync(pub('icon-maskable-512.png'))))
+    throw new Error('the maskable icon has no background of its own');
+  const pictures = ['favicon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
+  const before = pictures.map(file => readFileSync(pub(file)));
+  // Regeneration is always from the immutable SVGs, not a previous PNG.
+  for (let i = 0; i < 2; i++) {
+    pnpmRun(repo, 'icon', FIXTURE);
+    pictures.forEach((file, n) => assert.deepEqual(readFileSync(pub(file)), before[n]));
+    assert.equal(readFileSync(join(dir, 'icon.svg'), 'utf8'), OWNER_SVG);
+    assert.equal(readFileSync(join(dir, 'icon-maskable.svg'), 'utf8'), maskable);
+  }
+  const about = join(dir, 'app.json');
+  writeJson(about, {
+    ...readJson(about),
+    name_localized: { de: 'Selbsttest' },
+    categories: ['utilities'],
+    description: 'A small test app.',
+    description_localized: { de: 'Eine kleine Test-App.' },
+  });
+  pnpmRun(repo, 'regenerate');
+  pnpmRun(repo, 'check', '--standalone', FIXTURE);
+  console.log("✓ owner's icon drawn in the browser; texts and category in app.json");
+}
+
+// Exercise the shipped app, including CSS and JavaScript, without a real Pod.
+async function appThemeCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  const site = join(repo, 'site-dist');
+  const mime = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.svg': 'image/svg+xml',
+    '.json': 'application/json',
+    '.webmanifest': 'application/manifest+json',
+    '.png': 'image/png',
+  };
+  try {
+    for (const javascript of [false, true]) {
+      const context = await browser.newContext({
+        locale: 'de-DE',
+        colorScheme: 'light',
+        javaScriptEnabled: javascript,
+        serviceWorkers: 'block',
+      });
+      await context.route('**/*', async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        const file = join(
+          site,
+          path.endsWith('/') ? path + 'index.html' : path,
+        );
+        if (!existsSync(file)) return route.abort();
+        await route.fulfill({
+          body: readFileSync(file),
+          contentType: mime[extname(file)] ?? 'application/octet-stream',
+        });
+      });
+      const page = await context.newPage();
+      page.setDefaultTimeout(5000);
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(`http://localhost/${FIXTURE}/`);
+      const meta = page.locator('meta[name="theme-color"][data-sempods-theme]');
+      assert.equal(await meta.count(), 2);
+      if (!javascript) {
+        assert.equal(await meta.nth(0).getAttribute('content'), '#f7f9f7');
+        assert.equal(await meta.nth(1).getAttribute('content'), '#131b18');
+      } else {
+        await page
+          .getByRole('heading', { name: 'Selbsttest', exact: true })
+          .waitFor();
+        await page
+          .getByText('Eine kleine Test-App.', { exact: true })
+          .waitFor();
+        assert.equal(await page.locator('html').getAttribute('lang'), 'de');
+        const manifest = readJson(join(site, FIXTURE, 'manifest.webmanifest'));
+        const touch = page.locator('link[rel="apple-touch-icon"]');
+        assert.equal(await touch.count(), 1);
+        const icons = [...manifest.icons, { src: await touch.getAttribute('href'), purpose: 'touch' }];
+        for (const icon of icons) {
+          assert.match(icon.src, /\/sempods-icons\/[^/]+-[a-f0-9]{16}\.png$/);
+          const pixels = await page.evaluate(async (url) => {
+            const image = new Image(); image.src = url; await image.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+            const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const size = canvas.width;
+            const at = (x, y) => Array.from(data.slice(4 * (y * size + x), 4 * (y * size + x) + 4));
+            let opaque = true, safe = true, left = size, right = 0;
+            for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+              const i = 4 * (y * size + x);
+              if (data[i + 3] !== 255) opaque = false;
+              // The two fixture marks are orange and green; background is sage.
+              const mark = data[i + 3] > 128 && data[i] < 220;
+              if (mark) {
+                left = Math.min(left, x); right = Math.max(right, x);
+                if (Math.hypot(x + .5 - size / 2, y + .5 - size / 2) > size * .4) safe = false;
+              }
+            }
+            return { size, corner: at(0, 0), centre: at(Math.floor(size / 2), Math.floor(size / 2)), opaque, safe, coverage: (right - left + 1) / size };
+          }, icon.src);
+          assert.equal(pixels.size, icon.purpose === 'touch' ? 180 : Number(icon.sizes.split('x')[0]));
+          assert.ok(Math.abs(pixels.coverage - .6) < .02, JSON.stringify(pixels));
+          assert.equal(pixels.safe, true);
+          if (icon.purpose === 'any') {
+            assert.equal(pixels.corner[3], 0);
+            assert.deepEqual(pixels.centre, [194, 65, 12, 255]);
+          } else {
+            assert.equal(pixels.opaque, true);
+            assert.deepEqual(pixels.corner, [247, 249, 247, 255]);
+            assert.deepEqual(pixels.centre, [23, 99, 84, 255]);
+          }
+          // The worker precaches the hashed URL used by the installed app.
+          assert.ok(readFileSync(join(site, FIXTURE, 'sw.js'), 'utf8').includes(icon.src.split('/').at(-1)));
+        }
+
+        const expectChrome = async (colour) => {
+          await page
+            .waitForFunction(
+              (expected) =>
+                [
+                  ...document.querySelectorAll(
+                    'meta[name="theme-color"][data-sempods-theme]',
+                  ),
+                ].every((meta) => meta.content === expected),
+              colour,
+            )
+            .catch(async (cause) => {
+              throw new Error(
+                `Theme expected ${colour}, got ${await meta.evaluateAll((items) => items.map((item) => item.content))}; errors: ${errors.join('; ')}`,
+                { cause },
+              );
+            });
+        };
+        const appearance = async (colorScheme) => {
+          await page.evaluate(() => {
+            window.themeChanged = new Promise((resolve) =>
+              matchMedia('(prefers-color-scheme: dark)').addEventListener(
+                'change',
+                () => resolve(),
+                { once: true },
+              ),
+            );
+          });
+          await page.emulateMedia({ colorScheme });
+          await page.evaluate(() => window.themeChanged);
+        };
+        await expectChrome('rgb(247, 249, 247)');
+        await appearance('dark');
+        await expectChrome('rgb(19, 27, 24)');
+        // An explicit app preference wins over the device. A custom palette
+        // resolves through CSS, rather than a second list of colour constants.
+        await page.evaluate(() => {
+          document.documentElement.style.colorScheme = 'light';
+        });
+        await appearance('light');
+        await expectChrome('rgb(247, 249, 247)');
+        await appearance('dark');
+        await expectChrome('rgb(247, 249, 247)');
+        await page.evaluate(() => {
+          document.documentElement.style.setProperty('--background', '#fef8ee');
+          const owned = document.querySelector('meta[name="theme-color"]');
+          owned.removeAttribute('data-sempods-theme');
+          owned.content = '#123456';
+        });
+        await appearance('light');
+        await expectChrome('rgb(254, 248, 238)');
+        assert.equal(
+          await page
+            .locator('meta[name="theme-color"]')
+            .first()
+            .getAttribute('content'),
+          '#123456',
+        );
+        assert.deepEqual(errors, []);
+      }
+      await context.close();
+    }
+    console.log(
+      '✓ built app: localized identity, static theme colours, system/explicit appearance and owner overrides',
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * Opens the built overview in Chromium, as a visitor with a German browser:
+ * the list launches apps directly, Details opens the secondary view, and
+ * language choice, narrow screens and no-script navigation keep working.
+ */
+async function overviewCheck(repo) {
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    const url = pathToFileURL(join(repo, 'site-dist', 'index.html')).href;
+    const page = await browser.newPage({ locale: 'de-DE' });
+    await page.goto(url);
+    const row = page.locator('.app-row').first();
+    if ((await row.locator('h2').innerText()) !== 'Selbsttest')
+      throw new Error('the overview does not show the German name');
+    for (const selector of ['.launch', '.open']) {
+      const link = row.locator(selector);
+      if ((await link.getAttribute('href')) !== `/${FIXTURE}/` ||
+          (await link.getAttribute('target')) !== '_blank')
+        throw new Error('the overview does not launch the app in a new tab');
+    }
+    await row.locator('.details-link').click();
+    const detail = page.locator(`#${FIXTURE}`);
+    if (!(await detail.isVisible()) || await page.locator('.apps').isVisible())
+      throw new Error('Details does not replace the list with the detail view');
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    if ((await detail.locator('h1').innerText()) !== 'Self test')
+      throw new Error('the switch does not change the language');
+    const install = detail.locator('.install');
+    if (await install.evaluate((el) => el.open))
+      throw new Error('installation help should start collapsed');
+    await install.locator('summary').click();
+    if (!(await install.evaluate((el) => el.open)))
+      throw new Error('installation help does not expand');
+    for (const width of [375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the detail view overflows at ${width}px`);
+      await detail.locator('.back').click();
+      if (!(await page.locator('.apps').isVisible()) ||
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+        throw new Error(`the app list does not fit at ${width}px`);
+      await row.locator('.details-link').click();
+    }
+    await page.reload();
+    if ((await page.locator('html').getAttribute('lang')) !== 'en')
+      throw new Error('the language choice was not remembered');
+    await page.close();
+    const plain = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 320, height: 800 } });
+    await plain.goto(`${url}#${FIXTURE}`);
+    if (!(await plain.locator(`#${FIXTURE}`).isVisible()))
+      throw new Error('a direct detail link fails without script');
+    await plain.locator(`#${FIXTURE} .install summary`).click();
+    if (!(await plain.locator(`#${FIXTURE} .install`).evaluate((el) => el.open)))
+      throw new Error('installation help fails without script');
+    await plain.locator(`#${FIXTURE} .back`).click();
+    if (!(await plain.locator('.apps').isVisible()))
+      throw new Error('returning to the list fails without script');
+    await plain.close();
+    console.log('✓ overview launches apps, opens details and works on mobile without script');
+  } finally {
+    await browser.close();
+  }
 }
 
 /** Configures a site, builds it for real and checks the profiles. */
@@ -189,21 +511,72 @@ function publish(repo) {
     `${FIXTURE}/callback.html`,
     `${FIXTURE}/sw.js`,
     `${FIXTURE}/manifest.webmanifest`,
+    `${FIXTURE}/app.jsonld`,
+    `${FIXTURE}/client.json`,
+    `${FIXTURE}/build.json`,
+    'apps.jsonld',
+    '_headers',
     `${FIXTURE}/licenses/app-sdk/NOTICE`,
     `${FIXTURE}/licenses/app-ui/NOTICE`,
   ])
     if (!existsSync(join(site, file)))
       throw new Error(`build-site wrote no ${file}`);
-  // The fixture's language is automatic: the built manifest names none,
-  // whatever the PWA plugin would default to.
+  // The plugin keeps the members its types do not know yet, and the
+  // manifest names the language of its texts.
   const manifest = readJson(join(site, FIXTURE, 'manifest.webmanifest'));
-  if ('lang' in manifest)
-    throw new Error(
-      `the manifest of an app with language auto names ${JSON.stringify(manifest.lang)}`,
-    );
+  const expected = {
+    lang: 'en',
+    name: 'Self test',
+    name_localized: { de: 'Selbsttest' },
+    categories: ['utilities'],
+    theme_color: '#f7f9f7',
+  };
+  for (const [key, value] of Object.entries(expected))
+    if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
+      throw new Error(
+        `the built manifest has ${key} ${JSON.stringify(manifest[key])}, not ${JSON.stringify(value)}`,
+      );
+  if (!manifest.icons?.some((icon) => icon.purpose === 'maskable'))
+    throw new Error('the built manifest names no maskable icon');
+  if (!existsSync(join(site, FIXTURE, 'icon-maskable-512.png')))
+    throw new Error('build-site wrote no maskable icon');
   const did = readJson(join(site, FIXTURE, 'did.json'));
   if (did.id !== `did:web:apps.example.org:${FIXTURE}`)
     throw new Error(`unexpected did.json id ${did.id}`);
+  // The published descriptions name the app by its IRI, and build.json lists
+  // every file the real build wrote, with its digest.
+  const iri = `${production}/${FIXTURE}/`;
+  const description = readJson(join(site, FIXTURE, 'app.jsonld'));
+  if (
+    description['@id'] !== iri ||
+    description.name?.de !== 'Selbsttest' ||
+    !description.identifier?.includes(did.id)
+  )
+    throw new Error(`unexpected app.jsonld ${JSON.stringify(description)}`);
+  if (readJson(join(site, FIXTURE, 'client.json')).client_uri !== iri)
+    throw new Error('client.json names another app');
+  if (!readFileSync(join(site, FIXTURE, 'index.html'), 'utf8').includes(`href="/${FIXTURE}/app.jsonld"`))
+    throw new Error('the app page does not link its description');
+  // The overview shows the app as its description has it.
+  const overview = readFileSync(join(site, 'index.html'), 'utf8');
+  for (const part of [
+    '<html lang="en" data-languages="en de">',
+    `<a class="details-link" href="#${FIXTURE}">`,
+    `<a class="open" href="/${FIXTURE}/" target="_blank" rel="noopener noreferrer">`,
+    `<article class="detail" id="${FIXTURE}">`,
+    '<details class="install">',
+  ])
+    if (!overview.includes(part)) throw new Error(`the overview has no ${part}`);
+  const listed = readJson(join(site, FIXTURE, 'build.json')).files;
+  const built = readdirSync(join(site, FIXTURE), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name !== 'build.json')
+    .map((entry) => `/${FIXTURE}/${relative(join(site, FIXTURE), join(entry.parentPath, entry.name)).split(sep).join('/')}`)
+    .sort();
+  if (JSON.stringify(listed.map((entry) => entry.path).sort()) !== JSON.stringify(built))
+    throw new Error('build.json does not list exactly the built files');
+  for (const { path, sha256 } of listed)
+    if (createHash('sha256').update(readFileSync(join(site, path))).digest('hex') !== sha256)
+      throw new Error(`build.json has another digest for ${path}`);
   if (assets(join(dir, 'dist')).join() !== localBuild)
     throw new Error('build-site changed the local build in dist/');
   // The shipped bundle itself must select the profile: Vite inlines the build
@@ -439,6 +812,7 @@ try {
     );
   }
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  await nativeModalCheck(repo);
   checkSnapshot(
     join(repo, 'node_modules', '@sempods', 'apps'),
     'installed snapshot',
@@ -479,9 +853,16 @@ try {
     throw new Error('a refused rerun changed apps.json');
   pnpmRun(repo, 'check', '--standalone', FIXTURE);
   themeCheck(repo);
+  ownerIcon(repo);
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
+  await overviewCheck(repo);
+  await appThemeCheck(repo);
+  // Without an ID, dev lists the apps instead of starting one.
+  if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
+    throw new Error('pnpm run dev without an ID does not list the app');
+  console.log('✓ dev without an ID lists the apps');
   migrateExercise(repo, work, tooling);
 } catch (error) {
   console.error(`self-test: ${error.message}`);

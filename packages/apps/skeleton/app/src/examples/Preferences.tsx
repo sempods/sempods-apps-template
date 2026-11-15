@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import type { Language } from '@sempods/app-sdk';
 import { useMessages } from '@sempods/app-sdk/react';
 import type { HeaderMenuEntry } from '@sempods/app-ui';
+import { syncBrowserTheme } from '../browser-theme.ts';
 import { app } from '../sempods.generated.ts';
 import { chosenLocale, uiLocale } from '../texts.ts';
 
@@ -71,15 +72,7 @@ function apply(appearance: Appearance) {
     (appearance === 'system' && matchMedia(SYSTEM_DARK).matches);
   root.dataset.appearance = dark ? 'dark' : 'light';
   root.style.colorScheme = dark ? 'dark' : 'light';
-  const probe = document.createElement('span');
-  probe.style.color = 'var(--background)';
-  document.body.append(probe);
-  const background = getComputedStyle(probe).color;
-  probe.remove();
-  for (const meta of document.querySelectorAll<HTMLMetaElement>(
-    'meta[name="theme-color"]',
-  ))
-    meta.content = background;
+  syncBrowserTheme();
 }
 
 // Before the first render, so a reload shows no flash of the other mode.

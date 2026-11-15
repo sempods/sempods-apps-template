@@ -13,7 +13,9 @@ export default defineConfig({
   preview: server,
   // React, the SDK and the UI kit come to about 570 kB minified (180 kB
   // gzip) in one chunk; Vite warns only well above that.
-  build: { chunkSizeWarningLimit: 1000 },
+  // Keep native light-dark(): compiling it to media queries would ignore
+  // the person's explicit appearance preference applied through color-scheme.
+  build: { chunkSizeWarningLimit: 1000, cssTarget: 'esnext' },
   plugins: [
     react(),
     tailwindcss(),

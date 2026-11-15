@@ -2,7 +2,10 @@
 // Builds every app with a published profile into its path of one static site
 // folder, site-dist/, with a page for each route, and writes the overview and
 // the host's routing files: 404.html, and _redirects for resource patterns.
-// apps/<id>/dist keeps the app's local build.
+// Beside each app it publishes the app's descriptions (app.jsonld,
+// client.json, did.json) and the list of its files (build.json), and at the
+// root the site catalog (apps.jsonld) and _headers. apps/<id>/dist keeps the
+// app's local build.
 // Usage: pnpm run build-site [--profile production|preview]
 //        (or SEMPODS_SITE_PROFILE=<profile> in the host's environment)
 import {
@@ -16,13 +19,29 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { AUTO, readApps, SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
+import { describedApps } from './lib/describe.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
+import { PNG_ICONS } from './lib/icon.mjs';
 import { ifPresent, readJson, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
 import { pnpm, scriptArgs } from './lib/pnpm.mjs';
+import {
+  APP_DESCRIPTION,
+  appDescription,
+  appIri,
+  BUILD_LIST,
+  buildList,
+  CLIENT_DOCUMENT,
+  clientDocument,
+  headersFile,
+  identifierProblems,
+  SITE_CATALOG,
+  siteCatalog,
+} from './lib/published.mjs';
 import { SDK } from './lib/sdk.mjs';
+import { textCompleteness } from './lib/texts.mjs';
 
 export const SITE_DIR = 'site-dist';
 
@@ -39,13 +58,17 @@ function appBuild(appDir, mode, outDir) {
 }
 
 // Paths build-site reserves in each app's output, so an app's own copies are
-// left out: did.json (written here), host files that hosts read only at the
-// site root (Cloudflare would serve a nested 404.html), and the callback:
+// left out: the documents written here, host files that hosts read only at
+// the site root (Cloudflare would serve a nested 404.html), and the callback:
 // `callback.html` is written here, and an extensionless `callback` would
 // answer the callback path before it.
 const RESERVED = [
   'did.json',
+  APP_DESCRIPTION,
+  CLIENT_DOCUMENT,
+  BUILD_LIST,
   '_redirects',
+  '_headers',
   '404.html',
   'callback',
   'callback.html',
@@ -83,26 +106,35 @@ function copyLicences(roots, appOut, appId) {
   }
 }
 
-/** The overview entry of a built app. */
-function overviewEntry(app, outDir) {
-  const entry = {
+/**
+ * The overview entry of a built app, from its published description, so the
+ * overview shows what every other reader of app.jsonld sees. The name comes
+ * from app.json instead: the description repeats an untranslated name in
+ * every language, and the overview must keep marking it in its own.
+ */
+function overviewEntry(app, description, outDir) {
+  const details = description.subjectOf?.map((text) => [text.inLanguage, text.text]);
+  return {
     id: app.id,
-    title: app.title,
-    ...(app.description ? { description: app.description } : {}),
-    // An app that follows the browser has no one language to announce.
-    ...(app.language === AUTO ? {} : { language: app.language }),
     href: app.path,
+    lang: app.about.lang,
+    name: { ...app.about.name_localized, [app.about.lang]: app.about.name },
+    ...(description.description ? { description: description.description } : {}),
+    ...(details ? { details: Object.fromEntries(details) } : {}),
+    ...(description.applicationCategory ? { categories: description.applicationCategory } : {}),
+    languages: description.inLanguage,
+    installable: app.pwa === true,
+    // The overview's cards are small: the smaller icon, by path, so the
+    // overview also works on another origin, such as a local preview.
+    ...(existsSync(join(outDir, PNG_ICONS[0])) ? { icon: `${app.path}${PNG_ICONS[0]}` } : {}),
   };
-  if (existsSync(join(outDir, 'icon-192.png')))
-    entry.icon = `${app.path}icon-192.png`;
-  return entry;
 }
 
 /** Builds the site for `profile`; returns what it built and any warnings. */
 export function buildSite(root, { profile = 'production', build = appBuild } = {}) {
   if (!SITE_PROFILES.includes(profile))
     throw new Error(`The profile is one of ${SITE_PROFILES.join(', ')}.`);
-  const { apps, site } = readApps(root);
+  const { apps, site, catalog } = describedApps(root);
   if (!site?.[profile])
     throw new Error(
       `apps.json has no site.${profile}; run pnpm run configure-site first.`,
@@ -117,9 +149,17 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     const stale = staleGenerated(join(root, 'apps', app.id), app, site);
     if (stale.length > 0)
       throw new Error(
-        `apps/${app.id}/${stale[0]} does not match apps.json; run pnpm run configure-site to regenerate it.`,
+        `apps/${app.id}/${stale[0]} does not match apps.json, apps/${app.id}/app.json or the app's theme; run pnpm run regenerate.`,
+      );
+    // Readers get every text in every language the app is shown in.
+    const problems = textCompleteness(root, app);
+    if (problems.length > 0)
+      throw new Error(
+        `${problems.join('; ')}. Fix the texts as pnpm run check explains, then build again.`,
       );
   }
+  const origin = site[profile];
+  const descriptions = [];
 
   const entries = [];
   const warnings = [];
@@ -143,11 +183,31 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
         );
 
     // Some Pods resolve the did:web document before they accept the app.
-    const { clientId, redirectUri } = siteIdentity(site[profile], app);
-    writeJson(join(appOut, 'did.json'), {
-      '@context': 'https://www.w3.org/ns/did/v1',
-      id: clientId,
+    const { clientId, redirectUri } = siteIdentity(origin, app);
+    const did = { '@context': 'https://www.w3.org/ns/did/v1', id: clientId };
+    writeJson(join(appOut, 'did.json'), did);
+    // The largest icon, at a fixed address the store and the client document
+    // point to.
+    const icon = existsSync(join(appOut, PNG_ICONS.at(-1)))
+      ? `${appIri(origin, app)}${PNG_ICONS.at(-1)}`
+      : undefined;
+    const description = appDescription(root, app, origin, {
+      icon,
+      publisher: catalog?.publisher,
     });
+    const client = clientDocument(app, origin, { icon });
+    const problems = identifierProblems(app, origin, {
+      description,
+      client,
+      did,
+      manifest: ifPresent(() =>
+        readJson(join(appOut, 'manifest.webmanifest')),
+      ),
+    });
+    if (problems.length > 0) throw new Error(problems.join('; '));
+    writeJson(join(appOut, APP_DESCRIPTION), description);
+    writeJson(join(appOut, CLIENT_DOCUMENT), client);
+    descriptions.push(description);
     copyLicences([appDir, root], appOut, app.id);
 
     // The callback must answer 200 at its exact path with its query intact.
@@ -173,13 +233,18 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
     for (const pattern of app.resources ?? [])
       rewrites.push(`${app.path}${pattern} ${app.path}index.html 200`);
 
-    entries.push(overviewEntry(app, appOut));
+    entries.push(overviewEntry(app, description, appOut));
+    // Last, so it lists every file the app publishes.
+    writeJson(join(appOut, BUILD_LIST), buildList(appOut, app));
   }
 
-  writeFileSync(join(out, 'index.html'), renderOverview(entries));
+  writeJson(join(out, SITE_CATALOG), siteCatalog(origin, descriptions, catalog));
+  writeFileSync(join(out, '_headers'), headersFile(apps));
+
+  writeFileSync(join(out, 'index.html'), renderOverview(entries, catalog));
   // Hosts serve it for unknown paths; without it, Cloudflare Pages would serve
   // the overview for every unknown path.
-  writeFileSync(join(out, '404.html'), renderNotFound(entries));
+  writeFileSync(join(out, '404.html'), renderNotFound(entries, catalog));
   // Netlify and Cloudflare Pages read it at the site root; a placeholder
   // matches one segment, and a published file at the address wins.
   if (rewrites.length > 0)

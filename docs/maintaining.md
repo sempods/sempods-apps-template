@@ -109,6 +109,9 @@ files alone do not:
   [UI primitives](spikes/120-ui-primitives.md) and
   [routing](spikes/114-routing.md).
 
+The [installed-icon investigation](spikes/171-icons.md) records the generation,
+update and device-evidence boundaries for the shared icon pipeline.
+
 ## Check
 
 ```sh
@@ -125,17 +128,22 @@ tooling and creates, checks, configures and builds an app there, runs
 packed version with a manual case; it needs the npm registry and the Chromium
 of the tooling's Playwright. CI runs both.
 
+The self-test also uses the installed tooling's Playwright to click a native
+modal inside an inert ancestor. Keep Playwright at 1.64.1 while the SDK's
+[native-modal hold](https://github.com/sempods/sempods-typescript/issues/264)
+applies (#153); a later version must pass this check and the SDK browser gate
+without forced clicks.
+
 ### Validate an unreleased SDK together with the template
 
-For #155, build and pack client-sdk, app-sdk and app-ui from the SDK source,
+To try SDK source that is not published yet, build and pack client-sdk, app-sdk and app-ui from the SDK source,
 then run `pnpm run self-test --sdk-tarballs=/absolute/path/to/tarballs` here.
 The tarballs must match the starter's current SDK version. The check installs
 only those tarballs through overrides in its temporary owner repository and
 also renders the standard chooser in the generated app. It changes no owner
-checkout, registry or package pin. This is source-pair evidence, not evidence
-that published 0.8.0 contains the new adapter. Before releasing this candidate,
-update starter pins and peer ranges to the actual released SDK that contains
-#290, and rerun `pnpm run self-test` without overrides.
+checkout, registry or package pin. This is source-pair evidence only; before a
+release, the starter pins and peer ranges name a published SDK and
+`pnpm run self-test` passes without overrides.
 
 ## Try the app-building conversation
 

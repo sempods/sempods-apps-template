@@ -4,28 +4,248 @@ Each release lists what changed and **upgrade notes** for the assistant that
 applies it. The notes cover what an update cannot decide alone: owner files,
 configuration choices and the SDK migration.
 
-## 0.11.0 (in preparation)
+## 0.11.0
 
 ### Changes
 
+Shared login appearance (sempods/sempods-apps-template#169):
+
+- New apps use sage, outlined main actions and text secondary actions across
+  the app and SDK surfaces. Other themes and action variants remain available.
+- Production builds keep native `light-dark()` (`build.cssTarget: 'esnext'`),
+  so an explicit appearance choice overrides the system preference.
+- HTML theme-colour placeholders resolve from the app's light/dark background
+  at build time. The new `src/browser-theme.ts` synchronizes marked meta elements
+  with the actual CSS background at runtime, including system appearance changes.
+  The Preferences example calls the same helper after an explicit choice.
+- Generated `app.localized` supplies names and descriptions in EN/DE from
+  `app.json`, falling back to the source text. The skeleton uses the SDK's shown
+  language for its header and AppAccess identity; the login icon takes the SDK's
+  size instead of the small header size.
+- The combined Pod chooser and centred login come from SDK 0.9.0
+  (sempods/sempods-typescript#313).
+
+App descriptions (sempods/sempods-apps-template#46, step 1):
+
+- Each app describes itself in its own file, `apps/<id>/app.json`, with the
+  field names of a web app manifest: `lang` (the language of its texts),
+  `name`, an optional `short_name`, `description` and `categories`, and
+  translations as `name_localized`, `short_name_localized` and
+  `description_localized`. An optional detail text in Markdown goes into
+  `details.md` and `details.<lang>.md` beside it.
+- `apps.json` has `schemaVersion: 2`. Its entries keep how an app runs (ID,
+  language, path, port, PWA, routes, resources) and no longer hold `title`
+  or `description`. An optional `catalog` names the site for its overview:
+  `lang`, `name`, `description`, their translations, a `publisher` WebID and
+  a `theme` for the overview.
+- `new-app` writes `app.json` and takes `--text-language de|en`, the language
+  of `--title` and `--description`; `regenerate`, `icon`, `dev`,
+  `configure-site` and `build-site` read the name and description from
+  `app.json`. The generated configuration keeps its shape (`app.title`,
+  `app.description`), so app code is unchanged.
+- `check` reports a description missing in a language the app is shown in,
+  texts in a language the app is not shown in, a detail text missing for one
+  of its languages, and detail texts with raw HTML, a level-1 heading, a link
+  other than `https://`, an image from outside the app's path or more than
+  16 KB. Names need no translation.
+- `migrate` moves each app's title and description from a schema 1
+  `apps.json` into a new `app.json` and raises the schema version.
+
+The installed app (sempods/sempods-apps-template#46, step 2):
+
+- A PWA's web app manifest takes `name`, `short_name`, `description`, their
+  translations (`*_localized`, shown by Chrome and Edge 148 and later) and
+  `categories` from `app.json`. Its `lang` is the language of those texts,
+  also for an app that follows the browser's language, which named none
+  before.
+- The manifest's `background_color` and `theme_color` are the light
+  background of the app's theme instead of a fixed white.
+- Every PWA has a maskable icon, `public/icon-maskable-512.png`, which a
+  launcher cuts into its own shape; the monogram fills the whole square with
+  the letter inside the safe zone. `new-app` and `icon` draw it.
+- An owner's icon of their own goes into `apps/<id>/icon.svg` (square, at
+  most 64 KB). `icon` then draws `favicon.svg`, the PNG icons and the
+  maskable one from it in the tooling's browser, on the theme's background
+  for the maskable one. `check` reports an `icon.svg` that is not square or
+  not drawn yet, and a PWA's missing PNG icon.
+- `migrate` draws the maskable icon of an app that shows the tooling's
+  monogram, and notes each app with an icon of its own.
+
+Icon generation and installed updates (sempods/sempods-apps-template#171):
+
+- Generic and maskable manifest icons have separate purposes. The generated
+  page head links an opaque 180 px Apple touch icon, preserving owner links.
+  An optional `icon-maskable.svg` supplies launcher-specific composition;
+  the main SVG still supplies the favicon, header, login and app splash.
+- `icon` always draws from the original SVG or monogram, with no added
+  padding. Custom rasterization fixes light mode and pixel scale. Its
+  `.sempods-icon.json` record lets `check` detect changed inputs or outputs.
+- Builds emit launcher files under `sempods-icons/` with content digests in
+  their names. Unchanged artwork retains its URL; changed artwork updates
+  the manifest URLs without changing app identity. `icon` refreshes generated
+  configuration too. Direct builds reject stale digests; dev serves the same
+  paths, and the worker precaches the emitted assets.
+
+Published descriptions (sempods/sempods-apps-template#46, step 3):
+
+- `build-site` publishes per app `app.jsonld`, its schema.org
+  `WebApplication` description with the texts per language, the detail
+  texts as Markdown, categories, icon, publisher and identifiers;
+  `client.json`, its Client ID Metadata Document (published only; sign-in
+  still uses `did:web`); and `build.json`, every published file with its
+  SHA-256 digest. At the site root it writes the catalog `apps.jsonld` and
+  `_headers`, which lets any origin read the descriptions on Netlify and
+  Cloudflare Pages.
+- Every page links its description, `<link rel="alternate"
+  type="application/ld+json">`, through the generated `pageTitle` plugin;
+  the overview links `apps.jsonld`.
+- `build-site` checks that the descriptions, the client document, `did.json`
+  and the built web app manifest name the app the same way, and stops when
+  an app's texts miss a language it is shown in or its names make
+  `client.json` larger than 5,000 bytes. An app's own `app.jsonld`,
+  `client.json`, `build.json` or `_headers` in `public/` is not published.
+
+The overview (sempods/sempods-apps-template#46, step 4):
+
+- The site's overview at `/` is a compact app launcher: the catalog's name
+  and description above a list in the order of `apps.json`. Each row shows
+  the app's icon, name and short description. The name/icon and "Open"
+  launch the app in a new tab; the page and accessible link names announce
+  that behavior. One of the skeleton's themes supplies light and dark
+  colours, `fresh` unless `catalog.theme` names another; the apps keep their
+  own icons.
+- A separate "Details" link opens `/#<id>`: the text from `details.md`,
+  categories, languages, the catalog's publisher and "Open". For PWAs,
+  installation help expands on request. Detail links and installation help
+  work without script. App count never changes the list's order or layout
+  into category groups. This follows the owner's accepted design of
+  2026-11-13.
+- The page holds every text in each of the catalog's languages, or without
+  a catalog in each language the apps are shown in. Without script it shows
+  the first; a few lines of script pick the visitor's language and offer a
+  switch, which the page remembers. An app's texts stay in its own language
+  where it has no translation. The not-found page has the same look.
+- `build-site` renders detail texts with micromark, a new dependency of the
+  tooling, which leaves out raw HTML and unsafe links.
+- `pnpm run dev` without an ID lists every app with its name and
+  development address instead of failing.
+
+SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
+
+- The starter installs SDK 0.9.0-dev.1, the prerelease of 0.9.0, for all
+  three SDK packages, and the tooling accepts 0.9 as its peer.
 - List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
   two-line trigger, Contexts grouped by Pod, separate permission/selection
   icons, a localized legend and exact-address details. The SDK owns generic
   loading, retry, selection and authorization feedback. The skeleton example
-  now re-exports the standard instead of copying its implementation (#155).
+  now re-exports the standard instead of copying its implementation.
+
+Instructions:
+
+- The app workflow and the setup guide describe `app.json`, `details.md`,
+  `catalog` and `--text-language`; the app workflow describes `icon.svg` and
+  what the installed app takes from `app.json` and the theme. The publishing
+  guide lists the published descriptions, the cross-origin header a host must
+  send for them, and how to check it, and describes the overview.
 
 ### Upgrade notes
 
-- Wait for the SDK release containing sempods/sempods-typescript#290. Then
-  upgrade all three SDK packages together and replace copied ContextSwitch
-  implementations with the public adapter. Preserve domain words, icons,
-  vocabulary and scopes, plus AppAccess for sign-in and management.
-- This development candidate is tested with local SDK tarballs. Before release,
-  set the starter SDK pins and tooling peer ranges to the actual containing SDK
-  version and rerun the ordinary self-test against the registry. The existing
-  0.8.0 pins are not evidence that the new adapter exists in published 0.8.0.
-- Existing owner apps are never rewritten automatically. Konsum adopts the
-  published standard later (haed/sempods-apps#162).
+1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
+   and `description` from `apps.json`. For an app whose `language` is
+   `auto`, it takes the texts as English (`"lang": "en"`) and says so in its
+   notes. Check each such `app.json` with the owner: if the name and
+   description are German, set `lang` to `de`. If an app already has an
+   `app.json` that holds something else or other texts, `migrate` stops
+   before it changes `apps.json` and names the file; decide with the owner
+   which file or texts to keep, then run it again.
+2. `pnpm run check` then lists each app shown in both languages whose
+   description lacks the other language. Add it as `description_localized`,
+   in the owner's words or as a translation the owner confirms, and add
+   `name_localized` only when the name differs in that language.
+3. `migrate` regenerates `vite.sempods.generated.ts` of every PWA with the
+   new manifest; app code is unchanged. For an app whose icon is not the
+   tooling's monogram, run `pnpm run icon <id>` from its existing
+   `apps/<id>/icon.svg`. If that source is missing, ask the owner for the
+   icon as a square SVG and save it there, or draw the monogram instead.
+   Until then `pnpm run check` reports the missing launcher icons.
+4. `build-site` now refuses what `pnpm run check` reports about texts, so
+   fix those before the next publication. A site on a host other than
+   GitHub Pages, Netlify or Cloudflare Pages needs the header
+   `Access-Control-Allow-Origin: *` for `/apps.jsonld` and each
+   `/<id>/app.jsonld`, as the publishing guide describes.
+5. The overview needs no change of its own. Its header shows the catalog's
+   name and description and offers the catalog's languages; without a
+   `catalog` in `apps.json` it is titled "Apps". If the repository has none,
+   offer the owner to add one as the app workflow describes. Its colours
+   come from the `fresh` theme; offer `catalog.theme` with the theme most of
+   the apps use.
+6. Existing app source is not replaced by the update. After migration, add
+   `build.cssTarget: 'esnext'` to `vite.config.ts` for every app with an
+   appearance setting, such as the Preferences example. Preserve the other
+   build options. This fixes production builds ignoring an explicit
+   light/dark choice, regardless of the palette or button style; it uses the
+   modern CSS already required by the SDK/UI kit. Check the built app with
+   an explicit appearance opposite to the device preference.
+
+   Separately, offer the owner the shared sage/outline appearance and agree
+   which visible changes to adopt; keep their palette and layout unless
+   they choose a change. Apply the agreed skeleton changes:
+   - For sage, copy `src/themes/sage.css` and import it from `src/index.css`.
+     For outlined primary and text secondary actions, set
+     `data-actions="inverted"` and `data-secondary="text"` on `<html>`.
+   - Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
+     and copy the skeleton's two marked theme-colour meta elements with their
+     `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements
+     without the marker remain independent. Appearance settings call
+     `syncBrowserTheme()`.
+   - Use `app.localized[useSdkLocale().language]` for the AppAccess name and
+     description, and pass its icon without the header's `size-7` class.
+     Use the same identity for the header. Keep owner translations and
+     layout choices. The generated browser tab title remains the source
+     name from `app.json`; it does not follow an in-app language change.
+   - After changing the palette, run `pnpm run icon <id>` to redraw the
+     monogram in the new theme's colours (an owner's `icon.svg` remains the
+     source when present), then `pnpm run regenerate` to refresh the
+     generated colours. Run `pnpm run check:theme <id>` and inspect light/dark
+     browser chrome. The manifest keeps its light background;
+     installed-device behavior still needs device evidence.
+
+7. Run `pnpm run icon <id>` for each existing app, after preserving any custom
+   artwork as `icon.svg`. Do not replace a custom icon with a monogram without
+   the owner choosing that change. For different launcher composition add
+   `icon-maskable.svg`; its essential mark belongs inside the centred circle
+   of radius 40% of the width, not merely the middle 80% square. Review the
+   PNGs and commit the generated `.sempods-icon.json` for custom artwork.
+   Migration creates missing maskable/Apple variants only for recognized
+   monograms; custom icons need this explicit generation. Rebuild to emit the
+   versioned files and Apple link, preserving any deliberate owner link.
+   Test an installed-app update as well as a fresh install. Browser identity
+   updates may need acceptance; do not clear local app data as a routine fix.
+   See the packaged icon workflow for platform-specific checks and limits.
+
+8. Upgrade `@sempods/client-sdk`, `@sempods/app-sdk` and `@sempods/app-ui`
+   together to the starter's exact version, following the SDK's migration
+   guide from 0.8.0 to 0.9.0 in
+   `node_modules/@sempods/app-sdk/docs/migration.md`. Then replace a copied
+   ContextSwitch with the public adapter. Preserve domain words, icons,
+   vocabulary and scopes, plus AppAccess for sign-in and management. Existing
+   owner apps are never rewritten automatically.
+
+## 0.10.1 (in preparation)
+
+### Changes
+
+- Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
+  compatibility hold (#153). Version 1.65 incorrectly treats controls in
+  a native modal dialog as inert when an ancestor is inert.
+
+### Upgrade notes
+
+- After updating the tooling, install its matching Chromium with
+  `pnpm run check:theme --install-browser`. Keep normal locator clicks in
+  confirmation checks; do not bypass actionability with forced clicks.
+- App code and SDK versions are unchanged. A future Playwright update must
+  pass the native-modal check in the packed self-test and the SDK browser gate.
 
 ## 0.10.0
 
