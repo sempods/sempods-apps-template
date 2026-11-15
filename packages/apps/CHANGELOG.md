@@ -24,9 +24,8 @@ Shared login appearance (sempods/sempods-apps-template#169):
   `app.json`, falling back to the source text. The skeleton uses the SDK's shown
   language for its header and AppAccess identity; the login icon takes the SDK's
   size instead of the small header size.
-- The combined Pod chooser and centred login require the SDK release containing
-  sempods/sempods-typescript#313. This template change retains its published SDK
-  pin; it does not make unpublished SDK behavior available to installed apps.
+- The combined Pod chooser and centred login come from SDK 0.9.0
+  (sempods/sempods-typescript#313).
 
 App descriptions (sempods/sempods-apps-template#46, step 1):
 
@@ -140,6 +139,16 @@ The overview (sempods/sempods-apps-template#46, step 4):
 - `pnpm run dev` without an ID lists every app with its name and
   development address instead of failing.
 
+SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
+
+- The starter installs SDK 0.9.0-dev.1, the prerelease of 0.9.0, for all
+  three SDK packages, and the tooling accepts 0.9 as its peer.
+- List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
+  two-line trigger, Contexts grouped by Pod, separate permission/selection
+  icons, a localized legend and exact-address details. The SDK owns generic
+  loading, retry, selection and authorization feedback. The skeleton example
+  now re-exports the standard instead of copying its implementation.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
@@ -234,6 +243,14 @@ and installed-device limits.
    Test an installed-app update as well as a fresh install. Browser identity
    updates may need acceptance; do not clear local app data as a routine fix.
    See the packaged icon workflow for platform-specific checks and limits.
+
+8. Upgrade `@sempods/client-sdk`, `@sempods/app-sdk` and `@sempods/app-ui`
+   together to the starter's exact version, following the SDK's migration
+   guide from 0.8.0 to 0.9.0 in
+   `node_modules/@sempods/app-sdk/docs/migration.md`. Then replace a copied
+   ContextSwitch with the public adapter. Preserve domain words, icons,
+   vocabulary and scopes, plus AppAccess for sign-in and management. Existing
+   owner apps are never rewritten automatically.
 
 ## 0.10.1 (in preparation)
 
