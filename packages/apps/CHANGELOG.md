@@ -8,22 +8,12 @@ configuration choices and the SDK migration.
 
 ### Changes
 
-Palette and PWA defaults (sempods/sempods-apps-template#173):
-
-- The personal overview now defaults to sage, like new apps. Sage, fresh
-  (petrol) and warm (terracotta) are the recommended light/dark palettes;
-  calm and playful remain available.
-- The manifest's static `theme_color` takes the theme's light primary instead
-  of its light background. It supplies an intentional brand colour where an
-  installed browser uses the manifest for system bars. The running page's
-  marked theme-colour meta elements still follow the resolved background.
-  This does not promise control over Android/iOS system UI.
-
-
 Shared login appearance (sempods/sempods-apps-template#169):
 
 - New apps use sage, outlined main actions and text secondary actions across
-  the app and SDK surfaces. Other themes and action variants remain available.
+  the app and SDK surfaces. Sage, fresh (petrol) and warm (terracotta) are
+  the recommended light/dark palettes; calm, playful and other action
+  variants remain available (sempods/sempods-apps-template#173).
 - Production builds keep native `light-dark()` (`build.cssTarget: 'esnext'`),
   so an explicit appearance choice overrides the system preference.
 - HTML theme-colour placeholders resolve from the app's light/dark background
@@ -72,7 +62,14 @@ The installed app (sempods/sempods-apps-template#46, step 2):
   also for an app that follows the browser's language, which named none
   before.
 - The manifest's `background_color` takes the app's light background;
-  `theme_color` takes its light primary as an installed-app brand colour.
+  `theme_color` takes its light primary as an installed-app brand colour,
+  replacing the fixed white values in 0.10.x. Where an installed browser
+  uses `theme_color` for system bars, the primary applies in both modes:
+  sage gives green and warm gives terracotta even beside a light page.
+  This deliberately favours a stable brand colour over matching the page
+  in light mode; it does not guarantee a dark bar or control of Android/iOS
+  system UI. Running-page meta colours follow the resolved background
+  separately (sempods/sempods-apps-template#173).
 - Every PWA has a maskable icon, `public/icon-maskable-512.png`, which a
   launcher cuts into its own shape; the monogram fills the whole square with
   the letter inside the safe zone. `new-app` and `icon` draw it.
@@ -125,7 +122,7 @@ The overview (sempods/sempods-apps-template#46, step 4):
   the app's icon, name and short description. The name/icon and "Open"
   launch the app in a new tab; the page and accessible link names announce
   that behavior. One of the skeleton's themes supplies light and dark
-  colours, `fresh` unless `catalog.theme` names another; the apps keep their
+  colours, `sage` unless `catalog.theme` names another; the apps keep their
   own icons.
 - A separate "Details" link opens `/#<id>`: the text from `details.md`,
   categories, languages, the catalog's publisher and "Open". For PWAs,
@@ -153,14 +150,10 @@ Instructions:
 
 ### Upgrade notes
 
-After completing the migration below, run `pnpm run regenerate` for the
-palette/PWA changes and review each manifest. Existing app palettes remain owned by the app; new defaults do not
-replace them. To adopt the standard, import the shipped sage theme and
-follow the browser-theme steps below. A catalog with no explicit theme now
-uses sage; set `catalog.theme` to `fresh` to retain its previous appearance.
-See the [colour workflow](instructions/colours.md) for role ownership,
-customization and installed-device limits.
-
+Existing app palettes remain owned by the app; new defaults do not replace
+them. Step 6 describes how to adopt the shared appearance. See the
+[colour workflow](instructions/colours.md) for role ownership, customization
+and installed-device limits.
 
 1. `migrate` writes `apps/<id>/app.json` for every app and removes `title`
    and `description` from `apps.json`. For an app whose `language` is
@@ -175,7 +168,14 @@ customization and installed-device limits.
    in the owner's words or as a translation the owner confirms, and add
    `name_localized` only when the name differs in that language.
 3. `migrate` regenerates `vite.sempods.generated.ts` of every PWA with the
-   new manifest; app code is unchanged. For an app whose icon is not the
+   new manifest; no extra regeneration is needed at this point. For an
+   existing app with a readable theme, its installed `theme_color` changes
+   from white to the light primary (or the light background if the primary
+   is missing), and its launch background takes the light background.
+   This happens even when the app keeps its existing palette. Review that
+   static colour in both modes; to keep a chosen installed colour, override
+   the manifest in the app-owned `vite.config.ts` as the colour workflow
+   shows. App source is unchanged. For an app whose icon is not the
    tooling's monogram, run `pnpm run icon <id>` from its existing
    `apps/<id>/icon.svg`. If that source is missing, ask the owner for the
    icon as a square SVG and save it there, or draw the monogram instead.

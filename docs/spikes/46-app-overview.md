@@ -410,7 +410,7 @@ own layout remains a separate decision.
   CSS `:target`, so it works without script and every app has a shareable
   link without a reserved path.
 - Colours from the theme tokens of `@sempods/app-ui` (one of the skeleton's
-  themes, `fresh` unless `catalog.theme` names another), light and dark
+  themes, `sage` unless `catalog.theme` names another), light and dark
   mode, visible focus, contrast of at least 4.5:1 also on the icon
   placeholder.
 - An empty state for a site without apps, and the 404 page in the same look.

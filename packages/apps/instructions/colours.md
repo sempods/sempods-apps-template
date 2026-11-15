@@ -35,27 +35,38 @@ button variants without replacing colours.
 | Personal overview | `catalog.theme`, default sage |
 | Independent app store | Its own palette; app icons retain their identity |
 
-Keep `src/browser-theme.ts` imported after the page stylesheet. After an
-explicit appearance change, call `syncBrowserTheme()` as the Preferences
-example does. Set `build.cssTarget: 'esnext'` in Vite so `light-dark()` keeps
-following the chosen `color-scheme` in production. To own a page's chrome
-colour separately, remove `data-sempods-theme` from its meta element.
+Follow the [screen consistency instructions](app-workflow.md#build-the-screen)
+for browser-theme synchronization, explicit appearance changes and page
+colour overrides.
 
-The broadly implemented `theme_color` is one static colour. The current
-manifest draft adds `color_scheme_dark`, but the inspected Chromium 157
-parser does not read it; do not rely on it for installed dark-mode bars. Some
-installed browsers use it for native system bars even while the page's meta
-colour changes. A quiet brand colour is a deliberate fallback in both modes;
-it does not promise an exact match to the page. Android's three-button
-navigation and gesture navigation differ. Web code cannot force native bar
-contrast, remove system scrims or control every browser/OS version. An OS
-launch screen is also separate from a future in-page splash.
+The manifest's `theme_color` is one static colour. Do not rely on
+`color_scheme_dark` for installed dark-mode bars. Some installed browsers
+use `theme_color` for native system bars even while the page's meta colour
+changes. The theme's light primary is the fallback in both modes, so it can
+also differ from a light page. Android's three-button navigation and gesture
+navigation differ. Web code cannot force native bar contrast, remove system
+scrims or control every browser/OS version. An OS launch screen is separate
+from an in-page splash.
 
-To override installed colours, configure `theme_color` and `background_color`
-on the manifest passed to `VitePWA` in the app-owned `vite.config.ts`, after
-spreading the generated manifest. Do not edit generated configuration or
-change manifest identity to force an update. Regenerate config after changing
-the palette; run `pnpm run icon <id>` too if its artwork should follow it.
+To override installed colours, replace the guarded `VitePWA` entry in the
+`plugins` array of the app-owned `vite.config.ts`, preserving the generated
+options and manifest fields. For example, to use sage's light page colour
+for installed chrome:
+
+```ts
+...(pwa ? [VitePWA({
+  ...pwa,
+  manifest: {
+    ...pwa.manifest,
+    theme_color: '#f7f9f7',
+  },
+})] : []),
+```
+
+Set `background_color` in the same object to override the launch fallback.
+Do not edit generated configuration or change manifest identity to force an
+update. Run `pnpm run regenerate` after changing the palette; run
+`pnpm run icon <id>` too if its artwork should follow it.
 
 Before claiming device support, test an existing installation and a new one
 in both modes, including explicit app appearance opposite to the system.
