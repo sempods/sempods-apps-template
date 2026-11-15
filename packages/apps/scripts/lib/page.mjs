@@ -155,7 +155,7 @@ function skeletonSplash() {
   };
   return {
     meta: part(
-      /^[ \t]*<!-- The startup splash below[^\n]*\n(?:[ \t]+[^\n]*\n)*?[ \t]*<meta name="color-scheme"[^\n]*\n/m,
+      /^[ \t]*<!-- The startup splash below[\s\S]*?-->\n[ \t]*<meta name="color-scheme"[^\n]*\n/m,
     ),
     style: part(/^[ \t]*<style>\n[\s\S]*?^[ \t]*<\/style>\n/m),
     root: part(/^ {4}<div id="root">\n[\s\S]*?\n {4}<\/div>\n/m),
@@ -212,11 +212,13 @@ export function builtPageProblems(outDir, app) {
     problems.push(
       `apps/${app.id}: the built ${PAGE} still contains ${left.join(', ')}; keep pageTitle from vite.sempods.generated.ts in the plugins of ${VITE_CONFIG} and run pnpm run regenerate`,
     );
-  const splash = html.match(
-    /<div\s[^>]*\bid\s*=\s*["']?splash\b[\s\S]*?<img\s[^>]*\bsrc\s*=\s*"([^"]*)"/i,
-  );
-  if (splash) {
-    const src = splash[1];
+  const at = html.search(SPLASH);
+  const icon =
+    at === -1
+      ? undefined
+      : html.slice(at).match(/<img\b[^>]*?\bsrc="([^"]*)"/i);
+  if (icon) {
+    const src = icon[1];
     const file = src.startsWith(app.path)
       ? join(outDir, ...src.slice(app.path.length).split('/'))
       : undefined;
