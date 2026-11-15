@@ -219,9 +219,21 @@ export function builtPageProblems(outDir, app) {
       : html.slice(at).match(/<img\b[^>]*?\bsrc="([^"]*)"/i);
   if (icon) {
     const src = icon[1];
-    const file = src.startsWith(app.path)
-      ? join(outDir, ...src.slice(app.path.length).split('/'))
-      : undefined;
+    // As the page resolves it: a query or fragment names no other file, and
+    // an icon from another origin is no file of the build to look for.
+    const page = new URL(app.path, 'http://app.invalid');
+    const url = URL.canParse(src, page) ? new URL(src, page) : undefined;
+    if (url && url.origin !== page.origin) return problems;
+    let file;
+    try {
+      if (url?.pathname.startsWith(app.path))
+        file = join(
+          outDir,
+          ...decodeURIComponent(url.pathname.slice(app.path.length)).split('/'),
+        );
+    } catch {
+      // A malformed escape names no file.
+    }
     if (!file || !statSync(file, { throwIfNoEntry: false })?.isFile())
       problems.push(
         `apps/${app.id}: the startup splash in ${PAGE} shows ${src}, which is no file of the built app; point it to a file in public/, such as /favicon.svg`,

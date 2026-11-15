@@ -1359,6 +1359,23 @@ export default defineConfig({
     assert.match(problems, /shows \/favicon\.svg, which is no file of the built app/);
     writeFileSync(join(out, 'index.html'), built('Demo', '/demo/'));
     assert.match(builtPageProblems(out, demo).join(), /no file of the built app/);
+    // As the browser resolves it: a query or fragment, a relative path and an
+    // escaped name find the file; another origin is not the build's to check.
+    for (const src of [
+      '/demo/favicon.svg?v=2',
+      '/demo/favicon.svg#icon',
+      'favicon.svg',
+      '/demo/fav%69con.svg',
+      'https://cdn.example/icon.svg',
+      'data:image/svg+xml,%3Csvg/%3E',
+    ]) {
+      writeFileSync(join(out, 'index.html'), built('Demo', src));
+      assert.deepEqual(builtPageProblems(out, demo), [], src);
+    }
+    for (const src of ['/demo/missing.svg?v=2', '/other/favicon.svg', '/demo/%E0%A4%A.svg']) {
+      writeFileSync(join(out, 'index.html'), built('Demo', src));
+      assert.match(builtPageProblems(out, demo).join(), /no file of the built app/, src);
+    }
   });
 });
 
