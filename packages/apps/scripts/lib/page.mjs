@@ -1,9 +1,10 @@
 // The page title comes from apps.json: the generated Vite plugin pageTitle
 // adds it to the head, so an app's index.html has no <title> of its own and its
-// vite.config.ts uses the plugin. check reports what stands in the way; the
-// migration moves apps that still have the skeleton's files, and updates the
-// skeleton's head lines an app has kept.
-import { readFileSync, writeFileSync } from 'node:fs';
+// vite.config.ts uses the plugin, which also fills the startup splash. check
+// reports what stands in the way; the migration moves apps that still have
+// the skeleton's files, and updates the skeleton's head lines and splash an
+// app has kept.
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { escapeHtml } from './html.mjs';
 import { ifPresent } from './json.mjs';
@@ -134,4 +135,109 @@ export function adoptPageHead(appDir, app) {
   if (next === html) return [];
   writeFileSync(pageFile, next);
   return [`apps/${app.id}/${PAGE}`];
+}
+
+// The startup splash (since 0.11.0): its styles at the end of the head and
+// its markup inside #root, which React's first render replaces. The
+// generated plugin pageTitle fills its name and colours.
+const SPLASH = /\bid\s*=\s*["']?splash\b/i;
+const EMPTY_ROOT = /^ {4}<div id="root"><\/div>(\r?\n)/m;
+const HEAD_END = /^ {2}<\/head>(\r?\n)/m;
+const COLOR_SCHEME = /<meta\s[^>]*name\s*=\s*["']?color-scheme\b/i;
+
+/** The skeleton's splash: its head lines (meta and style) and #root. */
+function skeletonSplash() {
+  const html = readFileSync(join(SKELETON, PAGE), 'utf8');
+  const part = (pattern) => {
+    const match = html.match(pattern);
+    if (!match) throw new Error(`skeleton ${PAGE} lacks ${pattern}`);
+    return match[0];
+  };
+  return {
+    meta: part(
+      /^[ \t]*<!-- The startup splash below[\s\S]*?-->\n[ \t]*<meta name="color-scheme"[^\n]*\n/m,
+    ),
+    style: part(/^[ \t]*<style>\n[\s\S]*?^[ \t]*<\/style>\n/m),
+    root: part(/^ {4}<div id="root">\n[\s\S]*?\n {4}<\/div>\n/m),
+  };
+}
+
+/**
+ * Adds the skeleton's startup splash to one app's index.html that still has
+ * the skeleton's empty #root and head end, uses the generated page plugin
+ * and has no splash yet. Returns the changed file as apps/<id>/index.html;
+ * a page in any other shape stays as the owner left it.
+ */
+export function adoptPageSplash(appDir, app) {
+  const pageFile = join(appDir, PAGE);
+  const html = ifPresent(() => readFileSync(pageFile, 'utf8'));
+  const config = ifPresent(() =>
+    readFileSync(join(appDir, VITE_CONFIG), 'utf8'),
+  );
+  if (
+    html === undefined ||
+    !usesPlugin(config ?? '') ||
+    SPLASH.test(html) ||
+    html.match(new RegExp(EMPTY_ROOT.source, 'gm'))?.length !== 1 ||
+    head(html).match(new RegExp(HEAD_END.source, 'gm'))?.length !== 1
+  )
+    return [];
+  const splash = skeletonSplash();
+  const headLines = COLOR_SCHEME.test(head(html))
+    ? splash.style
+    : splash.meta + splash.style;
+  const next = html
+    .replace(
+      HEAD_END,
+      (line, eol) => headLines.replaceAll('\n', eol) + line,
+    )
+    .replace(EMPTY_ROOT, (_, eol) => splash.root.replaceAll('\n', eol));
+  writeFileSync(pageFile, next);
+  return [`apps/${app.id}/${PAGE}`];
+}
+
+// The placeholders the generated plugin fills in index.html.
+const PLACEHOLDER = /__(?:APP|THEME)_[A-Z_]+__/g;
+
+/**
+ * What a built page of one app still lacks: placeholders left unfilled, and
+ * a splash icon that names no file of the build. `outDir` holds the build.
+ */
+export function builtPageProblems(outDir, app) {
+  const html = ifPresent(() => readFileSync(join(outDir, PAGE), 'utf8'));
+  if (html === undefined) return [];
+  const problems = [];
+  const left = [...new Set(html.match(PLACEHOLDER) ?? [])];
+  if (left.length)
+    problems.push(
+      `apps/${app.id}: the built ${PAGE} still contains ${left.join(', ')}; keep pageTitle from vite.sempods.generated.ts in the plugins of ${VITE_CONFIG} and run pnpm run regenerate`,
+    );
+  const at = html.search(SPLASH);
+  const icon =
+    at === -1
+      ? undefined
+      : html.slice(at).match(/<img\b[^>]*?\bsrc="([^"]*)"/i);
+  if (icon) {
+    const src = icon[1];
+    // As the page resolves it: a query or fragment names no other file, and
+    // an icon from another origin is no file of the build to look for.
+    const page = new URL(app.path, 'http://app.invalid');
+    const url = URL.canParse(src, page) ? new URL(src, page) : undefined;
+    if (url && url.origin !== page.origin) return problems;
+    let file;
+    try {
+      if (url?.pathname.startsWith(app.path))
+        file = join(
+          outDir,
+          ...decodeURIComponent(url.pathname.slice(app.path.length)).split('/'),
+        );
+    } catch {
+      // A malformed escape names no file.
+    }
+    if (!file || !statSync(file, { throwIfNoEntry: false })?.isFile())
+      problems.push(
+        `apps/${app.id}: the startup splash in ${PAGE} shows ${src}, which is no file of the built app; point it to a file in public/, such as /favicon.svg`,
+      );
+  }
+  return problems;
 }

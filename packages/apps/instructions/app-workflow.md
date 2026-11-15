@@ -536,7 +536,9 @@ rules. Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls
 identity, callback, base path, page title and PWA configuration from
 `apps.json` and `app.json`. `index.html` has no `<title>` of its own; the
-generated plugin `pageTitle` in `vite.config.ts` adds the name. To rename an
+generated plugin `pageTitle` in `vite.config.ts` adds the name and fills the
+startup splash in `index.html` (the app's icon and name until the script
+runs and the SDK's startup screen takes over). To rename an
 app or change its texts or categories, change `app.json` and run
 `pnpm run regenerate`; the page, the sign-in screen, the installed app and the
 overview follow. The ID and path stay; `pnpm run icon <id>` draws the

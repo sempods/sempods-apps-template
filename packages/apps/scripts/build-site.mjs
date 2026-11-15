@@ -23,6 +23,7 @@ import { SITE_PROFILES, siteIdentity } from './lib/apps.mjs';
 import { describedApps } from './lib/describe.mjs';
 import { PROFILE_MODES, staleGenerated } from './lib/generate.mjs';
 import { PNG_ICONS } from './lib/icon.mjs';
+import { builtPageProblems } from './lib/page.mjs';
 import { ifPresent, readJson, writeJson } from './lib/json.mjs';
 import { renderNotFound, renderOverview } from './lib/overview.mjs';
 import { repositoryRoot } from './lib/paths.mjs';
@@ -175,6 +176,8 @@ export function buildSite(root, { profile = 'production', build = appBuild } = {
       throw new Error(
         `apps/${app.id}: the build wrote no index.html to ${SITE_DIR}/${app.id}; the app's build script must end with vite build.`,
       );
+    const pageProblems = builtPageProblems(appOut, app);
+    if (pageProblems.length > 0) throw new Error(pageProblems.join('; '));
 
     for (const file of RESERVED)
       if (removeIfPresent(join(appOut, file)))

@@ -219,6 +219,12 @@ ${icon(MASKABLE_ICON, 512, 'maskable')}
 `;
 }
 
+// The splash shows the name in the page's language, as the app's startup
+// screen does; an app that follows the browser shows its source name.
+const splashName = (app) =>
+  (app.language !== AUTO && app.about?.name_localized?.[app.language]) ||
+  app.title;
+
 /** Vite base path, development server, page title and PWA settings. */
 export function viteSource(app, colours = PLAIN_COLOURS, icons = {}) {
   const p = app.path;
@@ -268,8 +274,9 @@ function readIcon(path: string): Buffer {
 }
 ` : ''}
 // The static page title from app.json, the link to the app's published
-// description and the theme's initial light/dark browser colours, resolved
-// for every page Vite serves or builds. index.html has no <title> of its own.
+// description, and the name and the theme's initial light/dark colours for
+// the browser chrome and the startup splash, resolved for every page Vite
+// serves or builds. index.html has no <title> of its own.
 // Links are absolute, since the same page answers the app's routes. The
 // plugin also serves/emits versioned launcher icons and adds the Apple link.
 export const pageTitle: Plugin = {
@@ -292,7 +299,10 @@ ${assets.length ? `  generateBundle() {
 ` : ''}  transformIndexHtml: (html) => ({
     html: html
       .replaceAll('__THEME_LIGHT__', ${json(colours.background)})
-      .replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)}),
+      .replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)})
+      .replaceAll('__THEME_TEXT_LIGHT__', ${json(colours.text ?? PLAIN_COLOURS.text)})
+      .replaceAll('__THEME_TEXT_DARK__', ${json(colours.darkText ?? PLAIN_COLOURS.darkText)})
+      .replaceAll('__APP_NAME__', () => ${json(escapeHtml(splashName(app)))}),
     tags: [
 ${icons[TOUCH_ICON] ? `      ...(/<link\\b[^>]*\\srel\\s*=\\s*(?:"(?:[^"]*\\s)?apple-touch-icon(?:\\s[^"]*)?"|'(?:[^']*\\s)?apple-touch-icon(?:\\s[^']*)?'|apple-touch-icon(?=[\\s>]))/i.test(html.replace(/<!--[\\s\\S]*?(?:-->|$)/g, '')) ? [] : [{
         tag: 'link',

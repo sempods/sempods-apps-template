@@ -12,9 +12,67 @@
     <meta name="theme-color" data-sempods-theme media="(prefers-color-scheme: dark)" content="__THEME_DARK__" />
     <!-- The callback page must not send its code and state in Referer. -->
     <meta name="referrer" content="strict-origin" />
+    <!-- The startup splash below: light or dark before the stylesheet loads,
+         or as an appearance set on <html> before the first paint. -->
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      /* The layout of the SDK's startup screen, so its first render takes
+         over without a visible jump; the theme's tokens once they load. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        display: grid;
+        align-items: center;
+        overflow: auto;
+        padding: clamp(16px, 4vw, 32px);
+        text-align: center;
+        overflow-wrap: anywhere;
+        background: var(--sempods-bg, light-dark(__THEME_LIGHT__, __THEME_DARK__));
+        color: var(--sempods-text, light-dark(__THEME_TEXT_LIGHT__, __THEME_TEXT_DARK__));
+        font: 400 1rem/1.5 var(--sempods-font, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
+      }
+      #splash > div {
+        width: 100%;
+        max-width: 22rem;
+        margin-inline: auto;
+      }
+      #splash img {
+        display: block;
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 20px;
+        object-fit: contain;
+      }
+      #splash p {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 500;
+        line-height: 1.25;
+      }
+      /* The startup screen's status line, empty here: it keeps the name
+         in the same place. */
+      #splash [role='status'] {
+        min-height: 1.5em;
+        margin: 28px 0 0;
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1.5;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- The app's icon and name until the script runs; React's first
+           render replaces it with the SDK's startup screen (AppAccess). -->
+      <div id="splash">
+        <div>
+          <img src="/favicon.svg" alt="" width="56" height="56" />
+          <p>__APP_NAME__</p>
+          <p role="status"></p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

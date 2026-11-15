@@ -301,13 +301,41 @@ async function appThemeCheck(repo) {
       await page.goto(`http://localhost/${FIXTURE}/`);
       const meta = page.locator('meta[name="theme-color"][data-sempods-theme]');
       assert.equal(await meta.count(), 2);
+      const splash = page.locator('#root > #splash');
       if (!javascript) {
         assert.equal(await meta.nth(0).getAttribute('content'), '#f7f9f7');
         assert.equal(await meta.nth(1).getAttribute('content'), '#131b18');
+        // Before the bundle runs: the app's icon and name on its theme's
+        // background, light or dark, without sign-in controls.
+        assert.equal(await splash.locator('p').first().innerText(), 'Self test');
+        assert.equal(await splash.getByRole('button').count(), 0);
+        assert.equal(await splash.getByRole('status').count(), 1);
+        const shown = () =>
+          splash.evaluate((node) => ({
+            background: getComputedStyle(node).backgroundColor,
+            colour: getComputedStyle(node).color,
+            icon: node.querySelector('img').naturalWidth > 0
+              ? node.querySelector('img').getBoundingClientRect().width
+              : 0,
+          }));
+        await splash.locator('img').evaluate((img) => img.decode());
+        assert.deepEqual(await shown(), {
+          background: 'rgb(247, 249, 247)',
+          colour: 'rgb(38, 56, 47)',
+          icon: 56,
+        });
+        await page.emulateMedia({ colorScheme: 'dark' });
+        assert.deepEqual(await shown(), {
+          background: 'rgb(19, 27, 24)',
+          colour: 'rgb(229, 237, 232)',
+          icon: 56,
+        });
       } else {
         await page
           .getByRole('heading', { name: 'Selbsttest', exact: true })
           .waitFor();
+        // React's first render replaced the splash.
+        assert.equal(await page.locator('#splash').count(), 0);
         await page
           .getByText('Eine kleine Test-App.', { exact: true })
           .waitFor();
@@ -417,7 +445,7 @@ async function appThemeCheck(repo) {
       await context.close();
     }
     console.log(
-      '✓ built app: localized identity, static theme colours, system/explicit appearance and owner overrides',
+      '✓ built app: startup splash, localized identity, static theme colours, system/explicit appearance and owner overrides',
     );
   } finally {
     await browser.close();
