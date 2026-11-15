@@ -245,7 +245,7 @@ from `site`, which stays the published origins:
 `publisher` is optional: the WebID of the person or team behind the site. The
 store trusts it only for builds the publisher confirmed in their own Pod (see
 [Trust](#trust)); the overview shows it as stated. `theme` is optional too:
-one of the skeleton's themes for the overview's colours, `fresh` by default.
+one of the skeleton's themes for the overview's colours, `sage` by default.
 It stays out of the published catalog.
 
 ## The generated formats
