@@ -144,9 +144,9 @@ describe('overview page', () => {
 
   it("takes its one colour from the site theme's palette", () => {
     const html = renderOverview([entry('a', 'A')]);
-    assert.equal(SITE_THEME, 'fresh');
-    // The fresh theme's checked roles, with no separate band palette.
-    assert.match(html, /--primary: light-dark\(#0a6680, #5ec6e4\);/);
+    assert.equal(SITE_THEME, 'sage');
+    // The default sage theme's checked roles, with no separate band palette.
+    assert.match(html, /--primary: light-dark\(#3e6b56, #a2cbb4\);/);
     assert.match(html, /<header class="bar">/);
     assert.match(html, /<li class="app-row">/);
   });

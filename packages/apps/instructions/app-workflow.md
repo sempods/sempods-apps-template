@@ -60,8 +60,9 @@ settle who reads and changes what.
 
 Propose a fitting layout, name, monogram and theme yourself. Offer "choose
 for me" with the sage theme; explain the other themes only if the owner
-wants a choice: calm (neutral graphite), fresh (teal), warm (terracotta on
-cream), playful (violet).
+wants a choice: fresh (petrol) or warm (terracotta on cream). Calm (neutral
+graphite) and playful (violet) remain available. See the
+[colour workflow](colours.md) for palette roles, PWA colours and overrides.
 A vague request is enough to make routine visual choices. Show a working
 screen early and let the owner react to it; theme and icon approval need not
 hold up the data decisions. Record the purpose, audience and design choices
@@ -354,7 +355,8 @@ Keep the screen consistent with the SDK's UI:
   choice, call its `syncBrowserTheme()` (the Preferences example does this).
   To own a browser colour independently, remove `data-sempods-theme` from its
   `<meta name="theme-color">` and give it a colour instead of the placeholder.
-  The manifest keeps the light background; browser/installed chrome support
+  The manifest keeps the light background for startup and the light primary
+  as a stable installed-app brand colour; browser/installed chrome support
   depends on the platform. Existing app files remain the owner's.
 - Keep `src/index.css` as the skeleton has it: the layer order first, then
   Tailwind, the UI kit and the theme. Put the app's own global rules in
@@ -482,7 +484,7 @@ regenerates every app's configuration from it. An optional `catalog` names
 the whole site for its overview: `lang`, `name`, an optional `description`
 (both translatable as in `app.json`), an optional `publisher`, the HTTPS
 WebID of the person or team behind the site, and an optional `theme` for the
-overview's colours: `sage`, `calm`, `fresh` (the default), `playful` or `warm`, the
+overview's colours: `sage` (the default), `calm`, `fresh`, `playful` or `warm`, the
 skeleton's themes. Offer the theme most of the apps use. Do not add other
 deployment fields.
 

@@ -112,6 +112,9 @@ files alone do not:
 The [installed-icon investigation](spikes/171-icons.md) records the generation,
 update and device-evidence boundaries for the shared icon pipeline.
 
+The [colour investigation](spikes/173-colours.md) records palette ownership,
+store alignment and the limits of installed system-bar colours.
+
 ## Check
 
 ```sh

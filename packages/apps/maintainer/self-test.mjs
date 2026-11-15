@@ -167,6 +167,13 @@ function themeCheck(repo) {
   pnpmRun(repo, 'check:theme', FIXTURE);
   const theme = join(repo, 'apps', FIXTURE, 'src', 'themes', 'sage.css');
   const original = readFileSync(theme, 'utf8');
+  // Exercise the recommended alternatives through the same installed checker.
+  try {
+    for (const name of ['fresh', 'warm']) {
+      writeFileSync(theme, readFileSync(join(repo, 'apps', FIXTURE, 'src', 'themes', name + '.css')));
+      pnpmRun(repo, 'check:theme', FIXTURE);
+    }
+  } finally { writeFileSync(theme, original); }
   const broken = original.replace(
     /--muted-foreground: light-dark\([^)]*\)/,
     '--muted-foreground: light-dark(#f4f4f5, #a1a7b0)',
@@ -524,7 +531,7 @@ function publish(repo) {
     name: 'Self test',
     name_localized: { de: 'Selbsttest' },
     categories: ['utilities'],
-    theme_color: '#f7f9f7',
+    theme_color: '#3e6b56',
   };
   for (const [key, value] of Object.entries(expected))
     if (JSON.stringify(manifest[key]) !== JSON.stringify(value))

@@ -88,12 +88,18 @@ export const PLAIN_COLOURS = { background: '#ffffff', darkBackground: '#111315' 
 
 /**
  * The installed app's colours for the web app manifest: the light background
- * of the theme the app imports, for its splash screen and title bar. The page
- * sets both modes itself through its theme-color meta elements.
+ * of the theme for the launch screen, and the light primary as a stable brand
+ * colour for installed chrome. Widely supported manifest colours are static;
+ * the running page sets its background through theme-color meta elements.
  */
 export function manifestColours(appDir) {
   const theme = appTheme(appDir);
   const css = theme && ifPresent(() => themeCss(appDir, theme));
   const background = css && tokenColours(css, 'background');
-  return background ? { background: background.light, darkBackground: background.dark } : PLAIN_COLOURS;
+  const primary = css && tokenColours(css, 'primary');
+  return background ? {
+    background: background.light,
+    darkBackground: background.dark,
+    theme: primary?.light ?? background.light,
+  } : PLAIN_COLOURS;
 }

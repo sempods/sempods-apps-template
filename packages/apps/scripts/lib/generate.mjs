@@ -209,7 +209,7 @@ ${about.join('\n')}
   scope: ${json(p)},
   display: 'standalone',
   background_color: ${json(colours.background)},
-  theme_color: ${json(colours.background)},
+  theme_color: ${json(colours.theme ?? colours.background)},
   icons: [
 ${icon('icon-192.png', 192, 'any')}
 ${icon('icon-512.png', 512, 'any')}
