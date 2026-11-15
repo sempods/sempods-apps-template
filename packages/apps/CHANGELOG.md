@@ -163,6 +163,11 @@ Startup splash (sempods/sempods-apps-template#166):
   name in the page's language, or the source name for an app that follows
   the browser) and its theme colours (`__THEME_TEXT_LIGHT__`,
   `__THEME_TEXT_DARK__` beside the existing background placeholders).
+- An app whose theme the tooling cannot read gets the defaults of the SDK
+  0.9 surfaces and the UI kit's palette (`#f7f9f7`/`#131b18`, text
+  `#26382f`/`#e5ede8`) instead of white and SDK 0.8's grey, for its splash,
+  theme-colour meta elements and manifest; the splash then hands over to the
+  startup screen without a change of colour.
 - React's first render replaces the splash, in the same frame, with the
   SDK's startup screen (`AppStartup`), which `AppAccess` shows since SDK
   0.9.0 while `useAppState().starting`; it adds progress only after 350 ms.

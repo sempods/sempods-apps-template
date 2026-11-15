@@ -38,6 +38,7 @@ import { MISSING_BROWSER } from '../scripts/check-theme.mjs';
 import {
   iconColours,
   manifestColours,
+  PLAIN_COLOURS,
   themeCss,
   themeNames,
   tokenColours,
@@ -419,7 +420,7 @@ describe('generated configuration', () => {
     // Without a theme the tooling can read, the manifest stays white.
     assert.match(
       generatedFiles(app)['vite.sempods.generated.ts'],
-      /^  theme_color: "#ffffff",$/m,
+      /^  theme_color: "#f7f9f7",$/m,
     );
     assert.doesNotMatch(
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
@@ -444,7 +445,7 @@ describe('generated configuration', () => {
         // without a theme's text, the SDK's.
         assert.equal(
           pageTitle.transformIndexHtml('<p>__APP_NAME__</p>__THEME_TEXT_LIGHT__ __THEME_TEXT_DARK__').html,
-          '<p>Shopping</p>#1f2933 #e5e7eb',
+          '<p>Shopping</p>#26382f #e5ede8',
         );
         const runtime = join(dir, `runtime-${pwa}.mts`);
         writeFileSync(runtime, files['src/sempods.generated.ts']);
@@ -1391,6 +1392,27 @@ describe('themes', () => {
     return (high + 0.05) / (low + 0.05);
   };
 
+  it("falls back to the installed SDK's and UI kit's default colours", () => {
+    // The splash without a theme hands over to the SDK's startup screen on
+    // these defaults; a new SDK release that changes them must change these.
+    const installed = (path) =>
+      readFileSync(new URL(`../node_modules/@sempods/${path}`, import.meta.url), 'utf8');
+    const pair = (source, pattern) => {
+      const match = source.match(pattern);
+      assert.ok(match, `${pattern} not found`);
+      return [match[1], match[2]];
+    };
+    const sdk = installed('app-sdk/dist/react/styles.js');
+    const kit = installed('app-ui/styles.css');
+    const hex = '(#[0-9a-f]{6}),\\s*(#[0-9a-f]{6})';
+    const background = [PLAIN_COLOURS.background, PLAIN_COLOURS.darkBackground];
+    const text = [PLAIN_COLOURS.text, PLAIN_COLOURS.darkText];
+    assert.deepEqual(pair(sdk, new RegExp(`--sp-bg:var\\(--sempods-bg,light-dark\\(${hex}\\)`)), background);
+    assert.deepEqual(pair(sdk, new RegExp(`--sp-text:var\\(--sempods-text,light-dark\\(${hex}\\)`)), text);
+    assert.deepEqual(pair(kit, new RegExp(`--background: light-dark\\(${hex}\\)`)), background);
+    assert.deepEqual(pair(kit, new RegExp(`--foreground: light-dark\\(${hex}\\)`)), text);
+  });
+
   it('ships sage as the default while retaining the other themes', () => {
     assert.deepEqual(themeNames(), ['sage', 'calm', 'fresh', 'playful', 'warm']);
   });
@@ -1420,8 +1442,8 @@ describe('themes', () => {
           darkBackground: '#191817',
           theme: expected,
           // A theme without a text role: the SDK's own text colours.
-          text: '#1f2933',
-          darkText: '#e5e7eb',
+          text: '#26382f',
+          darkText: '#e5ede8',
         });
       } finally {
         rmSync(dir, { recursive: true, force: true });

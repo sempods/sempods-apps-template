@@ -83,13 +83,14 @@ export function themeCss(dir, name) {
   return readFileSync(join(dir, THEMES_DIR, `${name}.css`), 'utf8');
 }
 
-// The colours when an app imports no theme the tooling can read: the SDK's
-// own defaults for its surfaces.
+// The colours when an app imports no theme the tooling can read: the
+// defaults of the SDK's surfaces and the UI kit's palette, so the page, the
+// startup splash and the SDK's startup screen agree.
 export const PLAIN_COLOURS = {
-  background: '#ffffff',
-  darkBackground: '#111315',
-  text: '#1f2933',
-  darkText: '#e5e7eb',
+  background: '#f7f9f7',
+  darkBackground: '#131b18',
+  text: '#26382f',
+  darkText: '#e5ede8',
 };
 
 /**
