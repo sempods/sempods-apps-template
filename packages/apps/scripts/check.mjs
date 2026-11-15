@@ -24,7 +24,7 @@ import { describedApp } from './lib/describe.mjs';
 import { textCompleteness } from './lib/texts.mjs';
 import { staleGenerated } from './lib/generate.mjs';
 import { iconProblems } from './lib/icon.mjs';
-import { pageProblems } from './lib/page.mjs';
+import { builtPageProblems, pageProblems } from './lib/page.mjs';
 import { migrationState } from './migrate.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
@@ -244,7 +244,14 @@ function main() {
   for (const app of readAppsSafe(root)) {
     const dir = join(root, 'apps', app.id);
     step(`apps/${app.id}: lint`, run(['run', 'lint'], dir));
-    step(`apps/${app.id}: typecheck and build`, run(['run', 'build'], dir));
+    const built = run(['run', 'build'], dir);
+    step(`apps/${app.id}: typecheck and build`, built);
+    // The build's page: its title, splash and colours are filled in.
+    if (built)
+      for (const problem of builtPageProblems(join(dir, 'dist'), app)) {
+        console.error(`✗ ${problem}`);
+        failures.push(problem);
+      }
     step(`apps/${app.id}: tests`, run(['run', 'test'], dir));
   }
   // Outside the workspace, an app finds only what its own package.json

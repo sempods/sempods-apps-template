@@ -50,6 +50,7 @@ import {
 import { copiedKit, kitNote } from './lib/kit.mjs';
 import {
   adoptPageHead,
+  adoptPageSplash,
   adoptPageTitle,
   PAGE,
   VITE_CONFIG,
@@ -559,7 +560,11 @@ function updateApps(root, report) {
       report.notes.push(error.message);
       continue;
     }
-    const changed = [...adoptPageTitle(dir, app), ...adoptPageHead(dir, app)];
+    const changed = [
+      ...adoptPageTitle(dir, app),
+      ...adoptPageHead(dir, app),
+      ...adoptPageSplash(dir, app),
+    ];
     report.updated.push(...new Set(changed));
     adoptMaskableIcon(dir, app, report);
     const kit = copiedKit(dir);

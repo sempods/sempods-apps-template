@@ -83,23 +83,34 @@ export function themeCss(dir, name) {
   return readFileSync(join(dir, THEMES_DIR, `${name}.css`), 'utf8');
 }
 
-// The manifest's colours when an app imports no theme the tooling can read.
-export const PLAIN_COLOURS = { background: '#ffffff', darkBackground: '#111315' };
+// The colours when an app imports no theme the tooling can read: the SDK's
+// own defaults for its surfaces.
+export const PLAIN_COLOURS = {
+  background: '#ffffff',
+  darkBackground: '#111315',
+  text: '#1f2933',
+  darkText: '#e5e7eb',
+};
 
 /**
- * The installed app's colours for the web app manifest: the light background
- * of the theme for the launch screen, and the light primary as a stable brand
- * colour for installed chrome. Widely supported manifest colours are static;
- * the running page sets its background through theme-color meta elements.
+ * The colours of the theme the app imports, before its stylesheet loads: the
+ * light background of the theme for the web app manifest's launch screen and
+ * the light primary as a stable brand colour for installed chrome (widely
+ * supported manifest colours are static), and the light and dark background
+ * and text for the page's theme-color meta elements and its startup splash.
  */
 export function manifestColours(appDir) {
   const theme = appTheme(appDir);
   const css = theme && ifPresent(() => themeCss(appDir, theme));
   const background = css && tokenColours(css, 'background');
-  const primary = css && tokenColours(css, 'primary');
-  return background ? {
+  if (!background) return PLAIN_COLOURS;
+  const primary = tokenColours(css, 'primary');
+  const text = tokenColours(css, 'foreground');
+  return {
     background: background.light,
     darkBackground: background.dark,
     theme: primary?.light ?? background.light,
-  } : PLAIN_COLOURS;
+    text: text?.light ?? PLAIN_COLOURS.text,
+    darkText: text?.dark ?? PLAIN_COLOURS.darkText,
+  };
 }

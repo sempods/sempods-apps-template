@@ -46,7 +46,9 @@ import { SKELETON } from '../scripts/lib/paths.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
 import {
   adoptPageHead,
+  adoptPageSplash,
   adoptPageTitle,
+  builtPageProblems,
   pageProblems,
 } from '../scripts/lib/page.mjs';
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
@@ -438,6 +440,12 @@ describe('generated configuration', () => {
         const original = '<meta name="theme-color" content="#123456"><meta content="__THEME_LIGHT__"><meta content="__THEME_DARK__">';
         assert.equal(pageTitle.transformIndexHtml(original).html,
           '<meta name="theme-color" content="#123456"><meta content="#fdfaf6"><meta content="#191817">');
+        // The splash's name in the page's language and its text colours;
+        // without a theme's text, the SDK's.
+        assert.equal(
+          pageTitle.transformIndexHtml('<p>__APP_NAME__</p>__THEME_TEXT_LIGHT__ __THEME_TEXT_DARK__').html,
+          '<p>Shopping</p>#1f2933 #e5e7eb',
+        );
         const runtime = join(dir, `runtime-${pwa}.mts`);
         writeFileSync(runtime, files['src/sempods.generated.ts']);
         const { app: generated } = await import(pathToFileURL(runtime).href);
@@ -446,6 +454,17 @@ describe('generated configuration', () => {
           de: { title: 'Einkauf', description: 'Was fehlt.' },
         });
       }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("shows the source name in the splash of an app that follows the browser", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sempods-splash-'));
+    try {
+      const vite = join(dir, 'vite.mts');
+      writeFileSync(vite, generatedFiles({ ...app, language: 'auto', about: {
+        ...app.about, name_localized: { de: 'Vorführung' },
+      } })['vite.sempods.generated.ts']);
+      const { pageTitle } = await import(pathToFileURL(vite).href);
+      assert.equal(pageTitle.transformIndexHtml('__APP_NAME__').html, 'Demo &#34;App&#34;');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   it('has no PWA settings when the app opts out', () => {
@@ -1274,6 +1293,73 @@ export default defineConfig({
     assert.doesNotMatch(page(), /#176354|initial-scale=1\.0" \/>/);
     assert.doesNotMatch(page(), /[^\r]\n/);
   });
+
+  // The skeleton's page from before the splash (0.10.0 to 0.11.0-dev).
+  const withoutSplash = () =>
+    readFileSync(join(SKELETON, 'index.html'), 'utf8')
+      .replace(/ {4}<!-- The startup splash below[\s\S]*?<\/style>\n/, '')
+      .replace(/ {4}<div id="root">\n[\s\S]*?\n {4}<\/div>\n/, '    <div id="root"></div>\n');
+
+  it('adds the startup splash to a page that has the skeleton\'s empty root', () => {
+    const skeleton = readFileSync(join(SKELETON, 'index.html'), 'utf8');
+    const old = withoutSplash();
+    assert.doesNotMatch(old, /splash|name="color-scheme"/);
+    writeFileSync(file('index.html'), old);
+    assert.deepEqual(adoptPageSplash(dir, app), ['apps/demo/index.html']);
+    assert.equal(page(), skeleton);
+    assert.deepEqual(adoptPageSplash(dir, app), []);
+    // Windows line endings stay.
+    writeFileSync(file('index.html'), old.replaceAll('\n', '\r\n'));
+    assert.deepEqual(adoptPageSplash(dir, app), ['apps/demo/index.html']);
+    assert.equal(page(), skeleton.replaceAll('\n', '\r\n'));
+    // An own color-scheme meta element is kept, and not doubled.
+    const own = old.replace(
+      '  </head>',
+      '    <meta name="color-scheme" content="light" />\n  </head>',
+    );
+    writeFileSync(file('index.html'), own);
+    assert.deepEqual(adoptPageSplash(dir, app), ['apps/demo/index.html']);
+    assert.equal(page().match(/name="color-scheme"/g).length, 1);
+    assert.match(page(), /content="light" \/>\n {4}<style>/);
+  });
+
+  it('leaves a page in another shape to the owner', () => {
+    const old = withoutSplash();
+    for (const html of [
+      old.replace('<div id="root"></div>', '<div id="root">Loading</div>'),
+      old.replace('<div id="root"></div>', '<div id="root"></div><div id="splash"></div>'),
+      old.replace('    <div id="root"></div>', '  <div id="root"></div>'),
+    ]) {
+      writeFileSync(file('index.html'), html);
+      assert.deepEqual(adoptPageSplash(dir, app), []);
+      assert.equal(page(), html);
+    }
+    // Without the generated plugin nothing would fill its name.
+    writeFileSync(file('index.html'), old);
+    writeFileSync(file('vite.config.ts'), config07);
+    assert.deepEqual(adoptPageSplash(dir, app), []);
+  });
+
+  it('reports a built page with unfilled placeholders or a missing splash icon', () => {
+    const out = join(dir, 'dist');
+    mkdirSync(out, { recursive: true });
+    const demo = { id: 'demo', path: '/demo/' };
+    assert.deepEqual(builtPageProblems(out, demo), []);
+    const built = (name, src) =>
+      `<html><head><meta content="#fff"></head><body><div id="root"><div id="splash"><div><img src="${src}" alt=""><p>${name}</p></div></div></div></body></html>`;
+    writeFileSync(join(out, 'index.html'), built('Demo', '/demo/favicon.svg'));
+    writeFileSync(join(out, 'favicon.svg'), '<svg/>');
+    assert.deepEqual(builtPageProblems(out, demo), []);
+    writeFileSync(
+      join(out, 'index.html'),
+      built('__APP_NAME__', '/favicon.svg').replace('#fff', '__THEME_LIGHT__'),
+    );
+    const problems = builtPageProblems(out, demo).join('\n');
+    assert.match(problems, /still contains __THEME_LIGHT__, __APP_NAME__; keep pageTitle/);
+    assert.match(problems, /shows \/favicon\.svg, which is no file of the built app/);
+    writeFileSync(join(out, 'index.html'), built('Demo', '/demo/'));
+    assert.match(builtPageProblems(out, demo).join(), /no file of the built app/);
+  });
 });
 
 describe('themes', () => {
@@ -1316,6 +1402,9 @@ describe('themes', () => {
           background: '#fdfaf6',
           darkBackground: '#191817',
           theme: expected,
+          // A theme without a text role: the SDK's own text colours.
+          text: '#1f2933',
+          darkText: '#e5e7eb',
         });
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1371,6 +1460,33 @@ describe('app theme and icon', () => {
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
   const file = (...path) => readFileSync(join(root, 'apps', ...path), 'utf8');
+
+  it("fills the startup splash with the app's name and its theme's colours", async () => {
+    createApp(root, { id: 'demo', title: 'A $& <B>', theme: 'warm' });
+    const dir = join(root, 'apps', 'demo');
+    const css = themeCss(SKELETON, 'warm');
+    const background = tokenColours(css, 'background');
+    const text = tokenColours(css, 'foreground');
+    assert.deepEqual(manifestColours(dir), {
+      background: background.light,
+      darkBackground: background.dark,
+      theme: tokenColours(css, 'primary').light,
+      text: text.light,
+      darkText: text.dark,
+    });
+    const vite = join(dir, 'vite.sempods.generated.mts');
+    writeFileSync(vite, file('demo', 'vite.sempods.generated.ts'));
+    const { pageTitle } = await import(pathToFileURL(vite).href);
+    const html = pageTitle.transformIndexHtml(file('demo', 'index.html')).html;
+    assert.match(html, /<p>A \$&#38; &#60;B&#62;<\/p>/);
+    assert.ok(
+      html.includes(
+        `light-dark(${background.light}, ${background.dark})`,
+      ),
+    );
+    assert.ok(html.includes(`light-dark(${text.light}, ${text.dark})`));
+    assert.doesNotMatch(html, /__[A-Z_]+__/);
+  });
 
   it('imports the chosen theme and draws the icon in its primary colour', () => {
     createApp(root, { id: 'demo', title: 'Demo', theme: 'warm' });

@@ -149,6 +149,29 @@ SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
   loading, retry, selection and authorization feedback. The skeleton example
   now re-exports the standard instead of copying its implementation.
 
+Startup splash (sempods/sempods-apps-template#166):
+
+- The skeleton's `index.html` shows a static startup splash inside `#root`
+  until the app's script has run: the app's icon (`/favicon.svg`) and name,
+  centred, with no sign-in wording or controls and a polite status region.
+  Its inline styles follow the light or dark system appearance and an
+  appearance set on `<html>` (`color-scheme`) before the first paint, through
+  a new `<meta name="color-scheme" content="light dark">`. It has the layout
+  of the SDK's startup screen (sempods/sempods-typescript#304), so the hand-over
+  has no visible jump.
+- The generated `pageTitle` plugin fills the splash's `__APP_NAME__` (the
+  name in the page's language, or the source name for an app that follows
+  the browser) and its theme colours (`__THEME_TEXT_LIGHT__`,
+  `__THEME_TEXT_DARK__` beside the existing background placeholders).
+- React's first render replaces the splash, in the same frame, with the
+  SDK's startup screen (`AppStartup`), which `AppAccess` shows since SDK
+  0.9.0 while `useAppState().starting`; it adds progress only after 350 ms.
+- `pnpm run check` and `build-site` report a built `index.html` that still
+  contains one of these placeholders, or a splash icon that names no file of
+  the build.
+- `migrate` adds the splash to an app whose `index.html` still has the
+  skeleton's empty `<div id="root"></div>` and uses the generated plugin.
+
 Instructions:
 
 - The app workflow and the setup guide describe `app.json`, `details.md`,
@@ -251,6 +274,18 @@ and installed-device limits.
    ContextSwitch with the public adapter. Preserve domain words, icons,
    vocabulary and scopes, plus AppAccess for sign-in and management. Existing
    owner apps are never rewritten automatically.
+
+9. `migrate` adds the startup splash to each `index.html` that still has the
+   skeleton's empty `<div id="root"></div>` and lists it as updated;
+   `regenerate` fills the splash's name and colours. For a page in another
+   shape, copy the skeleton's `color-scheme` meta element, splash `<style>`
+   and `#splash` markup into it only if the owner agrees, keeping their own
+   markup. The splash hands over to the SDK's startup screen, which
+   `AppAccess` shows by default since SDK 0.9.0; an app with
+   `startup="none"` or its own access parts without `AppStartup` shows its
+   content at the first render instead. Open the built app with a saved
+   session, light and dark, and check that the splash and the startup
+   screen show the same icon and name in the same place.
 
 ## 0.10.1 (in preparation)
 
