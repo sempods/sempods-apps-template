@@ -9,7 +9,7 @@ import { micromark } from 'micromark';
 import { LANGUAGES } from './apps.mjs';
 import { escapeHtml as escape } from './html.mjs';
 import { SKELETON } from './paths.mjs';
-import { themeCss } from './themes.mjs';
+import { DEFAULT_THEME, themeCss } from './themes.mjs';
 
 // The overview's own words.
 const TEXT = {
@@ -162,7 +162,7 @@ const word = (languages, key, tag = 'span', attrs = '') =>
 // The same checked theme roles as the skeleton, with restrained surfaces and
 // the primary colour on actions. App icons keep their own colours. The
 // catalog's theme picks another of the skeleton's themes.
-export const SITE_THEME = 'fresh';
+export const SITE_THEME = DEFAULT_THEME;
 
 const STYLE = `
   :root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }

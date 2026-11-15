@@ -402,13 +402,13 @@ describe('generated configuration', () => {
       categories: ['shopping', 'lifestyle'],
     };
     const vite = generatedFiles({ ...app, about }, undefined, {
-      background: '#fdfaf6',
+      background: '#fdfaf6', theme: '#9c4128',
     })['vite.sempods.generated.ts'];
     assert.match(vite, /^  name_localized: \{"en":"Shopping"\},$/m);
     assert.match(vite, /^  description_localized: \{"en":"What is missing\."\},$/m);
     assert.match(vite, /^  categories: \["shopping","lifestyle"\],$/m);
     assert.match(vite, /^  background_color: "#fdfaf6",$/m);
-    assert.match(vite, /^  theme_color: "#fdfaf6",$/m);
+    assert.match(vite, /^  theme_color: "#9c4128",$/m);
     assert.match(
       vite,
       /src: "\/demo\/icon-maskable-512\.png", sizes: '512x512', type: 'image\/png', purpose: 'maskable'/,
@@ -1291,6 +1291,37 @@ describe('themes', () => {
   it('ships sage as the default while retaining the other themes', () => {
     assert.deepEqual(themeNames(), ['sage', 'calm', 'fresh', 'playful', 'warm']);
   });
+
+  for (const [label, primary, expected] of [
+    [
+      'uses the light primary for installed chrome',
+      '--primary: light-dark(#9c4128, #f0a184);',
+      '#9c4128',
+    ],
+    ['falls back to the light background without a primary', '', '#fdfaf6'],
+  ]) {
+    it(`manifestColours ${label}`, () => {
+      const dir = mkdtempSync(join(tmpdir(), 'sempods-manifest-theme-'));
+      try {
+        mkdirSync(join(dir, 'src', 'themes'), { recursive: true });
+        writeFileSync(
+          join(dir, 'src', 'index.css'),
+          "@import './themes/custom.css';\n",
+        );
+        writeFileSync(
+          join(dir, 'src', 'themes', 'custom.css'),
+          `:root { --background: light-dark(#fdfaf6, #191817); ${primary} }`,
+        );
+        assert.deepEqual(manifestColours(dir), {
+          background: '#fdfaf6',
+          darkBackground: '#191817',
+          theme: expected,
+        });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 
   // The rest states of the palette; check:theme checks every pair, hover
   // and action variant in a browser.
