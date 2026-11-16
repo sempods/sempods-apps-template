@@ -9,7 +9,7 @@ configuration choices and the SDK migration.
 Prerelease `0.11.0-dev.1` for acceptance testing against SDK `0.9.0-dev.1`.
 It also carries the Playwright pin planned for 0.10.1, which was not released.
 The shared implementation in the tooling (sempods/sempods-apps-template#177)
-came after `0.11.0-dev.1`.
+and SDK `0.9.0-dev.2`, which lifts that pin, came after `0.11.0-dev.1`.
 
 ### Changes
 
@@ -147,8 +147,9 @@ The overview (sempods/sempods-apps-template#46, step 4):
 
 SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
 
-- The starter installs SDK 0.9.0-dev.1, the prerelease of 0.9.0, for all
-  three SDK packages, and the tooling accepts 0.9 as its peer.
+- The starter installs SDK 0.9.0-dev.2, the prerelease of 0.9.0, for all
+  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.2` as its
+  peer.
 - List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
   two-line trigger, Contexts grouped by Pod, separate permission/selection
   icons, a localized legend and exact-address details. The SDK owns generic
@@ -223,11 +224,32 @@ Shared implementation in the tooling (sempods/sempods-apps-template#177):
   `index.html` and theme files: they paint before any script and remain
   plain HTML and CSS the owner can change.
 
+SDK 0.9.0-dev.2:
+
+- The list example ticks a row with the UI kit's `Checkbox`, a 20px box in a
+  44px target named "Done: …", instead of a native checkbox in its label
+  (sempods/sempods-typescript#337).
+- The Preferences example marks "Deutsch" and "English" with `lang`, so a
+  screen reader reads each language name in its own language
+  (sempods/sempods-typescript#338).
+- The ContextSwitch example and the app workflow name `texts`, the app's
+  word for its Contexts in the chooser's messages, such as "Loading lists …"
+  (sempods/sempods-typescript#328); with a single Pod the chooser shows no
+  Pod line (sempods/sempods-typescript#344).
+- The app workflow says that `nav.link` marks a link to the shown place with
+  `aria-current="page"` and that a ghost view link shows it as chosen
+  (sempods/sempods-typescript#342, sempods/sempods-typescript#343), and
+  names `SuggestField`'s `suggest={false}` for an exact address
+  (sempods/sempods-typescript#324).
+
 Tooling (sempods/sempods-apps-template#153):
 
-- Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
-  compatibility hold. Version 1.65 incorrectly treats controls in a native
-  modal dialog as inert when an ancestor is inert.
+- Tooling Playwright is 1.65.1, the version of the SDK's browser gate. The
+  1.64.1 pin of `0.11.0-dev.1` is lifted: since SDK 0.9.0-dev.2 the SDK's
+  questions sit beside the content that React Aria makes inert, so
+  Playwright 1.65 clicks them without `force`
+  (sempods/sempods-typescript#264). Playwright 1.65 and later still refuse a
+  control with an inert ancestor, also in a native modal dialog.
 
 Instructions:
 
@@ -348,9 +370,11 @@ and installed-device limits.
 
 10. After updating the tooling, install its matching Chromium with
     `pnpm run check:theme --install-browser`. Keep normal locator clicks in
-    confirmation checks; do not bypass actionability with forced clicks. A
-    future Playwright update must pass the native-modal check in the packed
-    self-test and the SDK browser gate.
+    confirmation checks; do not bypass actionability with forced clicks.
+    An app's own Playwright tests on 1.65 or later follow the SDK's
+    migration guide ("SDK questions in Playwright 1.65 and later"): drop
+    `force: true` from clicks in SDK questions, and close an open modal
+    before a step acts on a control behind it.
 
 11. An app with a copy of the Preferences example keeps its copy. Offer the
     owner the skeleton's new `storage` listener in `usePreferences`, so a
@@ -367,6 +391,16 @@ and installed-device limits.
     changed on purpose and use `@sempods/apps/browser-theme` for the rest.
     Then run `pnpm run check --standalone all`, and open a built app light
     and dark, with the system appearance changing while it is open.
+
+13. An app with a copy of the list example keeps its native checkbox. Offer
+    the owner the kit's `Checkbox` from the skeleton's
+    `src/examples/ListScreen.tsx` (`aria-label`, `isSelected`, `isDisabled`,
+    `onChange`); it keeps the 44px target and the row's name. An app with a
+    copy of the Preferences example can add `lang` to its language choices
+    as the skeleton does. An app with a ContextSwitch passes `texts` where
+    its word for a Context is not "context". An app that compared places to
+    set `aria-current` or a chosen look on its view links drops that, as the
+    SDK's migration guide describes ("Current view links from the router").
 
 ## 0.10.0
 

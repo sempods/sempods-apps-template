@@ -17,14 +17,14 @@ importers:
   packages/apps:
     dependencies:
       '@sempods/app-sdk':
-        specifier: ^0.9.0-dev.1
-        version: 0.9.0-dev.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^0.9.0-dev.2
+        version: 0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@sempods/app-ui':
-        specifier: ^0.9.0-dev.1
-        version: 0.9.0-dev.1(@sempods/app-sdk@0.9.0-dev.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
+        specifier: ^0.9.0-dev.2
+        version: 0.9.0-dev.2(@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
       '@sempods/client-sdk':
-        specifier: ^0.9.0-dev.1
-        version: 0.9.0-dev.1
+        specifier: ^0.9.0-dev.2
+        version: 0.9.0-dev.2
       mdast-util-from-markdown:
         specifier: 2.1.0
         version: 2.1.0(supports-color@9.4.0)
@@ -32,8 +32,8 @@ importers:
         specifier: 4.0.3
         version: 4.0.3(supports-color@9.4.0)
       playwright:
-        specifier: 1.64.1
-        version: 1.64.1
+        specifier: 1.65.1
+        version: 1.65.1
       semver:
         specifier: 7.8.6
         version: 7.8.6
@@ -954,8 +954,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sempods/app-sdk@0.9.0-dev.1':
-    resolution: {integrity: sha512-clkZqmzFbHFAfSQIUA3AJlUpv1XxO0G7XQ93GGURTHPoulh3FGP4xNBgA4e8GAXM3FkNR6NDZbNzr/BD+dVTLQ==}
+  '@sempods/app-sdk@0.9.0-dev.2':
+    resolution: {integrity: sha512-uvUodUooG4YSHYlU8NQ2J2zD8rCCyBSWM6fmQTxny7sQuJa2wIgYu2joEfUrr8QqJfmNnfJByTsUYPKd1tNpyw==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
       react: ^19.0.0
@@ -966,18 +966,18 @@ packages:
       react-dom:
         optional: true
 
-  '@sempods/app-ui@0.9.0-dev.1':
-    resolution: {integrity: sha512-3gUHlQEZsO4rQofP2NlLHik2IPrZJtZBA7bZ3q+st63AGWaZXn6zrz7IZBW0OdeMoEyum98mwSB0YWJyhUHvUg==}
+  '@sempods/app-ui@0.9.0-dev.2':
+    resolution: {integrity: sha512-40vx68mLPjZvNR8M1fueHU+Qpnmr7sv7tIamAi/krn2J17284dcfWlo9cU2wdttBI6Na+P9Ukphkpp35Kdyi6Q==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
-      '@sempods/app-sdk': ~0.9.0-dev.1
-      '@sempods/client-sdk': ~0.9.0-dev.1
+      '@sempods/app-sdk': ~0.9.0-dev.2
+      '@sempods/client-sdk': ~0.9.0-dev.2
       react: ^19.0.0
       react-dom: ^19.0.0
       tailwindcss: ^4.1.0
 
-  '@sempods/client-sdk@0.9.0-dev.1':
-    resolution: {integrity: sha512-6yMkfMB0Yno6G6ojSChfi5jjxQXX5CFg7eviXhEYoVelkILYrCn1Xm6um7xbrE3Qdw7WrnK6ennl0mKcENhIkA==}
+  '@sempods/client-sdk@0.9.0-dev.2':
+    resolution: {integrity: sha512-5eALbgk79VcYasXPWLPVMerjH9qKipCZnFj92aKkvmOSfSEgaKfYfjyJBwucuMVZJc1vSLpuyqq1FxFOO0McGQ==}
     engines: {node: '>=24.15.0'}
 
   '@swc/helpers@0.5.23':
@@ -1913,13 +1913,13 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  playwright-core@1.64.1:
-    resolution: {integrity: sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==}
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
     engines: {node: '>=20'}
     hasBin: true
 
-  playwright@1.64.1:
-    resolution: {integrity: sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==}
+  playwright@1.65.1:
+    resolution: {integrity: sha512-vJ1FuoOrNwOKHUIVEvSt3jT1L+wjjDpwhwIstKtfvTh8XIG4FG4bIFuvNdMxi81LGfAhUgUZleVFaOLY4RIUUw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -3473,18 +3473,18 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.68.3':
     optional: true
 
-  '@sempods/app-sdk@0.9.0-dev.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@sempods/client-sdk': 0.9.0-dev.1
+      '@sempods/client-sdk': 0.9.0-dev.2
     optionalDependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  '@sempods/app-ui@0.9.0-dev.1(@sempods/app-sdk@0.9.0-dev.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
+  '@sempods/app-ui@0.9.0-dev.2(@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
     dependencies:
       '@internationalized/date': 3.12.4
-      '@sempods/app-sdk': 0.9.0-dev.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@sempods/client-sdk': 0.9.0-dev.1
+      '@sempods/app-sdk': 0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@sempods/client-sdk': 0.9.0-dev.2
       class-variance-authority: 0.7.1
       cn: 0.5.2
       lucide-react: 1.72.0(react@19.3.1)
@@ -3496,7 +3496,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
-  '@sempods/client-sdk@0.9.0-dev.1':
+  '@sempods/client-sdk@0.9.0-dev.2':
     dependencies:
       oauth4webapi: 3.8.8
 
@@ -4549,11 +4549,11 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  playwright-core@1.64.1: {}
+  playwright-core@1.65.1: {}
 
-  playwright@1.64.1:
+  playwright@1.65.1:
     dependencies:
-      playwright-core: 1.64.1
+      playwright-core: 1.65.1
 
   possible-typed-array-names@1.1.0: {}
 

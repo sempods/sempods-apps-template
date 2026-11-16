@@ -258,7 +258,7 @@ name and icon it asks to choose per app come from the design conversation.
 
 Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
 SDK's quickstart screen built with the UI kit, with loading and failed reads
-(`LoadNotice`), an empty state, rows with a checkbox in its label, the name
+(`LoadNotice`), an empty state, rows with the kit's `Checkbox`, the name
 as a link to the item's own address, which opens a `ResourceEditor` in a
 `ScreenDialog`, `RemoveButton`, open outcomes (`UpdateNotice`,
 `UnresolvedNotices`) and new items in a bar fixed at the bottom, which a list
@@ -313,16 +313,23 @@ describes, and style them with Tailwind classes on the theme's roles
   variants: one primary action per screen, other actions `secondary` or
   `ghost`, icons from `lucide-react` with a `label`; `ActionGroup` for a row
   of them. `ActionLink` is an action with an address (`{...nav.link(place)}`).
+  `nav.link` marks a link to the shown place with `aria-current="page"`; views
+  with addresses of their own, such as two lists as tabs, are such links
+  drawn with `buttonVariants({ variant: 'ghost' })`, which shows the current
+  one as chosen. Compare no places by hand for it.
 - `WorkspacePanel` for filters or details over a canvas or a map that stays
   usable beside them, and `SuggestField` for a search or address bar with
-  suggestions the app finds as the person types.
+  suggestions the app finds as the person types; `suggest={false}` keeps
+  them closed for text the app does not search, such as an exact address.
 - `DateChooser` for the SDK's `date` field, `ChipGroup` and `Chip` for
   filters, and the shadcn components (`Input`, `Textarea`, `Select`,
   `DropdownMenu`, …) for the rest.
 - `ContextSwitch` from `@sempods/app-ui` (also re-exported by
   `src/examples/ContextSwitch.tsx`) in place of the `<h1>` for an app that
-  works in one of several contexts at a time, labelled in the person's words
-  ("List", "Share more lists …").
+  works in one of several contexts at a time, labelled in the person's words:
+  `label` ("List") and `texts` for each of its messages that would say
+  "context" ("Share more lists …", "Loading lists …", "No readable lists
+  shared."), in both languages from `src/texts.ts`.
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
   in the header's menu, stored on the device; the app's other open tabs
@@ -370,8 +377,11 @@ Keep the screen consistent with the SDK's UI:
   Tailwind, the UI kit and the theme. Put the app's own global rules in
   `@layer base`; an unlayered element rule (`button { … }`) overrides every
   SDK rule, the sign-in screen's included.
-- Wrap each native checkbox or radio in its `<label>`: the label is its 44px
-  touch target. Controls keep 44px targets.
+- Tick a row with the kit's `Checkbox`, named with `aria-label` ("Done:
+  Buy milk"), as the list example does. Its 44px target reaches 12px beyond
+  the 20px box, so keep that room beside it (`mx-3`), off the row's link.
+  Wrap any other native checkbox or radio in its `<label>`: the label is its
+  44px touch target. Controls keep 44px targets.
 - Apps are international: by default (`"language": "auto"`) the UI follows
   the browser, German or English, otherwise English, and the skeleton passes
   that language and locale to the SDK and to `<html lang>`; the UI kit's own

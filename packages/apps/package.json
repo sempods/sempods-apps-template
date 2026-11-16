@@ -60,7 +60,7 @@
   "dependencies": {
     "mdast-util-from-markdown": "2.1.0",
     "micromark": "4.0.3",
-    "playwright": "1.64.1",
+    "playwright": "1.65.1",
     "semver": "7.8.6",
     "typescript": "6.0.3"
   },
@@ -71,9 +71,9 @@
     "unified-engine": "11.2.2"
   },
   "peerDependencies": {
-    "@sempods/app-sdk": "^0.9.0-dev.1",
-    "@sempods/app-ui": "^0.9.0-dev.1",
-    "@sempods/client-sdk": "^0.9.0-dev.1",
+    "@sempods/app-sdk": "^0.9.0-dev.2",
+    "@sempods/app-ui": "^0.9.0-dev.2",
+    "@sempods/client-sdk": "^0.9.0-dev.2",
     "vite": ">=7.0.0",
     "vite-plugin-pwa": ">=1.0.0"
   },
