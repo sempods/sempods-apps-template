@@ -738,6 +738,17 @@ describe('migrate', () => {
     assert.equal(installs, 1);
   });
 
+  it('fails when the install after an app manifest change fails', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    createApp(repo, { id: 'demo', title: 'Demo' });
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1', { install: () => false });
+    assert.equal(report.unchanged, true);
+    assert.match(report.failed, /pnpm install failed.*run pnpm install$/);
+    assert.match(formatMigration(report), /pnpm install failed/);
+  });
+
   it('moves an unchanged copy of the browser-theme helper onto the shared one', () => {
     publish('1.0.1');
     const repo = createRepo('1.0.0');

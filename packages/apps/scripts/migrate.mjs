@@ -422,10 +422,15 @@ export function migrate(
       rmSync(work, { recursive: true, force: true });
       // The tooling may still have changed what it generates for apps, and
       // the apps declare its version.
+      // A failed install fails the command: the app manifests already name
+      // the new version, so a rerun has nothing left to install.
       if (updateApps(root, report, target.version) && !install(root))
-        report.notes.push(
-          'pnpm install failed; fix the cause and run pnpm install',
-        );
+        return {
+          ...report,
+          unchanged: true,
+          failed:
+            "pnpm install failed after the apps' package.json changed; fix the cause, then run pnpm install",
+        };
       return { ...report, unchanged: true };
     }
   }
@@ -651,6 +656,7 @@ export function formatMigration(report) {
       ...list('Updated', report.updated),
       ...list('Regenerated', report.regenerated),
       ...list('Notes', report.notes),
+      ...(report.failed ? [report.failed] : []),
     ].join('\n');
   const lines = [
     `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is open' : ' is complete'}.`,
@@ -693,6 +699,7 @@ if (
     const report = migrate(repositoryRoot(), { done: values.done });
     console.log(formatMigration(report));
     if (report.unfinished) process.exitCode = 3;
+    else if (report.failed) process.exitCode = 1;
   } catch (error) {
     console.error(`migrate: ${error.message}`);
     process.exitCode = 1;
