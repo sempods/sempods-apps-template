@@ -24,7 +24,13 @@ import {
   useWorkflowAccess,
 } from '@sempods/app-sdk/react';
 import { fields, flag, text } from '@sempods/client-sdk/edit';
-import { ActionButton, Input, ScreenDialog, type Nav } from '@sempods/app-ui';
+import {
+  ActionButton,
+  Checkbox,
+  Input,
+  ScreenDialog,
+  type Nav,
+} from '@sempods/app-ui';
 import { PlusIcon } from 'lucide-react';
 import type { Place } from '../places.ts';
 
@@ -107,17 +113,16 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
           const row = mutate.for(entry);
           return (
             <li key={entry.iri} className="flex min-h-14 items-center gap-1">
-              {/* The label is the checkbox's 44px touch target. */}
-              <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
-                <input
-                  type="checkbox"
-                  className="size-6 accent-primary"
-                  checked={row.data.done}
-                  disabled={!row.canMutate}
-                  onChange={() => void row.update({ done: !row.data.done })}
-                />
-                <span className="sr-only">{t.done(row.data.name)}</span>
-              </label>
+              {/* The kit's Checkbox, named for its row: its 44px target
+                  reaches 12px beyond the box, so the margin keeps it off
+                  the link. */}
+              <Checkbox
+                className="mx-3"
+                aria-label={t.done(row.data.name)}
+                isSelected={row.data.done}
+                isDisabled={!row.canMutate}
+                onChange={(done) => void row.update({ done })}
+              />
               {/* The item's own address: a plain click opens its dialog, a
                   modified click a new tab. */}
               <a

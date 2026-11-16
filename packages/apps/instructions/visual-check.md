@@ -43,8 +43,8 @@ them as checked.
 - Spacing and alignment are consistent; nothing touches the screen edge.
 - The hierarchy is clear: one primary action per screen or dialog, other
   actions secondary or quieter.
-- Every control has a 44px touch target; checkboxes are wrapped in their
-  label.
+- Every control has a 44px touch target; a row's checkbox is the kit's
+  `Checkbox`, other checkboxes are wrapped in their label.
 - Nothing scrolls sideways at 375px.
 - At 375px, with as many items as the real data holds, the first screen
   still shows what the app is for, and Back from an item returns to the

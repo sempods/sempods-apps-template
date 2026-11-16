@@ -143,10 +143,10 @@ packed version with a manual case; it needs the npm registry and the Chromium
 of the tooling's Playwright. CI runs both.
 
 The self-test also uses the installed tooling's Playwright to click a native
-modal inside an inert ancestor. Keep Playwright at 1.64.1 while the SDK's
-[native-modal hold](https://github.com/sempods/sempods-typescript/issues/264)
-applies (#153); a later version must pass this check and the SDK browser gate
-without forced clicks.
+modal beside inert content, where the SDK places its questions since
+0.9.0-dev.2 ([SDK #264](https://github.com/sempods/sempods-typescript/issues/264)).
+Keep the tooling's Playwright at the version the SDK's browser gate uses; an
+update must pass this check without forced clicks.
 
 ### Validate an unreleased SDK together with the template
 

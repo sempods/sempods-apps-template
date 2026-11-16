@@ -81,8 +81,10 @@ function run(command, args, cwd, capture = false) {
 const pnpmRun = (repo, ...args) => run('pnpm', ['run', ...args], repo);
 
 // Resolve the browser driver through the installed tarball, just as an owner
-// does. Native top-layer dialogs escape an inert ancestor; Playwright 1.65
-// incorrectly rejected ordinary clicks there (template #153 / SDK #264).
+// does. Playwright 1.65 and later refuse a click on an element with an inert
+// ancestor, also in a native modal dialog. Since SDK 0.9.0-dev.2 the SDK's
+// questions sit in a `data-react-aria-top-layer` element beside the content
+// that React Aria makes inert (SDK #264); a plain click must reach them there.
 async function nativeModalCheck(repo) {
   const require = createRequire(
     realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
@@ -92,11 +94,12 @@ async function nativeModalCheck(repo) {
   try {
     const page = await browser.newPage();
     await page.setContent(`
-      <main inert>
+      <main inert><p>Editor</p></main>
+      <div data-react-aria-top-layer style="display: contents">
         <dialog aria-label="Unsaved changes">
           <form method="dialog"><button>Keep editing</button></form>
         </dialog>
-      </main>
+      </div>
     `);
     await page.locator('dialog').evaluate((dialog) => dialog.showModal());
     await page
@@ -105,7 +108,7 @@ async function nativeModalCheck(repo) {
     if (await page.locator('dialog').evaluate((dialog) => dialog.open))
       throw new Error('the native confirmation did not close');
     console.log(
-      '✓ installed Playwright clicks a native modal inside an inert ancestor',
+      '✓ installed Playwright clicks a native modal beside inert content',
     );
   } finally {
     await browser.close();

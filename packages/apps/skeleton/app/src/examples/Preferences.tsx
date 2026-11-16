@@ -153,7 +153,8 @@ const texts = {
 /**
  * Two sections for the header's menu: appearance and language, each with
  * its current choice checked. Language names are written in their own
- * language, so a person finds theirs in either one.
+ * language, so a person finds theirs in either one, and `lang` marks them,
+ * so a screen reader reads "Deutsch" as German in an English menu.
  */
 export function usePreferenceEntries({
   preferences,
@@ -176,13 +177,14 @@ export function usePreferenceEntries({
       display: 'section',
       choices: (
         [
-          ['browser', t.browser],
-          ['de', 'Deutsch'],
-          ['en', 'English'],
+          ['browser', t.browser, undefined],
+          ['de', 'Deutsch', 'de'],
+          ['en', 'English', 'en'],
         ] as const
-      ).map(([language, label]) => ({
+      ).map(([language, label, lang]) => ({
         id: language,
         label,
+        lang,
         checked: preferences.language === language,
         onSelect: () => change({ language }),
       })),
