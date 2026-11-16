@@ -183,6 +183,16 @@ Startup splash (sempods/sempods-apps-template#166):
 - `migrate` adds the splash to an app whose `index.html` still has the
   skeleton's empty `<div id="root"></div>` and uses the generated plugin.
 
+Preferences example (sempods/sempods-apps-template#178):
+
+- `src/examples/Preferences.tsx` follows a choice made in another tab of the
+  same app: `usePreferences` listens to the `storage` event for the app's
+  key, and for a cleared storage, and applies the stored appearance and
+  language at once. The runtime and the provider stay mounted, so open
+  edits and drafts remain. Its test notes add a second tab of the app,
+  which shows that the app is open elsewhere in the chosen language and
+  appearance.
+
 Shared implementation in the tooling (sempods/sempods-apps-template#177):
 
 - New exports `@sempods/apps/vite` and `@sempods/apps/browser-theme`, with
@@ -342,7 +352,13 @@ and installed-device limits.
     future Playwright update must pass the native-modal check in the packed
     self-test and the SDK browser gate.
 
-11. `migrate` adds `@sempods/apps` at the installed version to each app's
+11. An app with a copy of the Preferences example keeps its copy. Offer the
+    owner the skeleton's new `storage` listener in `usePreferences`, so a
+    choice in one tab applies in the app's other open tabs; it needs no
+    other change. Test it by changing the choice while a second tab of the
+    app is open.
+
+12. `migrate` adds `@sempods/apps` at the installed version to each app's
     `devDependencies` and installs; nothing else is needed for the generated
     configuration. An app from `0.11.0-dev.1` whose `src/browser-theme.ts`
     is still the skeleton's copy gets the short module on the shared helper,

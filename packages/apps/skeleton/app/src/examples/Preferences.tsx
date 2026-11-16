@@ -14,7 +14,8 @@
 //    items.
 // The runtime and the provider stay mounted: a change of language keeps
 // drafts and open edits. Test it with the system in the opposite mode, after
-// a reload, and with an unsaved edit open while the language changes.
+// a reload, with an unsaved edit open while the language changes, and with a
+// second tab of the app open: it follows the choice at once.
 import { useEffect, useState } from 'react';
 import type { Language } from '@sempods/app-sdk';
 import { useMessages } from '@sempods/app-sdk/react';
@@ -101,6 +102,22 @@ export function usePreferences() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+  useEffect(() => {
+    // Another tab of this app changed the choice, or cleared the storage
+    // (`key` null): take what is stored now, without a new runtime.
+    const follow = (event: StorageEvent) => {
+      if (event.key !== KEY && event.key !== null) return;
+      setPreferences((current) => {
+        const stored = read();
+        return stored.appearance === current.appearance &&
+          stored.language === current.language
+          ? current
+          : stored;
+      });
+    };
+    addEventListener('storage', follow);
+    return () => removeEventListener('storage', follow);
+  }, []);
   const change = (next: Partial<Preferences>) =>
     setPreferences((current) => {
       const updated = { ...current, ...next };
