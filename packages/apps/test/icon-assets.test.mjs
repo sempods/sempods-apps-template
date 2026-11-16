@@ -8,10 +8,10 @@ import { createApp } from '../scripts/new-app.mjs';
 import { drawIcon } from '../scripts/icon.mjs';
 import { regenerate } from '../scripts/regenerate.mjs';
 import { iconAssets } from '../scripts/lib/generate.mjs';
-import { tempRepository } from './fixture.mjs';
+import { linkTooling, tempRepository } from './fixture.mjs';
 
 it('keeps icon pixels and URLs stable across regenerations, and versions actual changes only', async () => {
-  const root = tempRepository('sempods-icons-');
+  const root = linkTooling(tempRepository('sempods-icons-'));
   try {
     createApp(root, { id: 'demo', title: 'Demo', language: 'en' });
     const dir = join(root, 'apps/demo');

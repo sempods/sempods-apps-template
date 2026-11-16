@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { staticProblems } from '../scripts/check.mjs';
 import { create } from '../scripts/create.mjs';
+import { THEME_BRIDGE } from '../scripts/lib/exports.mjs';
 import { readJson, writeJson } from '../scripts/lib/json.mjs';
 import { TOOLING } from '../scripts/lib/paths.mjs';
 import {
@@ -711,13 +712,61 @@ describe('migrate', () => {
       ),
     );
     install(repo, '1.0.1');
-    const report = migrateTo(repo, '1.0.1');
+    let installs = 0;
+    const report = migrateTo(repo, '1.0.1', { install: () => ++installs > 0 });
     assert.equal(report.unchanged, true);
-    assert.deepEqual(report.updated, ['apps/demo/index.html']);
+    // The app declares the tooling whose exports its configuration calls,
+    // and the changed manifest is installed.
+    assert.deepEqual(report.updated, [
+      'apps/demo/index.html',
+      'apps/demo/package.json',
+    ]);
+    assert.equal(installs, 1);
+    assert.equal(
+      readJson(join(dir, 'package.json')).devDependencies['@sempods/apps'],
+      '1.0.1',
+    );
     assert.deepEqual(report.regenerated, [
       'apps/demo/vite.sempods.generated.ts',
     ]);
-    assert.deepEqual(staticProblems(repo), []);
+    assert.deepEqual(staticProblems(repo, { tooling: pkg('1.0.1') }), []);
+    // A rerun changes no manifest and installs nothing.
+    assert.deepEqual(
+      migrateTo(repo, '1.0.1', { install: () => ++installs > 0 }).updated,
+      [],
+    );
+    assert.equal(installs, 1);
+  });
+
+  it('moves an unchanged copy of the browser-theme helper onto the shared one', () => {
+    publish('1.0.1');
+    const repo = createRepo('1.0.0');
+    for (const id of ['copied', 'changed', 'shared', 'none'])
+      createApp(repo, { id });
+    const helper = (id) => join(repo, 'apps', id, 'src', 'browser-theme.ts');
+    // The helper the skeleton of 0.11.0-dev.1 copied, as Git may check it
+    // out on Windows, and one the owner changed.
+    const copied = readFileSync(
+      join(TOOLING, 'test', 'fixtures', 'browser-theme-0.11.0-dev.1.ts'),
+      'utf8',
+    );
+    writeFileSync(helper('copied'), copied.replaceAll('\n', '\r\n'));
+    const changed = copied.replace('var(--background)', 'var(--card)');
+    writeFileSync(helper('changed'), changed);
+    writeFileSync(helper('shared'), THEME_BRIDGE);
+    install(repo, '1.0.1');
+    const report = migrateTo(repo, '1.0.1');
+    assert.ok(report.updated.includes('apps/copied/src/browser-theme.ts'));
+    assert.equal(readFileSync(helper('copied'), 'utf8'), THEME_BRIDGE);
+    assert.equal(readFileSync(helper('changed'), 'utf8'), changed);
+    assert.equal(readFileSync(helper('shared'), 'utf8'), THEME_BRIDGE);
+    assert.equal(existsSync(helper('none')), false);
+    const notes = report.notes.filter((note) => /browser-theme/.test(note));
+    assert.equal(notes.length, 1);
+    assert.match(
+      notes[0],
+      /^apps\/changed\/src\/browser-theme\.ts differs from the copy the skeleton shipped and stays as it is\. @sempods\/apps\/browser-theme now holds/,
+    );
   });
 
   it('moves titles and descriptions of a schema 1 apps.json into app.json', () => {
@@ -746,6 +795,8 @@ describe('migrate', () => {
       'apps/demo/app.json',
       'apps/konsum/app.json',
       'apps.json',
+      'apps/demo/package.json',
+      'apps/konsum/package.json',
     ]);
     assert.match(report.notes.join(), /demo\/app\.json: the app follows/);
     assert.deepEqual(report.regenerated, []);
@@ -755,7 +806,7 @@ describe('migrate', () => {
       description: 'A demo.',
     });
     // The note's remaining step: the description in German.
-    assert.deepEqual(staticProblems(repo), [
+    assert.deepEqual(staticProblems(repo, { tooling: pkg('1.0.1') }), [
       'apps/demo/app.json: description_localized.de is missing; the app is also shown in de',
     ]);
   });
@@ -775,8 +826,11 @@ describe('migrate', () => {
     install(repo, '1.0.1');
     const report = migrateTo(repo, '1.0.1');
     assert.deepEqual(report.updated, [
+      'apps/demo/package.json',
       'apps/demo/public/icon-maskable-512.png',
       'apps/demo/public/apple-touch-icon.png',
+      'apps/own/package.json',
+      'apps/page/package.json',
     ]);
     assert.ok(existsSync(pub('demo', 'icon-maskable-512.png')));
     assert.equal(existsSync(pub('own', 'icon-maskable-512.png')), false);
@@ -785,7 +839,7 @@ describe('migrate', () => {
       report.notes.join('\n'),
       /apps\/own\/public\/icon-maskable-512\.png, apple-touch-icon\.png is missing, and the app's icon is not the monogram/,
     );
-    assert.deepEqual(staticProblems(repo), [
+    assert.deepEqual(staticProblems(repo, { tooling: pkg('1.0.1') }), [
       'apps/own/public/icon-maskable-512.png is missing; run pnpm run icon own',
       'apps/own/public/apple-touch-icon.png is missing; run pnpm run icon own',
     ]);

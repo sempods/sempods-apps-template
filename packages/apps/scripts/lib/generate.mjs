@@ -11,7 +11,6 @@ import {
   SITE_PROFILES,
   siteIdentity,
 } from './apps.mjs';
-import { escapeHtml } from './html.mjs';
 import { MASKABLE_ICON, PNG_ICONS, TOUCH_ICON } from './icon.mjs';
 import { manifestColours, PLAIN_COLOURS } from './themes.mjs';
 
@@ -186,37 +185,32 @@ const ABOUT_KEYS = [
   'categories',
 ];
 
-// The TypeScript type of the manifest's translation members, as written.
-const LOCALIZED_KEY = '`${string}_localized`';
+// The generated Vite configuration imports what every app shares from here.
+const VITE_EXPORT = '@sempods/apps/vite';
 
-/** The web app manifest of a PWA, as TypeScript. */
-function manifestSource(app, colours, icons) {
-  const p = app.path;
+/** The PWA options: the app's manifest members and offline addresses. */
+function pwaSource(app, colours, icons) {
   const icon = (file, size, purpose) =>
-    `    { src: ${json(`${p}${icons[file] ?? file}`)}, sizes: '${size}x${size}', type: 'image/png', purpose: '${purpose}' },`;
+    `      { src: ${json(`${app.path}${icons[file] ?? file}`)}, sizes: '${size}x${size}', type: 'image/png', purpose: '${purpose}' },`;
   const about = ABOUT_KEYS.filter((key) => app.about[key] !== undefined).map(
-    (key) => `  ${key}: ${json(app.about[key])},`,
+    (key) => `    ${key}: ${json(app.about[key])},`,
   );
-  return `
-// The installed app's manifest, from app.json and the app's theme. Its
-// translations (name_localized and the like, Chrome and Edge 148) are newer
-// than the plugin's types, hence the wider type.
-const manifest: Partial<ManifestOptions> &
-  Record<${LOCALIZED_KEY}, Record<string, string>> = {
-  id: ${json(p)},
+  return `sempodsPwa({
+  base,
+  // The installed app's manifest, from app.json and the app's theme.
+  manifest: {
 ${about.join('\n')}
-  start_url: ${json(p)},
-  scope: ${json(p)},
-  display: 'standalone',
-  background_color: ${json(colours.background)},
-  theme_color: ${json(colours.theme ?? colours.background)},
-  icons: [
+    background_color: ${json(colours.background)},
+    theme_color: ${json(colours.theme ?? colours.background)},
+    icons: [
 ${icon('icon-192.png', 192, 'any')}
 ${icon('icon-512.png', 512, 'any')}
 ${icon(MASKABLE_ICON, 512, 'maskable')}
-  ],
-};
-`;
+    ],
+  },
+  // The start page, the routes and the resource patterns, with any query.
+  addresses: /${addressSource(app, { query: true })}/,
+})`;
 }
 
 // The splash shows the name in the page's language, as the app's startup
@@ -225,99 +219,36 @@ const splashName = (app) =>
   (app.language !== AUTO && app.about?.name_localized?.[app.language]) ||
   app.title;
 
-/** Vite base path, development server, page title and PWA settings. */
+/**
+ * Vite base path, development server, page plugin and PWA settings: the
+ * app's data and calls into @sempods/apps/vite, which holds the behaviour.
+ */
 export function viteSource(app, colours = PLAIN_COLOURS, icons = {}) {
-  const p = app.path;
-  const pwa = app.pwa
-    ? `{
-    // The app registers its worker itself (src/main.tsx) and never takes over
-    // an open page: an update applies once every window is closed.
-    registerType: 'prompt',
-    injectRegister: false,
-    manifest,
-    workbox: {
-      // Precache the built shell only; nothing is cached at runtime.
-      globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
-      runtimeCaching: [],
-      // Serve the cached shell only for this app's start page, routes and
-      // resource patterns, with any query. The callback, Pod and login pages
-      // always go to the network.
-      navigateFallback: ${json(`${p}index.html`)},
-      navigateFallbackAllowlist: [/${addressSource(app, { query: true })}/],
-      skipWaiting: false,
-      clientsClaim: false,
-      cleanupOutdatedCaches: true,
-    },
-  }`
-    : 'null';
-  const assets = Object.entries(icons).map(([file, path]) => [path, file]);
+  const assets = Object.fromEntries(
+    Object.entries(icons).map(([file, path]) => [path, file]),
+  );
   return `${HEADER}
-${assets.length ? `import { existsSync, readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';` : ''}
-import type { Plugin } from 'vite';
-import type { ${app.pwa ? 'ManifestOptions, ' : ''}VitePWAOptions } from 'vite-plugin-pwa';
-${app.pwa ? manifestSource(app, colours, icons) : ''}
-export const base = ${json(p)};
-${assets.length ? `
-// Content-addressed copies are emitted at build time and served in dev.
-// Originals remain the inputs; never derive an icon from an installed icon.
-const iconFiles: Readonly<Record<string, string>> = ${json(Object.fromEntries(assets))};
-function readIcon(path: string): Buffer {
-  const file = new URL('./public/' + iconFiles[path], import.meta.url);
-  if (!existsSync(file))
-    throw new Error('Icon missing: public/' + iconFiles[path] + '. Restore it with pnpm run icon ${app.id}, then run pnpm run regenerate before building or serving.');
-  const bytes = readFileSync(file);
-  const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
-  if (!path.endsWith('-' + digest + '.png'))
-    throw new Error('Icon changed: run pnpm run regenerate before building or serving.');
-  return bytes;
-}
-` : ''}
-// The static page title from app.json, the link to the app's published
-// description, and the name and the theme's initial light/dark colours for
-// the browser chrome and the startup splash, resolved for every page Vite
-// serves or builds. index.html has no <title> of its own.
-// Links are absolute, since the same page answers the app's routes. The
-// plugin also serves/emits versioned launcher icons and adds the Apple link.
-export const pageTitle: Plugin = {
-  name: 'sempods-page-title',
-${assets.length ? `  generateBundle() {
-    for (const fileName of Object.keys(iconFiles))
-      this.emitFile({ type: 'asset', fileName, source: readIcon(fileName) });
+import { ${app.pwa ? 'sempodsPage, sempodsPwa' : 'sempodsPage'}, type PwaOptions } from '${VITE_EXPORT}';
+
+export const base = ${json(app.path)};
+
+// Title, description link, initial colours, splash name and launcher icons
+// of every page Vite serves or builds.
+export const pageTitle = sempodsPage({
+  app: ${json(app.id)},
+  base,
+  title: ${json(app.title)},
+  splashName: ${json(splashName(app))},
+  colours: {
+    light: ${json(colours.background)},
+    dark: ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)},
+    text: ${json(colours.text ?? PLAIN_COLOURS.text)},
+    darkText: ${json(colours.darkText ?? PLAIN_COLOURS.darkText)},
   },
-  configureServer(server) {
-    server.middlewares.use((request, response, next) => {
-      const path = new URL(request.url ?? '/', 'http://localhost').pathname;
-      const file = path.startsWith(base) ? path.slice(base.length) : '';
-      if (!Object.hasOwn(iconFiles, file)) return next();
-      try {
-        response.setHeader('Content-Type', 'image/png');
-        response.end(readIcon(file));
-      } catch (error) { next(error); }
-    });
-  },
-` : ''}  transformIndexHtml: (html) => ({
-    html: html
-      .replaceAll('__THEME_LIGHT__', ${json(colours.background)})
-      .replaceAll('__THEME_DARK__', ${json(colours.darkBackground ?? PLAIN_COLOURS.darkBackground)})
-      .replaceAll('__THEME_TEXT_LIGHT__', ${json(colours.text ?? PLAIN_COLOURS.text)})
-      .replaceAll('__THEME_TEXT_DARK__', ${json(colours.darkText ?? PLAIN_COLOURS.darkText)})
-      .replaceAll('__APP_NAME__', () => ${json(escapeHtml(splashName(app)))}),
-    tags: [
-${icons[TOUCH_ICON] ? `      ...(/<link\\b[^>]*\\srel\\s*=\\s*(?:"(?:[^"]*\\s)?apple-touch-icon(?:\\s[^"]*)?"|'(?:[^']*\\s)?apple-touch-icon(?:\\s[^']*)?'|apple-touch-icon(?=[\\s>]))/i.test(html.replace(/<!--[\\s\\S]*?(?:-->|$)/g, '')) ? [] : [{
-        tag: 'link',
-        attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: ${json(`${p}${icons[TOUCH_ICON]}`)} },
-        injectTo: 'head' as const,
-      }]),` : ''}
-      { tag: 'title', children: ${json(escapeHtml(app.title))}, injectTo: 'head' },
-      {
-        tag: 'link',
-        attrs: { rel: 'alternate', type: 'application/ld+json', href: ${json(`${p}app.jsonld`)} },
-        injectTo: 'head',
-      },
-    ],
-  }),
-};
+  // Content-addressed copies of the icons in public/.
+  icons: ${json(assets)},
+  publicDir: new URL('./public/', import.meta.url),
+});
 
 export const server = {
   host: '127.0.0.1',
@@ -325,7 +256,7 @@ export const server = {
   strictPort: true,
 } as const;
 
-export const pwa: Partial<VitePWAOptions> | null = ${pwa};
+export const pwa: PwaOptions | null = ${app.pwa ? pwaSource(app, colours, icons) : 'null'};
 `;
 }
 

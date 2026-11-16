@@ -55,6 +55,25 @@ Contents:
 - `update-policy.json`: the role of each starter file on update.
 - `CHANGELOG.md`: what each release changed, with upgrade notes.
 
+Exports, which apps import; each app declares `@sempods/apps` in its
+`package.json` at the repository's tooling version (`new-app` writes it,
+`check` compares it, `migrate` moves it):
+
+- `@sempods/apps/vite`: `sempodsPage(options)`, the Vite plugin for the
+  page title, description link, initial theme colours, startup splash name
+  and content-addressed launcher icons, and `sempodsPwa(settings)`, the
+  `vite-plugin-pwa` options of an installable app. The generated
+  `vite.sempods.generated.ts` calls them with the app's data. Node only;
+  `vite` and `vite-plugin-pwa` are optional peer dependencies for the types.
+- `@sempods/apps/browser-theme`: browser code without imports.
+  `followBrowserTheme()` keeps every
+  `<meta name="theme-color" data-sempods-theme>` at the page's resolved
+  `--background`, also when the system's appearance changes, and returns the
+  function that stops it; `syncBrowserTheme()` does it once, after an
+  explicit appearance choice.
+
+Both ship TypeScript declarations next to them in `api/`.
+
 `engines` names the Node and pnpm versions this package needs; read them with
 `npm view @sempods/apps@<version> engines` before installing a version.
 

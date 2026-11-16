@@ -37,9 +37,10 @@ import {
   themeNames,
 } from './lib/themes.mjs';
 import { readJson, sortedKeys, writeJson } from './lib/json.mjs';
-import { repositoryRoot, SKELETON } from './lib/paths.mjs';
+import { repositoryRoot, SKELETON, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
 import { EXACT_VERSION, SDK } from './lib/sdk.mjs';
+import { PACKAGE } from './lib/shared.mjs';
 
 const TEXT = new Set(['.json', '.html', '.md', '.ts', '.tsx', '.css']);
 
@@ -148,6 +149,12 @@ export function createApp(
     const pkgFile = join(appDir, 'package.json');
     const pkg = readJson(pkgFile);
     pkg.dependencies = sortedKeys({ ...pkg.dependencies, ...sdk });
+    // The generated configuration and the skeleton import this tooling's
+    // exports, so the app declares exactly the version that wrote them.
+    pkg.devDependencies = sortedKeys({
+      ...pkg.devDependencies,
+      [PACKAGE]: readJson(join(TOOLING, 'package.json')).version,
+    });
     writeJson(pkgFile, pkg);
     writeGenerated(appDir, app, manifest.site);
     writeApps(root, { ...manifest, apps: [...manifest.apps, entry] });
