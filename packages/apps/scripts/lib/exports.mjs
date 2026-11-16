@@ -2,8 +2,9 @@
 // @sempods/apps/browser-theme): the app declares the tooling at its exact
 // version, and the migration moves a browser-theme helper copied from the
 // skeleton onto the shared one. App code the owner changed stays theirs.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { replaceFile } from './files.mjs';
 import { readJson, sortedKeys, writeJson } from './json.mjs';
 import { PACKAGE } from './shared.mjs';
 
@@ -75,10 +76,16 @@ export function adoptToolingPin(appDir, version) {
  */
 export function adoptBrowserTheme(appDir, id) {
   const file = join(appDir, BROWSER_THEME);
-  if (!existsSync(file)) return {};
-  const source = lines(readFileSync(file, 'utf8'));
+  let source;
+  try {
+    source = lines(readFileSync(file, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw error;
+  }
   if (source === COPIED_THEME) {
-    writeFileSync(file, THEME_BRIDGE);
+    // A new file renamed into place: the old or the complete new one remains.
+    replaceFile(file, THEME_BRIDGE);
     return { changed: true };
   }
   if (source.includes(`'${SHARED_THEME}'`)) return {};
