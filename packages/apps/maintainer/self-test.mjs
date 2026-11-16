@@ -3,7 +3,8 @@
 // @sempods/apps and @sempods/create-apps, check what the tarball contains,
 // create a repository with the creator, install the tooling from its tarball,
 // then create an app, refuse a rerun, check it including a standalone
-// install/build, check its theme in a browser (and a broken one), regenerate,
+// install/build, check its theme in a browser (and a broken one), render its
+// example screens with synthetic rows in a browser, regenerate,
 // configure a site, build it and assert the profile each build mode selects. Finally an update: the owner customizes the
 // repository, a later version changes the starter, and migrate applies it
 // from the recorded baseline. Source-workspace tests alone can miss a
@@ -539,6 +540,207 @@ async function overviewCheck(repo) {
   }
 }
 
+// A page that renders the skeleton's example screens with the SDK's own
+// components and synthetic hooks (no Pod): three short rows, the issue's
+// name with an unconfirmed deletion and an unbroken long name.
+const EXAMPLES_PAGE = {
+  'index.html': `<!doctype html>
+<html lang="en" data-actions="inverted" data-secondary="text">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+  </head>
+  <body><div id="root"></div><script type="module" src="./main.tsx"></script></body>
+</html>
+`,
+  'main.tsx': `import '../src/index.css';
+import { createRoot } from 'react-dom/client';
+import { createBrowserRuntime } from '@sempods/app-sdk';
+import { SempodsProvider } from '@sempods/app-sdk/react';
+import { useNav } from '@sempods/app-ui';
+import { places } from '../src/places.ts';
+import { runtimeOptions } from '../src/sempods.generated.ts';
+import { CollectionScreen } from '../src/examples/CollectionScreen.tsx';
+import { ListScreen } from '../src/examples/ListScreen.tsx';
+import { LogScreen } from '../src/examples/LogScreen.tsx';
+
+const runtime = createBrowserRuntime(runtimeOptions);
+const screens = { list: ListScreen, log: LogScreen, collection: CollectionScreen };
+const Screen = screens[new URLSearchParams(location.search).get('screen') as keyof typeof screens];
+function Check() {
+  const nav = useNav(places);
+  return <main className="mx-auto max-w-3xl p-4"><Screen nav={nav} /></main>;
+}
+createRoot(document.getElementById('root')!).render(
+  <SempodsProvider runtime={runtime} language="en"><Check /></SempodsProvider>,
+);
+`,
+  'sdk.ts': `export * from 'sempods-sdk-react';
+const context = 'https://pod.example/lists/1/';
+const names = ['Milk', 'Geschirrspülmaschinentabs', '${'Vorratspackung'.repeat(4)}', 'Bread'];
+const items = names.map((name, n) => ({
+  iri: context + 'item-' + n,
+  data: { name, done: n === 0, day: '2026-11-16', text: 'A short text.' },
+}));
+const idle = { outcome: null, checked: false, current: undefined, unreadable: false, onCheck: async () => false, onAcknowledge: () => {} };
+const unconfirmed = { ...idle, outcome: { kind: 'unconfirmed', current: undefined, desiredObserved: false } };
+const notSent = async () => ({ kind: 'not-sent' });
+export const useAppState = () => ({ view: { contextIri: context }, changing: false });
+export const useWorkflowAccess = () => ({ write: true });
+export const useList = () => ({ state: { kind: 'ready' }, data: { items, skipped: 0 }, reload: async () => {} });
+export const useFieldUpdate = () => ({
+  unresolved: [],
+  for: (entry: (typeof items)[number]) => ({
+    data: entry.data,
+    canMutate: entry !== items[1],
+    notice: entry === items[1] ? unconfirmed : idle,
+    update: notSent,
+    remove: notSent,
+  }),
+});
+export const useCreation = () => ({ draft: items[0].data, canCreate: false, canEdit: true, busy: false, change: () => {}, create: notSent, notice: idle });
+export const useContextEditor = () => ({ open: async () => {}, close: async () => true, target: null, editor: null, phase: 'idle' });
+`,
+  'vite.config.ts': `import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite';
+
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+// The app's directory is the root, so Tailwind finds the classes in src/.
+export default defineConfig({
+  root: here('..'),
+  base: './',
+  publicDir: false,
+  logLevel: 'warn',
+  build: {
+    outDir: here('./dist'),
+    cssTarget: 'esnext',
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: { input: here('./index.html') },
+  },
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: [
+      { find: /^@sempods\\/app-sdk\\/react$/, replacement: here('./sdk.ts') },
+      { find: 'sempods-sdk-react', replacement: fileURLToPath(import.meta.resolve('@sempods/app-sdk/react')) },
+    ],
+  },
+});
+`,
+};
+
+/**
+ * The example screens keep a row's recovery notice readable (#180): with a
+ * long name and an unconfirmed deletion, the notice takes the row's or
+ * card's full width at 375px and on desktop, light and dark; its actions
+ * and the row's controls keep 44px targets, and rows without a notice keep
+ * their height.
+ */
+async function examplesCheck(repo) {
+  const app = join(repo, 'apps', FIXTURE);
+  const dir = join(app, 'examples-check');
+  mkdirSync(dir);
+  for (const [file, source] of Object.entries(EXAMPLES_PAGE))
+    writeFileSync(join(dir, file), source);
+  const require = createRequire(
+    realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+  );
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  try {
+    run('pnpm', ['exec', 'vite', 'build', '--config', 'examples-check/vite.config.ts'], app);
+    const dist = join(dir, 'dist');
+    const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+    const backgrounds = new Set();
+    for (const screen of ['list', 'log', 'collection'])
+      for (const [width, height] of [[375, 812], [1280, 800]])
+        for (const colorScheme of ['light', 'dark']) {
+          const where = `${screen} at ${width}px, ${colorScheme}`;
+          const context = await browser.newContext({ viewport: { width, height }, colorScheme });
+          await context.route('**/*', async (route) => {
+            const file = join(dist, new URL(route.request().url()).pathname);
+            if (!existsSync(file)) return route.abort();
+            await route.fulfill({ body: readFileSync(file), contentType: mime[extname(file)] });
+          });
+          const page = await context.newPage();
+          page.setDefaultTimeout(5000);
+          const errors = [];
+          page.on('pageerror', (error) => errors.push(error.message));
+          await page.goto(`http://localhost/examples-check/index.html?screen=${screen}`);
+          const check = page.getByRole('button', { name: 'Check current version' });
+          await check.waitFor();
+          const shown = await page.evaluate(() => {
+            const box = (el) => el.getBoundingClientRect().toJSON();
+            const row = (name) => [...document.querySelectorAll('li')].find((li) => li.querySelector('a')?.textContent.startsWith(name));
+            const uncertain = row('Geschirrspülmaschinentabs');
+            const long = row([...document.querySelectorAll('li a')].map((a) => a.textContent).find((name) => name.length > 40));
+            const notice = uncertain.querySelector('section');
+            // Colours as sRGB bytes, whatever notation the style resolves to.
+            const canvas = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+            const rgb = (colour) => {
+              canvas.clearRect(0, 0, 1, 1);
+              canvas.fillStyle = colour;
+              canvas.fillRect(0, 0, 1, 1);
+              return [...canvas.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+            };
+            return {
+              overflow: document.documentElement.scrollWidth - innerWidth,
+              row: box(uncertain),
+              notice: box(notice),
+              buttons: [...uncertain.querySelectorAll('button')].map(box),
+              link: box(uncertain.querySelector('a')),
+              longLink: box(long.querySelector('a')),
+              longRemove: box(long.querySelector('button')),
+              plain: box(row('Bread')),
+              checkbox: document.querySelector('[data-slot="checkbox"]') && (() => {
+                const target = box(document.querySelector('[data-slot="checkbox"]'));
+                const x = target.x + target.width / 2, y = target.y + target.height / 2;
+                const hit = (dx, dy) => !!document.elementFromPoint(x + dx, y + dy)?.closest('[data-slot="checkbox"]');
+                return hit(-21, 0) && hit(21, 0) && hit(0, -21) && hit(0, 21);
+              })(),
+              text: rgb(getComputedStyle(notice).color),
+              background: rgb(getComputedStyle(document.body).backgroundColor),
+            };
+          });
+          if (errors.length) throw new Error(`${where}: ${errors.join('; ')}`);
+          if (shown.overflow > 0) throw new Error(`${where}: the page scrolls sideways`);
+          // The card keeps its padding; a row's notice spans the row.
+          if (shown.notice.width < shown.row.width - 40)
+            throw new Error(`${where}: the notice is ${Math.round(shown.notice.width)}px wide in a ${Math.round(shown.row.width)}px row`);
+          for (const button of shown.buttons)
+            if (button.width < 44 || button.height < 44 || button.right > width)
+              throw new Error(`${where}: a control of the row is smaller than 44px or off screen`);
+          if (screen !== 'collection') {
+            const middle = (box) => box.y + box.height / 2;
+            if (Math.abs(middle(shown.longLink) - middle(shown.longRemove)) > 1 || shown.longLink.right > shown.longRemove.x)
+              throw new Error(`${where}: a long name pushes Delete off its line`);
+            if (shown.plain.height > 56)
+              throw new Error(`${where}: a row without a notice grew to ${shown.plain.height}px`);
+          }
+          if (screen === 'list' && !shown.checkbox)
+            throw new Error(`${where}: the checkbox has no 44px target`);
+          const luminance = (rgb) => {
+            const [r, g, b] = rgb.map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          };
+          const [light, dark] = [luminance(shown.text), luminance(shown.background)].sort((a, b) => b - a);
+          if ((light + 0.05) / (dark + 0.05) < 4.5)
+            throw new Error(`${where}: the notice's text lacks contrast`);
+          backgrounds.add(shown.background.join());
+          await check.scrollIntoViewIfNeeded();
+          if (!(await check.isVisible())) throw new Error(`${where}: Check current version is not reachable`);
+          await context.close();
+        }
+    if (backgrounds.size !== 2) throw new Error('the examples do not follow light and dark');
+    console.log('✓ example screens: full-width row notices with long names at 375px and on desktop, light and dark');
+  } finally {
+    await browser.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 /**
  * The built app takes only browser code from the tooling: its theme helper,
  * none of the Vite plugin's Node modules.
@@ -947,6 +1149,7 @@ try {
   bundleCheck(repo);
   await overviewCheck(repo);
   await appThemeCheck(repo);
+  await examplesCheck(repo);
   // Without an ID, dev lists the apps instead of starting one.
   if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
     throw new Error('pnpm run dev without an ID does not list the app');

@@ -46,6 +46,9 @@ them as checked.
 - Every control has a 44px touch target; a row's checkbox is the kit's
   `Checkbox`, other checkboxes are wrapped in their label.
 - Nothing scrolls sideways at 375px.
+- At 375px, a row with a long name and an open outcome, such as an
+  unconfirmed deletion, shows the notice across the row's width with its
+  recovery actions reachable.
 - At 375px, with as many items as the real data holds, the first screen
   still shows what the app is for, and Back from an item returns to the
   list as it was, with its search and position.

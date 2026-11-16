@@ -180,10 +180,14 @@ export function LogScreen({ nav }: { readonly nav: Nav<Place> }) {
             {group.items.map((item) => {
               const row = mutate.for(item);
               return (
-                <li key={item.iri} className="flex min-h-12 items-center gap-1">
+                // The row wraps, so a notice gets its own full-width line.
+                <li
+                  key={item.iri}
+                  className="flex min-h-12 flex-wrap items-center gap-1"
+                >
                   <a
                     {...nav.link(entryPlace(item.iri))}
-                    className="flex min-h-11 flex-1 items-center rounded-md px-2 hover:bg-muted"
+                    className="flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 wrap-anywhere hover:bg-muted"
                   >
                     {row.data.name}
                   </a>
@@ -192,7 +196,9 @@ export function LogScreen({ nav }: { readonly nav: Nav<Place> }) {
                     onRemove={row.remove}
                     label={t.remove(row.data.name)}
                   />
-                  <UpdateNotice {...row.notice} quiet />
+                  <div className="basis-full pb-2 empty:hidden">
+                    <UpdateNotice {...row.notice} quiet />
+                  </div>
                 </li>
               );
             })}
