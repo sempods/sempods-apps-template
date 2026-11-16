@@ -325,9 +325,10 @@ describes, and style them with Tailwind classes on the theme's roles
   ("List", "Share more lists …").
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
-  in the header's menu, stored on the device. Its first lines say how to
-  wire it in; test it with the system in the opposite mode and with an
-  unsaved edit open while the language changes.
+  in the header's menu, stored on the device; the app's other open tabs
+  follow a choice at once. Its first lines say how to wire it in; test it
+  with the system in the opposite mode, with an unsaved edit open while the
+  language changes, and with a second tab of the app open.
 
 A component the UI kit lacks can come from `shadcn add` (the CLI as a
 development dependency of the app); it is then the app's own code. Copying a

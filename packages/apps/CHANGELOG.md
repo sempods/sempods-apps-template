@@ -180,6 +180,16 @@ Startup splash (sempods/sempods-apps-template#166):
 - `migrate` adds the splash to an app whose `index.html` still has the
   skeleton's empty `<div id="root"></div>` and uses the generated plugin.
 
+Preferences example (sempods/sempods-apps-template#178):
+
+- `src/examples/Preferences.tsx` follows a choice made in another tab of the
+  same app: `usePreferences` listens to the `storage` event for the app's
+  key, and for a cleared storage, and applies the stored appearance and
+  language at once. The runtime and the provider stay mounted, so open
+  edits and drafts remain. Its test notes add a second tab of the app,
+  which shows that the app is open elsewhere in the chosen language and
+  appearance.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
@@ -306,6 +316,12 @@ and installed-device limits.
     confirmation checks; do not bypass actionability with forced clicks. A
     future Playwright update must pass the native-modal check in the packed
     self-test and the SDK browser gate.
+
+11. An app with a copy of the Preferences example keeps its copy. Offer the
+    owner the skeleton's new `storage` listener in `usePreferences`, so a
+    choice in one tab applies in the app's other open tabs; it needs no
+    other change. Test it by changing the choice while a second tab of the
+    app is open.
 
 ## 0.10.0
 
