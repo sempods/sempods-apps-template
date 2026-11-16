@@ -6,10 +6,13 @@ configuration choices and the SDK migration.
 
 ## 0.11.0
 
-Prerelease `0.11.0-dev.1` for acceptance testing against SDK `0.9.0-dev.1`.
-It also carries the Playwright pin planned for 0.10.1, which was not released.
-The shared implementation in the tooling (sempods/sempods-apps-template#177)
-and SDK `0.9.0-dev.2`, which lifts that pin, came after `0.11.0-dev.1`.
+Prerelease `0.11.0-dev.2` for acceptance testing against SDK `0.9.0-dev.2`.
+Since `0.11.0-dev.1` (SDK `0.9.0-dev.1`, with the Playwright pin planned for
+0.10.1, which was not released) it adds the shared implementation in the
+tooling (sempods/sempods-apps-template#177), the Preferences example across
+tabs (sempods/sempods-apps-template#178), row notices on narrow screens
+(sempods/sempods-apps-template#180) and SDK `0.9.0-dev.2`, which lifts that
+pin.
 
 ### Changes
 
