@@ -112,6 +112,22 @@ async function nativeModalCheck(repo) {
   }
 }
 
+const OVERRIDES = '\n# Self-test: packages that are not on the registry.\noverrides:\n';
+
+/** Replaces the self-test's overrides in the repository's workspace file. */
+function writeOverrides(repo, overrides) {
+  const workspace = join(repo, 'pnpm-workspace.yaml');
+  const settings = readFileSync(workspace, 'utf8').split(OVERRIDES)[0];
+  writeFileSync(
+    workspace,
+    settings +
+      OVERRIDES +
+      Object.entries(overrides)
+        .map(([name, path]) => `  '${name}': ${JSON.stringify(path)}\n`)
+        .join(''),
+  );
+}
+
 function pack(dir, out) {
   const before = new Set(readdirSync(out));
   run('pnpm', ['pack', '--pack-destination', out], dir);
@@ -520,6 +536,25 @@ async function overviewCheck(repo) {
   }
 }
 
+/**
+ * The built app takes only browser code from the tooling: its theme helper,
+ * none of the Vite plugin's Node modules.
+ */
+function bundleCheck(repo) {
+  const assets = join(repo, 'site-dist', FIXTURE, 'assets');
+  const scripts = readdirSync(assets)
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => [name, readFileSync(join(assets, name), 'utf8')]);
+  if (!scripts.length) throw new Error('the built app has no script');
+  for (const [name, code] of scripts)
+    for (const node of [/["'`]node:/, /\breadFileSync\b/, /\bcreateHash\b/])
+      if (node.test(code))
+        throw new Error(`assets/${name} contains Node code (${node})`);
+  if (!scripts.some(([, code]) => code.includes('data-sempods-theme')))
+    throw new Error('the built app does not contain the shared theme helper');
+  console.log('✓ built app bundles the theme helper and no Node modules');
+}
+
 /** Configures a site, builds it for real and checks the profiles. */
 function publish(repo) {
   const dir = join(repo, 'apps', FIXTURE);
@@ -721,9 +756,19 @@ function migrateExercise(repo, work, tooling) {
   edit(later, 'starter/docs/start.md', (value) => `${value}\nStarter addition.\n`);
   const laterTarball = pack(later, work);
 
+  // What `pnpm run update` installs: the later version for the root only;
+  // the apps still declare the earlier one until migrate moves them.
   const manifest = readJson(join(repo, 'package.json'));
-  manifest.devDependencies['@sempods/apps'] = `file:${laterTarball}`;
+  manifest.devDependencies['@sempods/apps'] = next;
   writeJson(join(repo, 'package.json'), manifest);
+  const workspace = readFileSync(join(repo, 'pnpm-workspace.yaml'), 'utf8');
+  writeFileSync(
+    join(repo, 'pnpm-workspace.yaml'),
+    workspace.replace(
+      `'@sempods/apps': ${JSON.stringify(`file:${tooling}`)}`,
+      `'@sempods/apps': ${JSON.stringify(`file:${laterTarball}`)}`,
+    ),
+  );
   run('pnpm', [...INSTALL], repo);
   // The baseline's version is not on the registry: take its tarball.
   process.env.SEMPODS_APPS_PACKAGES = dirname(tooling);
@@ -755,6 +800,9 @@ function migrateExercise(repo, work, tooling) {
     throw new Error('migrate --done did not keep the decided docs/start.md');
   if (existsSync(join(repo, '.sempods-migration')))
     throw new Error('migrate --done left .sempods-migration/ behind');
+  const app = readJson(join(repo, 'apps', FIXTURE, 'package.json'));
+  if (app.devDependencies['@sempods/apps'] !== next)
+    throw new Error('migrate did not move the app to the later tooling');
   pnpmRun(repo, 'check');
   console.log('✓ migrate applies a later starter and keeps owner content');
 }
@@ -808,13 +856,16 @@ try {
     throw new Error('links in the new repository do not resolve');
   console.log('✓ creator writes the starter and its baseline');
 
-  // The version is not on the registry yet: install it from its tarball.
+  // The version is not on the registry yet: install it from its tarball,
+  // for the root and for each app that declares it (also in the standalone
+  // copy, which takes the workspace settings), through an override.
   const manifest = readJson(join(repo, 'package.json'));
-  manifest.devDependencies['@sempods/apps'] = `file:${tooling}`;
-  writeJson(join(repo, 'package.json'), manifest);
+  if (manifest.devDependencies['@sempods/apps'] !== version)
+    throw new Error('the new repository declares another @sempods/apps');
+  const overrides = { '@sempods/apps': `file:${tooling}` };
   if (sdkTarballs) {
     const directory = resolve(sdkTarballs);
-    const overrides = {};
+    const sdk = {};
     for (const file of readdirSync(directory).filter((name) =>
       name.endsWith('.tgz'),
     )) {
@@ -831,22 +882,20 @@ try {
           throw new Error(
             `SDK tarball version differs from starter: ${pkg.name}`,
           );
-        overrides[pkg.name] = `file:${tarball}`;
+        sdk[pkg.name] = `file:${tarball}`;
       }
     }
-    if (Object.keys(overrides).length !== 3)
+    if (Object.keys(sdk).length !== 3)
       throw new Error('Provide one tarball for each SDK package.');
-    const workspace = join(repo, 'pnpm-workspace.yaml');
-    writeFileSync(
-      workspace,
-      readFileSync(workspace, 'utf8') +
-        '\noverrides:\n' +
-        Object.entries(overrides)
-          .map(([name, path]) => `  '${name}': ${JSON.stringify(path)}\n`)
-          .join(''),
-    );
+    Object.assign(overrides, sdk);
   }
+  writeOverrides(repo, overrides);
   run('pnpm', ['install', '--no-frozen-lockfile'], repo);
+  // The tooling's peers for the apps' Vite configuration are optional: the
+  // root, which has no Vite of its own, does not get them installed.
+  for (const name of ['vite', 'vite-plugin-pwa'])
+    if (existsSync(join(repo, 'node_modules', name)))
+      throw new Error(`the root installed the optional peer ${name}`);
   await nativeModalCheck(repo);
   checkSnapshot(
     join(repo, 'node_modules', '@sempods', 'apps'),
@@ -892,6 +941,7 @@ try {
   pnpmRun(repo, 'regenerate');
   console.log('✓ installed package creates and checks an app');
   publish(repo);
+  bundleCheck(repo);
   await overviewCheck(repo);
   await appThemeCheck(repo);
   // Without an ID, dev lists the apps instead of starting one.

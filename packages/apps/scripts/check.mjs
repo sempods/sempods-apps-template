@@ -26,6 +26,7 @@ import { staleGenerated } from './lib/generate.mjs';
 import { iconProblems } from './lib/icon.mjs';
 import { builtPageProblems, pageProblems } from './lib/page.mjs';
 import { migrationState } from './migrate.mjs';
+import { PACKAGE } from './lib/shared.mjs';
 import { readJson, writeJson } from './lib/json.mjs';
 import { repositoryRoot, TOOLING } from './lib/paths.mjs';
 import { INSTALL, pnpm, scriptArgs } from './lib/pnpm.mjs';
@@ -106,6 +107,7 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
       );
 
   const rootManifest = readJson(join(root, 'package.json'));
+  const toolingManifest = readJson(join(tooling, 'package.json'));
 
   const versions = new Map();
   const expect = (where, pkg, version) => {
@@ -148,6 +150,13 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
     // The UI kit is optional: an app built before it keeps its own kit.
     for (const sdk of appSdk(pkg.dependencies))
       expect(`apps/${entry.id}`, sdk, pkg.dependencies?.[sdk]);
+    // The generated configuration calls the installed tooling's exports.
+    const pinned =
+      pkg.devDependencies?.[PACKAGE] ?? pkg.dependencies?.[PACKAGE];
+    if (pinned !== toolingManifest.version)
+      problems.push(
+        `apps/${entry.id}/package.json: ${PACKAGE} must be ${toolingManifest.version}, the installed tooling's version, found ${JSON.stringify(pinned ?? null)}; run pnpm run migrate`,
+      );
     const declared = new Set([
       ...Object.keys(pkg.dependencies ?? {}),
       ...Object.keys(pkg.devDependencies ?? {}),
@@ -171,7 +180,6 @@ export function staticProblems(root, { tooling = TOOLING } = {}) {
     );
   // The tooling generates code against the SDK, so it names the releases it
   // supports.
-  const toolingManifest = readJson(join(tooling, 'package.json'));
   for (const sdk of SDK) {
     const range = toolingManifest.peerDependencies?.[sdk];
     const version = rootManifest.devDependencies?.[sdk];

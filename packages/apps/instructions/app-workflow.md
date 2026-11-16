@@ -355,10 +355,12 @@ Keep the screen consistent with the SDK's UI:
 - Keep the skeleton's `build.cssTarget: 'esnext'` in `vite.config.ts`: native
   `light-dark()` lets an app appearance choice override the device preference.
 - The generated HTML and PWA manifest take their initial colours from the
-  theme; run `pnpm run regenerate` after changing it. `src/browser-theme.ts`
-  keeps the browser's theme colour in step with the resolved `--background`
-  when the system changes appearance. After applying an explicit appearance
-  choice, call its `syncBrowserTheme()` (the Preferences example does this).
+  theme; run `pnpm run regenerate` after changing it. `src/main.tsx` keeps
+  the browser's theme colour in step with the resolved `--background` when
+  the system changes appearance, through `followBrowserTheme()` from
+  `@sempods/apps/browser-theme`. After applying an explicit appearance
+  choice, call `syncBrowserTheme()` from there (the Preferences example
+  does this).
   To own a browser colour independently, remove `data-sempods-theme` from its
   `<meta name="theme-color">` and give it a colour instead of the placeholder.
   The manifest keeps the light background for startup and the light primary
@@ -536,7 +538,9 @@ field names of a web app manifest:
 rules. Do not hand-edit `apps/<id>/src/sempods.generated.ts` or
 `apps/<id>/vite.sempods.generated.ts`. Their owning generator controls
 identity, callback, base path, page title and PWA configuration from
-`apps.json` and `app.json`. `index.html` has no `<title>` of its own; the
+`apps.json` and `app.json`; the Vite configuration holds the app's data and
+calls `@sempods/apps/vite`, which each app declares in its `package.json` at
+the tooling's version. `index.html` has no `<title>` of its own; the
 generated plugin `pageTitle` in `vite.config.ts` adds the name and fills the
 startup splash in `index.html` (the app's icon and name until the script
 runs and the SDK's startup screen takes over). To rename an

@@ -30,9 +30,18 @@
   },
   "exports": {
     "./create": "./scripts/create.mjs",
+    "./vite": {
+      "types": "./api/vite.d.ts",
+      "default": "./api/vite.mjs"
+    },
+    "./browser-theme": {
+      "types": "./api/browser-theme.d.ts",
+      "default": "./api/browser-theme.mjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
+    "api/",
     "bin/",
     "scripts/",
     "skeleton/",
@@ -64,6 +73,16 @@
   "peerDependencies": {
     "@sempods/app-sdk": "^0.9.0-dev.1",
     "@sempods/app-ui": "^0.9.0-dev.1",
-    "@sempods/client-sdk": "^0.9.0-dev.1"
+    "@sempods/client-sdk": "^0.9.0-dev.1",
+    "vite": ">=7.0.0",
+    "vite-plugin-pwa": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "vite-plugin-pwa": {
+      "optional": true
+    }
   }
 }

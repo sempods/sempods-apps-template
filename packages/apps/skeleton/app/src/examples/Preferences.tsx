@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react';
 import type { Language } from '@sempods/app-sdk';
 import { useMessages } from '@sempods/app-sdk/react';
 import type { HeaderMenuEntry } from '@sempods/app-ui';
-import { syncBrowserTheme } from '../browser-theme.ts';
+import { syncBrowserTheme } from '@sempods/apps/browser-theme';
 import { app } from '../sempods.generated.ts';
 import { chosenLocale, uiLocale } from '../texts.ts';
 

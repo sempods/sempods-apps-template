@@ -12,7 +12,8 @@ or change repository settings.
 ## What this repository holds
 
 - `packages/apps/`: the tooling package. `scripts/` holds the commands behind
-  `sempods-apps <command>`, `skeleton/app/` the start of a new app,
+  `sempods-apps <command>`, `api/` the exports apps import,
+  `skeleton/app/` the start of a new app,
   `instructions/` and `skills/` what an owner's assistant follows, `starter/`
   the files of a new owner repository, `update-policy.json` the role of each
   starter file, `test/` the script tests and `maintainer/` the checks and
@@ -100,6 +101,16 @@ files alone do not:
   ([#10](https://github.com/sempods/sempods-apps-template/issues/10)). Owner
   repositories contain only their apps and thin shared files; the tooling, its
   instructions and the starter come from published versions.
+- **Shared app behaviour as package exports**
+  ([#177](https://github.com/sempods/sempods-apps-template/issues/177)).
+  Behaviour every app needs the same way lives in `api/` of the tooling,
+  exported as `@sempods/apps/vite` (Node) and `@sempods/apps/browser-theme`
+  (browser code without imports); generated files hold the app's data and
+  call them. Each app declares the tooling at the root's exact version, like
+  the SDK, so it installs and builds alone. Generate code into an app only
+  where it is the app's data, and keep what must paint before any script
+  (startup markup, splash styles, palette tokens) as the app's own HTML and
+  CSS. The generated runtime's return-address logic is not shared yet.
 - **UI kit and routing from a package**
   ([#120](https://github.com/sempods/sempods-apps-template/issues/120),
   [#121](https://github.com/sempods/sempods-apps-template/issues/121)). The

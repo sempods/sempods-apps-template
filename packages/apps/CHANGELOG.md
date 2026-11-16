@@ -8,6 +8,8 @@ configuration choices and the SDK migration.
 
 Prerelease `0.11.0-dev.1` for acceptance testing against SDK `0.9.0-dev.1`.
 It also carries the Playwright pin planned for 0.10.1, which was not released.
+The shared implementation in the tooling (sempods/sempods-apps-template#177)
+came after `0.11.0-dev.1`.
 
 ### Changes
 
@@ -20,9 +22,10 @@ Shared login appearance (sempods/sempods-apps-template#169):
 - Production builds keep native `light-dark()` (`build.cssTarget: 'esnext'`),
   so an explicit appearance choice overrides the system preference.
 - HTML theme-colour placeholders resolve from the app's light/dark background
-  at build time. The new `src/browser-theme.ts` synchronizes marked meta elements
-  with the actual CSS background at runtime, including system appearance changes.
-  The Preferences example calls the same helper after an explicit choice.
+  at build time. `followBrowserTheme()` from `@sempods/apps/browser-theme`,
+  called in `src/main.tsx`, synchronizes marked meta elements with the actual
+  CSS background at runtime, including system appearance changes. The
+  Preferences example calls its `syncBrowserTheme()` after an explicit choice.
 - Generated `app.localized` supplies names and descriptions in EN/DE from
   `app.json`, falling back to the source text. The skeleton uses the SDK's shown
   language for its header and AppAccess identity; the login icon takes the SDK's
@@ -190,6 +193,36 @@ Preferences example (sempods/sempods-apps-template#178):
   which shows that the app is open elsewhere in the chosen language and
   appearance.
 
+Shared implementation in the tooling (sempods/sempods-apps-template#177):
+
+- New exports `@sempods/apps/vite` and `@sempods/apps/browser-theme`, with
+  TypeScript declarations (see the package README). The generated
+  `vite.sempods.generated.ts` keeps its exports (`base`, `pageTitle`,
+  `server`, `pwa`), so `vite.config.ts` stays as it is, but now holds the
+  app's data and calls `sempodsPage(…)` and `sempodsPwa(…)`: icon reading
+  and digest checks, icon emission and dev serving, the page-head
+  transformation and the service-worker settings come from the tooling and
+  no longer repeat in every app. Built pages, emitted icons and PWA options
+  are unchanged. In a repository with three apps the generated Vite
+  configuration shrinks from 309 to 128 lines.
+- The skeleton has no `src/browser-theme.ts`: `src/main.tsx` calls
+  `followBrowserTheme()` and stops it on hot module replacement; the
+  Preferences example imports `syncBrowserTheme()` from the package. The
+  browser export has no imports and adds no Node code to an app's bundle.
+- Every app declares `@sempods/apps` in `devDependencies` at the tooling's
+  exact version, so a standalone install builds with declared dependencies
+  only. `new-app` writes it, `check` reports a missing or different version,
+  and `migrate` sets it to the installed version and installs, also for a
+  release with an unchanged starter. `vite` and `vite-plugin-pwa` are
+  optional peer dependencies of the tooling for the export's types; the root
+  does not install them.
+- `migrate` replaces an app's `src/browser-theme.ts` that still is the
+  `0.11.0-dev.1` copy with a short module that keeps its imports working on
+  the shared helper. A copy the owner changed stays as it is, with a note.
+- Startup markup, splash styles and palette tokens stay in each app's
+  `index.html` and theme files: they paint before any script and remain
+  plain HTML and CSS the owner can change.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Pin tooling Playwright to 1.64.1, matching the SDK's native-dialog
@@ -261,11 +294,13 @@ and installed-device limits.
    - For sage, copy `src/themes/sage.css` and import it from `src/index.css`.
      For outlined primary and text secondary actions, set
      `data-actions="inverted"` and `data-secondary="text"` on `<html>`.
-   - Copy `src/browser-theme.ts`, import it after `index.css` in `src/main.tsx`,
-     and copy the skeleton's two marked theme-colour meta elements with their
-     `__THEME_LIGHT__` / `__THEME_DARK__` placeholders. Custom meta elements
-     without the marker remain independent. Appearance settings call
-     `syncBrowserTheme()`.
+   - Add the skeleton's `followBrowserTheme()` lines to `src/main.tsx` (its
+     import from `@sempods/apps/browser-theme`, the call and the
+     `import.meta.hot?.dispose` line), and copy the skeleton's two marked
+     theme-colour meta elements with their `__THEME_LIGHT__` /
+     `__THEME_DARK__` placeholders. Custom meta elements without the marker
+     remain independent. Appearance settings call `syncBrowserTheme()` from
+     `@sempods/apps/browser-theme`; do not copy the helper into the app.
    - Use `app.localized[useSdkLocale().language]` for the AppAccess name and
      description, and pass its icon without the header's `size-7` class.
      Use the same identity for the header. Keep owner translations and
@@ -322,6 +357,16 @@ and installed-device limits.
     choice in one tab applies in the app's other open tabs; it needs no
     other change. Test it by changing the choice while a second tab of the
     app is open.
+
+12. `migrate` adds `@sempods/apps` at the installed version to each app's
+    `devDependencies` and installs; nothing else is needed for the generated
+    configuration. An app from `0.11.0-dev.1` whose `src/browser-theme.ts`
+    is still the skeleton's copy gets the short module on the shared helper,
+    listed as updated. For a changed copy, `migrate` notes it: show the owner
+    the difference from the skeleton's `src/main.tsx`, keep what they
+    changed on purpose and use `@sempods/apps/browser-theme` for the rest.
+    Then run `pnpm run check --standalone all`, and open a built app light
+    and dark, with the system appearance changing while it is open.
 
 ## 0.10.0
 

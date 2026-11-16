@@ -38,6 +38,11 @@ import {
   removeFile,
   replaceFile,
 } from './lib/files.mjs';
+import {
+  adoptBrowserTheme,
+  adoptToolingPin,
+  BROWSER_THEME,
+} from './lib/exports.mjs';
 import { GENERATED_FILES } from './lib/generate.mjs';
 import {
   MASKABLE_ICON,
@@ -132,6 +137,8 @@ export function linkedPaths(root, files = []) {
     ...apps.flatMap(({ id }) =>
       [
         ...GENERATED_FILES,
+        'package.json',
+        BROWSER_THEME,
         PAGE,
         VITE_CONFIG,
         DESCRIPTION_FILE,
@@ -413,8 +420,17 @@ export function migrate(
     if (baseline.revision === target.snapshot.revision) {
       // A leftover of a completed migration.
       rmSync(work, { recursive: true, force: true });
-      // The tooling may still have changed what it generates for apps.
-      updateApps(root, report);
+      // The tooling may still have changed what it generates for apps, and
+      // the apps declare its version.
+      // A failed install fails the command: the app manifests already name
+      // the new version, so a rerun has nothing left to install.
+      if (updateApps(root, report, target.version) && !install(root))
+        return {
+          ...report,
+          unchanged: true,
+          failed:
+            "pnpm install failed after the apps' package.json changed; fix the cause, then run pnpm install",
+        };
       return { ...report, unchanged: true };
     }
   }
@@ -522,7 +538,7 @@ export function migrate(
     throw new Error(
       `${unresolved.map(({ file }) => file).join(', ')} still contain an unresolved suggestion; resolve them, then run pnpm run migrate --done again`,
     );
-  updateApps(root, report);
+  updateApps(root, report, target.version);
   // A new starter can change the manifest or the workspace settings, so the
   // lockfile and node_modules follow before the migration counts as done.
   if (!install(root))
@@ -542,10 +558,13 @@ export function migrate(
 
 /**
  * The apps' part of a migration: files a release moves where that is
- * unambiguous, then the generated configuration. App code that needs a
- * decision, such as a copied UI kit, stays as it is with a note.
+ * unambiguous, the tooling `version` the apps declare, then the generated
+ * configuration. App code that needs a decision, such as a copied UI kit,
+ * stays as it is with a note. Returns whether an app's package.json changed,
+ * which needs an install.
  */
-function updateApps(root, report) {
+function updateApps(root, report, version) {
+  let manifests = false;
   // Schema 1 kept titles and descriptions in apps.json (before 0.11.0).
   const descriptions = adoptDescriptions(root);
   report.updated.push(...descriptions.changed);
@@ -565,12 +584,21 @@ function updateApps(root, report) {
       ...adoptPageHead(dir, app),
       ...adoptPageSplash(dir, app),
     ];
+    // The generated configuration imports the tooling's exports.
+    if (adoptToolingPin(dir, version)) {
+      changed.push(`apps/${app.id}/package.json`);
+      manifests = true;
+    }
+    const theme = adoptBrowserTheme(dir, app.id);
+    if (theme.changed) changed.push(`apps/${app.id}/${BROWSER_THEME}`);
+    if (theme.note) report.notes.push(theme.note);
     report.updated.push(...new Set(changed));
     adoptMaskableIcon(dir, app, report);
     const kit = copiedKit(dir);
     if (kit) report.notes.push(kitNote(app.id, kit));
   }
   report.regenerated = regenerate(root);
+  return manifests;
 }
 
 /**
@@ -628,6 +656,7 @@ export function formatMigration(report) {
       ...list('Updated', report.updated),
       ...list('Regenerated', report.regenerated),
       ...list('Notes', report.notes),
+      ...(report.failed ? [report.failed] : []),
     ].join('\n');
   const lines = [
     `Migration from ${PACKAGE} ${report.from} to ${report.to}${report.unfinished ? ' is open' : ' is complete'}.`,
@@ -670,6 +699,7 @@ if (
     const report = migrate(repositoryRoot(), { done: values.done });
     console.log(formatMigration(report));
     if (report.unfinished) process.exitCode = 3;
+    else if (report.failed) process.exitCode = 1;
   } catch (error) {
     console.error(`migrate: ${error.message}`);
     process.exitCode = 1;

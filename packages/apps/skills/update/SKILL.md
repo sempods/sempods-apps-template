@@ -79,5 +79,6 @@ instead.
    what to try. Tell the owner what changed in plain words and
    what they should try. App notes and the owner's entries in `package.json`
    are never rewritten by the migration; of the apps' files it only
-   regenerates the generated configuration and moves files still unchanged
-   from the skeleton where a release's upgrade notes say so.
+   regenerates the generated configuration, sets each app's `@sempods/apps`
+   to the installed version and moves files still unchanged from the
+   skeleton where a release's upgrade notes say so.

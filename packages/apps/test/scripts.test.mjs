@@ -43,7 +43,7 @@ import {
   themeNames,
   tokenColours,
 } from '../scripts/lib/themes.mjs';
-import { SKELETON } from '../scripts/lib/paths.mjs';
+import { SKELETON, TOOLING } from '../scripts/lib/paths.mjs';
 import { importedPackages, staticProblems } from '../scripts/check.mjs';
 import {
   adoptPageHead,
@@ -55,7 +55,7 @@ import {
 import { repositoryRoot } from '../scripts/lib/paths.mjs';
 import { scriptArgs } from '../scripts/lib/pnpm.mjs';
 import { SDK } from '../scripts/lib/sdk.mjs';
-import { templateRoot, tempRepository } from './fixture.mjs';
+import { linkTooling, templateRoot, tempRepository } from './fixture.mjs';
 
 describe('app IDs', () => {
   it('accepts one lowercase segment', () => {
@@ -214,7 +214,19 @@ describe('generated configuration', () => {
     pwa: true,
     about: { lang: 'en', name: 'Demo "App"', short_name: 'Demo "App"' },
   };
-  it('derives callback, return path, base and PWA scope from the app path', () => {
+  // Imports a generated Vite configuration, as Vite loads it with the
+  // installed tooling.
+  const viteModule = async (source) => {
+    const dir = linkTooling(mkdtempSync(join(tmpdir(), 'sempods-vite-')));
+    try {
+      const file = join(dir, 'vite.sempods.generated.mts');
+      writeFileSync(file, source);
+      return await import(pathToFileURL(file).href);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  it('derives callback, return path, base and PWA scope from the app path', async () => {
     const files = generatedFiles(app);
     const runtime = files['src/sempods.generated.ts'];
     assert.match(
@@ -224,20 +236,29 @@ describe('generated configuration', () => {
     assert.match(runtime, /title: "Demo \\"App\\""/);
     assert.match(runtime, /development: 'loopback-http'/);
     const vite = files['vite.sempods.generated.ts'];
-    assert.match(vite, /export const base = "\/demo\/"/);
+    // The behaviour comes from the tooling; the file holds the app's data.
+    assert.match(vite, /from '@sempods\/apps\/vite';/);
+    const { base, pageTitle, pwa, server } = await viteModule(vite);
+    assert.equal(base, '/demo/');
+    assert.equal(server.port, 5180);
     // Every page links the app's description by an absolute path.
-    assert.match(
-      vite,
-      /attrs: \{ rel: 'alternate', type: 'application\/ld\+json', href: "\/demo\/app\.jsonld" \}/,
+    assert.deepEqual(
+      pageTitle.transformIndexHtml('<head></head>').tags.find(
+        (tag) => tag.attrs?.rel === 'alternate',
+      ).attrs,
+      { rel: 'alternate', type: 'application/ld+json', href: '/demo/app.jsonld' },
     );
-    assert.match(vite, /port: 5180/);
-    assert.match(vite, /scope: "\/demo\/"/);
+    assert.equal(pwa.manifest.id, '/demo/');
+    assert.equal(pwa.manifest.start_url, '/demo/');
+    assert.equal(pwa.manifest.scope, '/demo/');
     // The start page, with any query: Workbox matches path and query.
-    assert.match(
-      vite,
-      /navigateFallbackAllowlist: \[\/\^\\\/demo\\\/\(\?:\\\?\[\^#\]\*\)\?\$\/\]/,
+    assert.equal(pwa.workbox.navigateFallback, '/demo/index.html');
+    assert.deepEqual(
+      pwa.workbox.navigateFallbackAllowlist.map((pattern) => pattern.source),
+      ['^\\/demo\\/(?:\\?[^#]*)?$'],
     );
-    assert.match(vite, /skipWaiting: false/);
+    assert.equal(pwa.workbox.skipWaiting, false);
+    assert.equal(pwa.workbox.clientsClaim, false);
   });
   it('reads location only when the callback is used', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'sempods-generated-'));
@@ -312,11 +333,13 @@ describe('generated configuration', () => {
       resources: ['tasks/:id', 'tasks/:id/postpone'],
     };
     const files = generatedFiles(routed);
-    const source = files['vite.sempods.generated.ts'].match(
-      /navigateFallbackAllowlist: \[\/(.*)\/\]/,
-    )?.[1];
-    assert.ok(source, 'the allowlist is one regular expression');
-    const offline = new RegExp(source);
+    const { pwa } = await viteModule(files['vite.sempods.generated.ts']);
+    assert.equal(
+      pwa.workbox.navigateFallbackAllowlist.length,
+      1,
+      'the allowlist is one regular expression',
+    );
+    const [offline] = pwa.workbox.navigateFallbackAllowlist;
     // Workbox matches path and query.
     for (const address of [
       '/demo/',
@@ -390,10 +413,10 @@ describe('generated configuration', () => {
       generatedFiles({ ...app, language: 'auto', about: german })[
         'vite.sempods.generated.ts'
       ],
-      /^  lang: "de",$/m,
+      /^    lang: "de",$/m,
     );
   });
-  it('writes the manifest from app.json and the theme', () => {
+  it('writes the manifest from app.json and the theme', async () => {
     const about = {
       lang: 'de',
       name: 'Einkauf',
@@ -407,28 +430,47 @@ describe('generated configuration', () => {
     const vite = generatedFiles({ ...app, about }, undefined, {
       background: '#fdfaf6', theme: '#9c4128',
     })['vite.sempods.generated.ts'];
-    assert.match(vite, /^  name_localized: \{"en":"Shopping"\},$/m);
-    assert.match(vite, /^  description_localized: \{"en":"What is missing\."\},$/m);
-    assert.match(vite, /^  categories: \["shopping","lifestyle"\],$/m);
-    assert.match(vite, /^  background_color: "#fdfaf6",$/m);
-    assert.match(vite, /^  theme_color: "#9c4128",$/m);
+    assert.match(vite, /^    name_localized: \{"en":"Shopping"\},$/m);
+    assert.match(vite, /^    description_localized: \{"en":"What is missing\."\},$/m);
+    assert.match(vite, /^    categories: \["shopping","lifestyle"\],$/m);
+    assert.match(vite, /^    background_color: "#fdfaf6",$/m);
+    assert.match(vite, /^    theme_color: "#9c4128",$/m);
     assert.match(
       vite,
       /src: "\/demo\/icon-maskable-512\.png", sizes: '512x512', type: 'image\/png', purpose: 'maskable'/,
     );
-    assert.match(vite, /import type \{ ManifestOptions, VitePWAOptions \}/);
+    // The manifest as vite-plugin-pwa gets it, in the order it is written.
+    const { pwa } = await viteModule(vite);
+    assert.deepEqual(Object.keys(pwa.manifest), [
+      'id',
+      'name',
+      'name_localized',
+      'short_name',
+      'short_name_localized',
+      'description',
+      'description_localized',
+      'lang',
+      'categories',
+      'start_url',
+      'scope',
+      'display',
+      'background_color',
+      'theme_color',
+      'icons',
+    ]);
+    assert.equal(pwa.manifest.display, 'standalone');
     // Without a theme the tooling can read, the manifest stays white.
     assert.match(
       generatedFiles(app)['vite.sempods.generated.ts'],
-      /^  theme_color: "#f7f9f7",$/m,
+      /^    theme_color: "#f7f9f7",$/m,
     );
     assert.doesNotMatch(
       generatedFiles({ ...app, pwa: false })['vite.sempods.generated.ts'],
-      /ManifestOptions|const manifest/,
+      /sempodsPwa|manifest/,
     );
   });
   it('resolves theme placeholders without replacing owner colours and exposes localized identity', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sempods-identity-'));
+    const dir = linkTooling(mkdtempSync(join(tmpdir(), 'sempods-identity-')));
     try {
       for (const pwa of [true, false]) {
         const files = generatedFiles({ ...app, pwa, about: {
@@ -458,7 +500,7 @@ describe('generated configuration', () => {
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   it("shows the source name in the splash of an app that follows the browser", async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sempods-splash-'));
+    const dir = linkTooling(mkdtempSync(join(tmpdir(), 'sempods-splash-')));
     try {
       const vite = join(dir, 'vite.mts');
       writeFileSync(vite, generatedFiles({ ...app, language: 'auto', about: {
@@ -566,11 +608,18 @@ describe('new-app', () => {
     );
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
     assert.match(html, /<html lang="de" data-actions="inverted" data-secondary="text">/);
-    // The title comes from apps.json through the generated Vite plugin.
+    // The title comes from apps.json through the generated Vite plugin,
+    // which escapes it.
     assert.doesNotMatch(html, /<title/);
     assert.match(
       readFileSync(join(dir, 'vite.sempods.generated.ts'), 'utf8'),
-      /\{ tag: 'title', children: "Einkaufs&#60;liste&#62;", injectTo: 'head' \}/,
+      /^  title: "Einkaufs<liste>",$/m,
+    );
+    // The app declares the tooling whose exports it imports.
+    assert.equal(
+      JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+        .devDependencies['@sempods/apps'],
+      JSON.parse(readFileSync(join(TOOLING, 'package.json'), 'utf8')).version,
     );
     assert.match(
       readFileSync(join(dir, 'vite.config.ts'), 'utf8'),
@@ -1012,6 +1061,46 @@ describe('check', () => {
       'lodash',
       'react',
     ]);
+  });
+
+  it("requires each app to declare the installed tooling's version", () => {
+    const root = tempRepository('sempods-check-');
+    try {
+      createApp(root, { id: 'demo' });
+      assert.deepEqual(staticProblems(root), []);
+      const file = join(root, 'apps', 'demo', 'package.json');
+      const pkg = JSON.parse(readFileSync(file, 'utf8'));
+      const { version } = JSON.parse(
+        readFileSync(join(TOOLING, 'package.json'), 'utf8'),
+      );
+      const declare = (devDependencies, dependencies = pkg.dependencies) =>
+        writeFileSync(
+          file,
+          JSON.stringify({ ...pkg, dependencies, devDependencies }),
+        );
+      // An app from before the shared exports: its generated configuration
+      // now imports them.
+      const { '@sempods/apps': _, ...older } = pkg.devDependencies;
+      declare(older);
+      const problems = staticProblems(root).join('\n');
+      assert.match(
+        problems,
+        new RegExp(
+          `apps/demo/package\\.json: @sempods/apps must be ${version.replaceAll('.', '\\.')}, the installed tooling's version, found null; run pnpm run migrate`,
+        ),
+      );
+      assert.match(
+        problems,
+        /vite\.sempods\.generated\.ts imports @sempods\/apps, which apps\/demo\/package\.json does not declare/,
+      );
+      declare({ ...older, '@sempods/apps': '0.0.1' });
+      assert.match(staticProblems(root).join('\n'), /found "0\.0\.1"/);
+      // Declared as a dependency instead counts too.
+      declare(older, { ...pkg.dependencies, '@sempods/apps': version });
+      assert.deepEqual(staticProblems(root), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('requires the root SDK version and the reference the installed SDK ships', () => {
@@ -1495,7 +1584,7 @@ describe('themes', () => {
 describe('app theme and icon', () => {
   let root;
   beforeEach(() => {
-    root = tempRepository('sempods-theme-');
+    root = linkTooling(tempRepository('sempods-theme-'));
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
   const file = (...path) => readFileSync(join(root, 'apps', ...path), 'utf8');

@@ -32,9 +32,12 @@ describe('build-site', () => {
       join(outDir, 'index.html'),
       `<!doctype html><html><head><title>x</title></head><p>${mode}</p></html>`,
     );
-    // The PWA plugin writes the manifest from the generated configuration.
+    // The PWA plugin writes the manifest from the generated configuration:
+    // sempodsPwa takes the app's path as identity, start and scope.
     const vite = readFileSync(join(appDir, 'vite.sempods.generated.ts'), 'utf8');
-    const scope = vite.match(/^  scope: (".*"),$/m)?.[1];
+    const scope = /= sempodsPwa\(/.test(vite)
+      ? vite.match(/^export const base = (".*");$/m)?.[1]
+      : undefined;
     if (scope)
       writeFileSync(
         join(outDir, 'manifest.webmanifest'),
