@@ -397,6 +397,12 @@ Keep the screen consistent with the SDK's UI:
   region instead of the browser default. A stored date the formatter cannot
   show gives `undefined`: show it as stored,
   `format.dateOnly(value) ?? value`, as the log example does.
+- A row's open outcome (`UpdateNotice`) takes the row's full width below
+  its controls, as in the examples: the row wraps (`flex-wrap`), the notice
+  sits in `<div className="basis-full empty:hidden">`, and the name may
+  break anywhere (`min-w-0 wrap-anywhere`), so a long name keeps the
+  checkbox and Delete on its line. Beside the controls, a long name leaves
+  the notice and its recovery actions a few pixels wide on a phone.
 - Delete a row with the SDK's `RemoveButton`, which asks in its own dialog;
   `ResourceEditor`'s Delete asks by itself. Ask for other confirmations inside
   the page. Do not use `confirm()`, `alert()` or `prompt()`: embedded browsers

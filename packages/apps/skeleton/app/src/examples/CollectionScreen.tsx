@@ -147,7 +147,7 @@ export function CollectionScreen({ nav }: { readonly nav: Nav<Place> }) {
               {/* The note's own address: a plain click opens its dialog. */}
               <a
                 {...nav.link(notePlace(entry.iri))}
-                className="grid flex-1 content-start gap-1 rounded-t-xl p-4 hover:bg-muted"
+                className="grid flex-1 content-start gap-1 rounded-t-xl p-4 wrap-anywhere hover:bg-muted"
               >
                 <span className="font-medium">{card.data.name}</span>
                 {card.data.text && (
@@ -156,8 +156,11 @@ export function CollectionScreen({ nav }: { readonly nav: Nav<Place> }) {
                   </span>
                 )}
               </a>
-              <div className="flex items-center justify-end gap-1 px-2 pb-2">
-                <UpdateNotice {...card.notice} quiet />
+              {/* A notice takes the card's full width above Delete. */}
+              <div className="flex flex-wrap items-center justify-end gap-1 px-2 pb-2">
+                <div className="basis-full px-2 empty:hidden">
+                  <UpdateNotice {...card.notice} quiet />
+                </div>
                 <RemoveButton
                   disabled={!card.canMutate}
                   onRemove={card.remove}

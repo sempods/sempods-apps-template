@@ -112,7 +112,11 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
         {items?.map((entry) => {
           const row = mutate.for(entry);
           return (
-            <li key={entry.iri} className="flex min-h-14 items-center gap-1">
+            // The row wraps, so a notice gets its own full-width line below.
+            <li
+              key={entry.iri}
+              className="flex min-h-14 flex-wrap items-center gap-1"
+            >
               {/* The kit's Checkbox, named for its row: its 44px target
                   reaches 12px beyond the box, so the margin keeps it off
                   the link. */}
@@ -127,7 +131,7 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
                   modified click a new tab. */}
               <a
                 {...nav.link(itemPlace(entry.iri))}
-                className="flex min-h-11 flex-1 items-center rounded-md px-2 hover:bg-muted"
+                className="flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 wrap-anywhere hover:bg-muted"
               >
                 {row.data.name}
               </a>
@@ -137,8 +141,11 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
                 onRemove={row.remove}
                 label={t.remove(row.data.name)}
               />
-              {/* The changed row is the confirmation; problems show here. */}
-              <UpdateNotice {...row.notice} quiet />
+              {/* The changed row is the confirmation; problems show here,
+                  across the row's full width. */}
+              <div className="basis-full pb-2 empty:hidden">
+                <UpdateNotice {...row.notice} quiet />
+              </div>
             </li>
           );
         })}

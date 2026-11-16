@@ -224,6 +224,21 @@ Shared implementation in the tooling (sempods/sempods-apps-template#177):
   `index.html` and theme files: they paint before any script and remain
   plain HTML and CSS the owner can change.
 
+Row notices on narrow screens (sempods/sempods-apps-template#180):
+
+- In the list, log and collection examples a row's `UpdateNotice` takes
+  the row's or card's full width below its controls: the row wraps and the
+  notice sits in an app-owned `basis-full` element that is hidden while
+  empty. Before, at 375px a long name such as "Geschirrspülmaschinentabs"
+  left an unconfirmed deletion's notice about 39px wide and 1,440px tall.
+- Names break anywhere (`wrap-anywhere`), so a long word keeps the checkbox
+  and Delete on the row's line and no longer widens a collection card past
+  the screen.
+- The self-test renders the three examples with the SDK's components and
+  synthetic rows at 375px and 1280px, light and dark, and checks the
+  notice's width, 44px targets, unchanged plain rows and the notice's text
+  contrast. The app workflow and the visual check describe the composition.
+
 SDK 0.9.0-dev.2:
 
 - The list example ticks a row with the UI kit's `Checkbox`, a 20px box in a
@@ -401,6 +416,14 @@ and installed-device limits.
     its word for a Context is not "context". An app that compared places to
     set `aria-current` or a chosen look on its view links drops that, as the
     SDK's migration guide describes ("Current view links from the router").
+
+14. An app with a copy of the list, log or collection example keeps its
+    rows. Where its `UpdateNotice` sits beside the row's controls, offer
+    the owner the skeleton's composition: `flex-wrap` on the row, the notice
+    in `<div className="basis-full pb-2 empty:hidden">` (in a card,
+    `basis-full px-2 empty:hidden`), and `min-w-0 wrap-anywhere` on the
+    name's link. Check it at 375px with a long name and an open outcome,
+    light and dark.
 
 ## 0.10.0
 
