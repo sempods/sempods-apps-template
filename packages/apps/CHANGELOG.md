@@ -6,13 +6,16 @@ configuration choices and the SDK migration.
 
 ## 0.11.0
 
-Prerelease `0.11.0-dev.2` for acceptance testing against SDK `0.9.0-dev.2`.
-Since `0.11.0-dev.1` (SDK `0.9.0-dev.1`, with the Playwright pin planned for
-0.10.1, which was not released) it adds the shared implementation in the
+Prerelease `0.11.0-dev.3` for acceptance testing against SDK `0.9.0-dev.3`.
+Since `0.11.0-dev.2` (SDK `0.9.0-dev.2`) it adds SDK `0.9.0-dev.3`, whose
+`ContextSwitch` only selects and whose **Change sharing** asks for the Pod's
+consent page, the app workflow's section on sharing more with an app
+(sempods/sempods-apps-template#186) and patch updates of the skeleton's
+dependencies. `0.11.0-dev.2` had added the shared implementation in the
 tooling (sempods/sempods-apps-template#177), the Preferences example across
 tabs (sempods/sempods-apps-template#178), row notices on narrow screens
-(sempods/sempods-apps-template#180) and SDK `0.9.0-dev.2`, which lifts that
-pin.
+(sempods/sempods-apps-template#180) and SDK `0.9.0-dev.2`, which lifts the
+Playwright pin planned for 0.10.1, which was not released.
 
 ### Changes
 
