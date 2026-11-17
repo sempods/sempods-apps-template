@@ -131,8 +131,9 @@ SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
   kit's `ContextSwitch` in place of the header's `<h1>`; the skeleton's
   `src/examples/ContextSwitch.tsx` re-exports it. Keep it outside `TargetScreen`
   and keep `AppAccess` for sign-in and management. It groups by Pod and owns
-  labels, access icons, selection feedback and per-Pod recovery. Supply domain
-  words and the app icon; improve generic chooser UX in the SDK, not a local copy.
+  labels, the "Read only" mark, selection feedback and per-Pod recovery.
+  Supply domain words and the app icon; improve generic chooser UX in the
+  SDK, not a local copy.
 - **Read all, write in one** (an overview): `contextSelection="on-demand"` on
   the provider, the SDK's Pod overview (`usePodList`) and `useCreation` for
   the context it writes to.
@@ -170,6 +171,30 @@ Record read scope, creation destination, existing-record write targets and
 delete meaning under Data in `NOTES.md`. An app that reads across contexts or
 writes into several needs more than one test context; ask the owner for each,
 with synthetic data.
+
+### Let the person share more or change access
+
+"Share another list with the app", "change the app's access" and "change
+sharing" all mean the same: the person changes, on their Pod's consent page,
+which contexts this app may use. The SDK owns the flow; read "Changing what
+the app may access" in `react-authoring.md` before building anything for it.
+
+- The standard controls already offer it: **Change sharing** in `AppAccess`
+  (the menu's "Pods & sharing"), and **Share contexts …** in `ContextSwitch`
+  (in the app's words, such as "Share lists …") on a Pod that shares no
+  readable context. Show the owner these first; often nothing needs
+  building.
+- For an entry or button of the app's own, use `useContexts().share()` for
+  the active Pod, or the guarded `authorize(id, { intent: 'change-sharing'
+  })` that section shows for another Pod. Build no sign-in or OAuth flow of
+  the app's own.
+- The SDK asks first when an edit is unsaved, returns to the app's address
+  afterwards and keeps the earlier access when the person cancels; that
+  section describes each outcome and the errors to show. A plain sign-in and
+  the restored session at startup do not open the consent page.
+- Choosing a context already shared with the app is selection
+  (`ContextSwitch`). Inviting another person to a context happens in the
+  Pod's own sharing settings, not in this app.
 
 ### Choose the data vocabulary
 
@@ -331,8 +356,8 @@ describes, and style them with Tailwind classes on the theme's roles
   works in one of several contexts at a time, labelled in the person's words:
   `label` ("List") and `texts` for each of its messages that would say
   "context" ("Share lists …", "Loading lists …", "No readable lists
-  shared."), in both languages from `src/texts.ts`. It only selects;
-  changing what is shared stays in `AppAccess`.
+  shared."), in both languages from `src/texts.ts`. It only selects; see
+  [sharing more](#let-the-person-share-more-or-change-access).
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
   in the header's menu, stored on the device; the app's other open tabs
