@@ -296,6 +296,13 @@ Instructions:
   what the installed app takes from `app.json` and the theme. The publishing
   guide lists the published descriptions, the cross-origin header a host must
   send for them, and how to check it, and describes the overview.
+- A sizing recipe, `instructions/sizing.md`, linked from the app workflow and
+  the visual check, makes a whole app larger without restyling SDK controls:
+  a relative root font size, real touch targets measured apart from boxes
+  and rows, one action column for fixed-size SDK and `rem`-based kit
+  controls, and checks that end on the owner's phone. The app workflow adds
+  that actions side by side that should look alike share one variant
+  (sempods/sempods-apps-template#189).
 
 ### Upgrade notes
 

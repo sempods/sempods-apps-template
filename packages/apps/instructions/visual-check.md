@@ -44,7 +44,8 @@ them as checked.
 - The hierarchy is clear: one primary action per screen or dialog, other
   actions secondary or quieter.
 - Every control has a 44px touch target; a row's checkbox is the kit's
-  `Checkbox`, other checkboxes are wrapped in their label.
+  `Checkbox`, other checkboxes are wrapped in their label. An app made
+  larger follows the [sizing recipe](sizing.md)'s checks too.
 - Nothing scrolls sideways at 375px.
 - At 375px, a row with a long name and an open outcome, such as an
   unconfirmed deletion, shows the notice across the row's width with its

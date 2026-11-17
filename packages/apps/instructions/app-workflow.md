@@ -312,7 +312,9 @@ describes, and style them with Tailwind classes on the theme's roles
 - `ActionButton` and `ActionLink` for the app's own actions in the theme's
   variants: one primary action per screen, other actions `secondary` or
   `ghost`, icons from `lucide-react` with a `label`; `ActionGroup` for a row
-  of them. `ActionLink` is an action with an address (`{...nav.link(place)}`).
+  of them. Actions side by side that should look alike share one variant:
+  `HeaderMenu` is `secondary` by default, and a `ghost` action beside it
+  differs, most visibly in dark mode. `ActionLink` is an action with an address (`{...nav.link(place)}`).
   `nav.link` marks a link to the shown place with `aria-current="page"`; views
   with addresses of their own, such as two lists as tabs, are such links
   drawn with `buttonVariants({ variant: 'ghost' })`, which shows the current
@@ -383,6 +385,10 @@ Keep the screen consistent with the SDK's UI:
   the 20px box, so keep that room beside it (`mx-3`), off the row's link.
   Wrap any other native checkbox or radio in its `<label>`: the label is its
   44px touch target. Controls keep 44px targets.
+- When the owner finds text or controls too small, make the whole app larger
+  as the [sizing recipe](sizing.md) describes: one relative root size, the
+  components' public props and a check of the real targets, not restyled SDK
+  controls.
 - Apps are international: by default (`"language": "auto"`) the UI follows
   the browser, German or English, otherwise English, and the skeleton passes
   that language and locale to the SDK and to `<html lang>`; the UI kit's own
