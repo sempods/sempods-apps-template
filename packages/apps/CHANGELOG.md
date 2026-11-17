@@ -150,12 +150,12 @@ The overview (sempods/sempods-apps-template#46, step 4):
 
 SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
 
-- The starter installs SDK 0.9.0-dev.2, the prerelease of 0.9.0, for all
-  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.2` as its
+- The starter installs SDK 0.9.0-dev.3, the prerelease of 0.9.0, for all
+  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.3` as its
   peer.
 - List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
-  two-line trigger, Contexts grouped by Pod, separate permission/selection
-  icons, a localized legend and exact-address details. The SDK owns generic
+  two-line trigger, Contexts grouped by Pod and a **Read only** mark. It only
+  selects; changing what is shared stays in `AppAccess`. The SDK owns generic
   loading, retry, selection and authorization feedback. The skeleton example
   now re-exports the standard instead of copying its implementation.
 
@@ -259,6 +259,26 @@ SDK 0.9.0-dev.2:
   (sempods/sempods-typescript#342, sempods/sempods-typescript#343), and
   names `SuggestField`'s `suggest={false}` for an exact address
   (sempods/sempods-typescript#324).
+
+SDK 0.9.0-dev.3:
+
+- `ContextSwitch` only selects (sempods/sempods-typescript#365): it marks
+  read-only Contexts with **Read only** instead of permission icons and has
+  no legend, address details or permanent sharing action. A Pod that shares
+  no readable Context offers sharing there, named by `texts.shareContexts`
+  ("Share lists …"), which replaces `shareMore`. The ContextSwitch example
+  and the app workflow say so.
+- **Change sharing** in `AppAccess` and the chooser's sharing ask the Pod for
+  its consent page even when it could reuse the app's grant
+  (sempods/sempods-typescript#362).
+- `DialogFooter` keeps its actions in one row inside the dialog, Cancel
+  first, wrapping instead of overflowing (sempods/sempods-typescript#368).
+- New opt-in SDK features need no template change: a silent first sign-in
+  for a deployed app bound to one Pod (sempods/sempods-typescript#373),
+  creation and modification timestamps (sempods/sempods-typescript#367),
+  `ContextView.values` for one value at a time
+  (sempods/sempods-typescript#370), and `media` and `notice` on
+  `SuggestField` (sempods/sempods-typescript#361).
 
 Tooling (sempods/sempods-apps-template#153):
 
@@ -419,6 +439,17 @@ and installed-device limits.
     its word for a Context is not "context". An app that compared places to
     set `aria-current` or a chosen look on its view links drops that, as the
     SDK's migration guide describes ("Current view links from the router").
+
+15. An app from an earlier 0.11.0 prerelease whose ContextSwitch passes
+    `texts.shareMore` renames it to `shareContexts` with the shorter wording
+    ("Share lists …") and drops `showAddresses` and `addresses`. Sharing
+    controls of the app's own call `authorize(id, { intent:
+    'change-sharing' })`; its sign-in controls stay as they are. An app with
+    its own `DialogFooter` drops layout classes such as `flex-row flex-wrap
+    justify-end` and minimum heights on its buttons, and puts Cancel before
+    the answer. The SDK's migration guide describes each ("One row of
+    actions in DialogFooter", "Change sharing shows the Pod's consent
+    page").
 
 14. An app with a copy of the list, log or collection example keeps its
     rows. Where its `UpdateNotice` sits beside the row's controls, offer

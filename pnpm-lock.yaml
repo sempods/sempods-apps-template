@@ -17,14 +17,14 @@ importers:
   packages/apps:
     dependencies:
       '@sempods/app-sdk':
-        specifier: ^0.9.0-dev.2
-        version: 0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^0.9.0-dev.3
+        version: 0.9.0-dev.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@sempods/app-ui':
-        specifier: ^0.9.0-dev.2
-        version: 0.9.0-dev.2(@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
+        specifier: ^0.9.0-dev.3
+        version: 0.9.0-dev.3(@sempods/app-sdk@0.9.0-dev.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)
       '@sempods/client-sdk':
-        specifier: ^0.9.0-dev.2
-        version: 0.9.0-dev.2
+        specifier: ^0.9.0-dev.3
+        version: 0.9.0-dev.3
       mdast-util-from-markdown:
         specifier: 2.1.0
         version: 2.1.0(supports-color@9.4.0)
@@ -954,8 +954,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sempods/app-sdk@0.9.0-dev.2':
-    resolution: {integrity: sha512-uvUodUooG4YSHYlU8NQ2J2zD8rCCyBSWM6fmQTxny7sQuJa2wIgYu2joEfUrr8QqJfmNnfJByTsUYPKd1tNpyw==}
+  '@sempods/app-sdk@0.9.0-dev.3':
+    resolution: {integrity: sha512-ZNvqmbM0et6G83rkkKbd1hWdEPJcND6/r6rCwpagbJRKlgx+wyGu7r1UwtJ9TlBL8cJ2e7BW6IUcmlC6OBw0DQ==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
       react: ^19.0.0
@@ -966,18 +966,18 @@ packages:
       react-dom:
         optional: true
 
-  '@sempods/app-ui@0.9.0-dev.2':
-    resolution: {integrity: sha512-40vx68mLPjZvNR8M1fueHU+Qpnmr7sv7tIamAi/krn2J17284dcfWlo9cU2wdttBI6Na+P9Ukphkpp35Kdyi6Q==}
+  '@sempods/app-ui@0.9.0-dev.3':
+    resolution: {integrity: sha512-A07HPmwLaWRuJD2V2a6VcI6hHvhH36gJXQAkQpvrBose0BZg75xWcTntzDQTDxAh99hQO7J+KfSZsxG8YSYhzQ==}
     engines: {node: '>=24.15.0'}
     peerDependencies:
-      '@sempods/app-sdk': ~0.9.0-dev.2
-      '@sempods/client-sdk': ~0.9.0-dev.2
+      '@sempods/app-sdk': ~0.9.0-dev.3
+      '@sempods/client-sdk': ~0.9.0-dev.3
       react: ^19.0.0
       react-dom: ^19.0.0
       tailwindcss: ^4.1.0
 
-  '@sempods/client-sdk@0.9.0-dev.2':
-    resolution: {integrity: sha512-5eALbgk79VcYasXPWLPVMerjH9qKipCZnFj92aKkvmOSfSEgaKfYfjyJBwucuMVZJc1vSLpuyqq1FxFOO0McGQ==}
+  '@sempods/client-sdk@0.9.0-dev.3':
+    resolution: {integrity: sha512-gBSq+RxuPXg2smpw9Ox3QhSKeRG2BIqPbLKCoooCpnCce+zFJLfSmmgZNDOv75EBJjv9U9Kkl2p7Diz1rm0TNw==}
     engines: {node: '>=24.15.0'}
 
   '@swc/helpers@0.5.23':
@@ -3473,18 +3473,18 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.68.3':
     optional: true
 
-  '@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@sempods/app-sdk@0.9.0-dev.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@sempods/client-sdk': 0.9.0-dev.2
+      '@sempods/client-sdk': 0.9.0-dev.3
     optionalDependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  '@sempods/app-ui@0.9.0-dev.2(@sempods/app-sdk@0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
+  '@sempods/app-ui@0.9.0-dev.3(@sempods/app-sdk@0.9.0-dev.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@sempods/client-sdk@0.9.0-dev.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(tailwindcss@4.3.3)':
     dependencies:
       '@internationalized/date': 3.12.4
-      '@sempods/app-sdk': 0.9.0-dev.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@sempods/client-sdk': 0.9.0-dev.2
+      '@sempods/app-sdk': 0.9.0-dev.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@sempods/client-sdk': 0.9.0-dev.3
       class-variance-authority: 0.7.1
       cn: 0.5.2
       lucide-react: 1.72.0(react@19.3.1)
@@ -3496,7 +3496,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
-  '@sempods/client-sdk@0.9.0-dev.2':
+  '@sempods/client-sdk@0.9.0-dev.3':
     dependencies:
       oauth4webapi: 3.8.8
 
