@@ -328,8 +328,9 @@ describes, and style them with Tailwind classes on the theme's roles
   `src/examples/ContextSwitch.tsx`) in place of the `<h1>` for an app that
   works in one of several contexts at a time, labelled in the person's words:
   `label` ("List") and `texts` for each of its messages that would say
-  "context" ("Share more lists …", "Loading lists …", "No readable lists
-  shared."), in both languages from `src/texts.ts`.
+  "context" ("Share lists …", "Loading lists …", "No readable lists
+  shared."), in both languages from `src/texts.ts`. It only selects;
+  changing what is shared stays in `AppAccess`.
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
   in the header's menu, stored on the device; the app's other open tabs
