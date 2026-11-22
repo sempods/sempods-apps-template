@@ -15,3 +15,5 @@ then follow the [vision](docs/vision.md) and the scope of the task's issue.
 - Run `pnpm run check` for every change and `pnpm run self-test` before a
   pull request; both use the Node version in `.node-version`.
 - The owner merges, tags releases and changes repository or npm settings.
+- When asked to review a GitHub pull request, post each actionable finding in
+  English as an inline review comment on the relevant lines of the current diff.
