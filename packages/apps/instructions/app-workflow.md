@@ -155,7 +155,9 @@ SDK's path for that shape (`react-authoring.md`, "Choose the app shape"):
 An app that reads from every connected Pod, such as an explorer or cards
 across Pods, reads each one with `usePodLoad(pod, …)`, bounds its reads with
 the runtime option `podReadLimit` instead of a queue of its own and searches
-with `pod.find`. The SDK's recipes `rdf-values.md` (values of any
+with `pod.find`. Its `AppAccess` takes `podView="combined"`, so **Pods &
+sharing** marks no Pod **Selected** and offers no **Use this Pod** while the
+view shows them all. The SDK's recipes `rdf-values.md` (values of any
 vocabulary), `resource-cards.md` (cards and pictures across Pods) and
 `public-rdf.md` (public data about an address no Pod describes), in the same
 `docs` directory, show how.
