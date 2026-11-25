@@ -12,11 +12,12 @@
 //    `const entries = usePreferenceEntries(preferences)` at its top, next to
 //    its other hooks, and put `...entries, null,` first in the HeaderMenu's
 //    items.
+// For a Settings dialog, also before sign-in, see PreferencesDialog.tsx.
 // The runtime and the provider stay mounted: a change of language keeps
 // drafts and open edits. Test it with the system in the opposite mode, after
 // a reload, with an unsaved edit open while the language changes, and with a
 // second tab of the app open: it follows the choice at once.
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import type { Language } from '@sempods/app-sdk';
 import { useMessages } from '@sempods/app-sdk/react';
 import type { HeaderMenuEntry } from '@sempods/app-ui';
@@ -29,6 +30,12 @@ export type LanguageChoice = 'browser' | Language;
 export interface Preferences {
   readonly appearance: Appearance;
   readonly language: LanguageChoice;
+  /**
+   * An app's own preference, offered by PreferencesDialog.tsx. Add another
+   * the same way: a field here, its check in read(), its effect below and a
+   * control in the settings.
+   */
+  readonly largeText: boolean;
 }
 
 // Stored per app: every app of the repository shares the site's origin.
@@ -41,11 +48,18 @@ function read(): Preferences {
   const configured: string = app.language;
   const language: LanguageChoice =
     configured === 'de' || configured === 'en' ? configured : 'browser';
-  const fallback: Preferences = { appearance: 'system', language };
+  const fallback: Preferences = {
+    appearance: 'system',
+    language,
+    largeText: false,
+  };
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!stored || typeof stored !== 'object') return fallback;
-    const { appearance, language } = stored as Record<string, unknown>;
+    const { appearance, language, largeText } = stored as Record<
+      string,
+      unknown
+    >;
     return {
       appearance: ['system', 'light', 'dark'].includes(appearance as string)
         ? (appearance as Appearance)
@@ -53,6 +67,7 @@ function read(): Preferences {
       language: ['browser', 'de', 'en'].includes(language as string)
         ? (language as LanguageChoice)
         : fallback.language,
+      largeText: largeText === true,
     };
   } catch {
     // Private mode or blocked storage: the defaults, every time.
@@ -76,14 +91,25 @@ function apply(appearance: Appearance) {
   syncBrowserTheme();
 }
 
-// Before the first render, so a reload shows no flash of the other mode.
-apply(read().appearance);
+/** Larger text: one relative root size, as the sizing recipe has it. */
+function enlarge(largeText: boolean) {
+  document.documentElement.style.fontSize = largeText ? '112.5%' : '';
+}
+
+// Before the first render, so a reload shows no flash of the other mode;
+// not when a test imports this module without a page.
+if (typeof document === 'object') {
+  const initial = read();
+  apply(initial.appearance);
+  enlarge(initial.largeText);
+}
 
 /** The device's choices, their effect on the page and the resolved locale. */
 export function usePreferences() {
   const [preferences, setPreferences] = useState(read);
-  const { appearance } = preferences;
-  useEffect(() => {
+  const { appearance, largeText } = preferences;
+  // Layout effects: a change shows in the frame it is made in.
+  useLayoutEffect(() => {
     apply(appearance);
     if (appearance !== 'system') return;
     // "System" follows a change of the system's mode while the app is open.
@@ -92,6 +118,7 @@ export function usePreferences() {
     system.addEventListener('change', follow);
     return () => system.removeEventListener('change', follow);
   }, [appearance]);
+  useLayoutEffect(() => enlarge(largeText), [largeText]);
   // A chosen language keeps the browser's region for dates and numbers when
   // it matches (de-AT stays de-AT), else that language's default.
   const { locale, language } =
@@ -110,7 +137,8 @@ export function usePreferences() {
       setPreferences((current) => {
         const stored = read();
         return stored.appearance === current.appearance &&
-          stored.language === current.language
+          stored.language === current.language &&
+          stored.largeText === current.largeText
           ? current
           : stored;
       });
@@ -131,7 +159,7 @@ export function usePreferences() {
   return { preferences, change, locale, language };
 }
 
-const texts = {
+export const preferenceTexts = {
   en: {
     appearance: 'Appearance',
     system: 'System',
@@ -139,6 +167,9 @@ const texts = {
     dark: 'Dark',
     language: 'Language',
     browser: 'Browser',
+    // For PreferencesDialog.tsx.
+    settings: 'Settings',
+    largeText: 'Larger text',
   },
   de: {
     appearance: 'Darstellung',
@@ -147,6 +178,8 @@ const texts = {
     dark: 'Dunkel',
     language: 'Sprache',
     browser: 'Browser',
+    settings: 'Einstellungen',
+    largeText: 'Größere Schrift',
   },
 };
 
@@ -160,7 +193,7 @@ export function usePreferenceEntries({
   preferences,
   change,
 }: Pick<ReturnType<typeof usePreferences>, 'preferences' | 'change'>) {
-  const t = useMessages(texts);
+  const t = useMessages(preferenceTexts);
   const entries: readonly HeaderMenuEntry[] = [
     {
       label: t.appearance,

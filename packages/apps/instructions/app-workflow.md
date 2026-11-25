@@ -368,6 +368,18 @@ describes, and style them with Tailwind classes on the theme's roles
   follow a choice at once. Its first lines say how to wire it in; test it
   with the system in the opposite mode, with an unsaved edit open while the
   language changes, and with a second tab of the app open.
+  `src/examples/PreferencesDialog.tsx` puts the same choices and one of the
+  app's own (larger text) in a Settings dialog instead, for an owner who
+  wants room for more settings or the choices before sign-in: the menu opens
+  the kit's `Dialog`, and `AppAccess` shows the same content above the
+  sign-in screen. The choices live in `App`, above both; each applies at
+  once and Close saves nothing. Offer only this device's presentation there
+  (the sign-in screen grants no session) and controls that render in place
+  ("App settings before sign-in" in `react-authoring.md`). Its first lines
+  also add a script to `index.html` that shows a stored appearance on the
+  startup splash; the installed app's launch screen before it is the
+  browser's, from the manifest. Test both entry points with the keyboard
+  and at 375px, light and dark.
 
 A component the UI kit lacks can come from `shadcn add` (the CLI as a
 development dependency of the app); it is then the app's own code. Copying a

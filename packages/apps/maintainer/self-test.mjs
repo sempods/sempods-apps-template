@@ -40,6 +40,7 @@ import {
   readSnapshot,
 } from '../scripts/lib/shared.mjs';
 import { checkLinks } from './lib/links.mjs';
+import { settingsCheck } from './lib/settings-check.mjs';
 
 // A source-pair check before the SDK is released. Overrides stay in the
 // temporary owner repository (also copied by its standalone check).
@@ -1150,6 +1151,14 @@ try {
   await overviewCheck(repo);
   await appThemeCheck(repo);
   await examplesCheck(repo);
+  await settingsCheck({
+    app,
+    site: join(repo, 'site-dist'),
+    fixture: FIXTURE,
+    chromium: createRequire(
+      realpathSync(join(repo, 'node_modules/@sempods/apps/package.json')),
+    )('playwright').chromium,
+  });
   // Without an ID, dev lists the apps instead of starting one.
   if (!run('pnpm', ['run', '--silent', 'dev'], repo, true).includes(`${FIXTURE}  Self test  http://127.0.0.1:`))
     throw new Error('pnpm run dev without an ID does not list the app');
