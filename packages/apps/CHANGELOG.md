@@ -200,6 +200,37 @@ Preferences example (sempods/sempods-apps-template#178):
   which shows that the app is open elsewhere in the chosen language and
   appearance.
 
+Settings dialog (sempods/sempods-apps-template#187):
+
+- New example, unmounted: `src/examples/PreferencesDialog.tsx` shows the
+  Preferences example's appearance and language, and larger text as an
+  app's own preference, in a Settings dialog from the header's menu, and the
+  same content in `AppAccess`'s `settings` above the sign-in screen. It
+  composes the UI kit's `Dialog`, labelled single-choice `ToggleGroup`s
+  with `disallowEmptySelection` and a `Toggle`, with 44px targets that wrap,
+  a check mark on the current choice and no app CSS. Another setting is
+  another child of its content; there is no settings framework.
+- `usePreferences` keeps one source for every choice: `Preferences` gains
+  `largeText`, applied as a factor of 1.125 (`--text-scale`) on the root size
+  that the app's `src/index.css` sets, so an app made larger with the sizing
+  recipe grows from its own size. Choices apply in layout effects, in the
+  frame they are made in, and importing the module without a page (a host
+  test) no longer touches the document. The example's texts are exported
+  as `preferenceTexts`.
+- The example's first lines add a script to `index.html` that applies a
+  stored explicit appearance and the larger text to the static splash before
+  the app's module loads, per app and without failing on blocked or invalid
+  storage. "System" keeps following the device. The installed app's launch
+  screen before the page stays the browser's.
+- The app workflow's Preferences entry describes the variant. The self-test
+  builds it and checks, at 375px light and dark: the dialog from the menu
+  and from the sign-in gate with the keyboard, arrow keys and Space, a
+  choice that cannot be emptied, Escape returning the focus, German at once
+  beside an unsaved draft, the larger text across closing and a reload, also
+  on a 125% root, and the splash before the module for a stored appearance
+  opposite to the system, invalid or blocked storage, another app's choice
+  and the larger text on a 125% root.
+
 Shared implementation in the tooling (sempods/sempods-apps-template#177):
 
 - New exports `@sempods/apps/vite` and `@sempods/apps/browser-theme`, with
@@ -596,7 +627,21 @@ and installed-device limits.
     Check a slow, a refused and an unconfirmed tick at 375px, light and
     dark, and once with reduced motion.
 
-18. An app with a combined view that names an entry's source its own way
+18. An app with a copy of the Preferences example keeps its menu sections.
+    If the owner wants a Settings dialog, room for the app's own settings
+    or the choices before sign-in, offer the skeleton's
+    `src/examples/PreferencesDialog.tsx`: take the skeleton's
+    `Preferences.tsx` changes into the copy (`largeText`, layout effects,
+    exported `preferenceTexts`) and keep what the owner changed, then wire
+    the dialog in as its first lines say, with `--text-scale` in the root
+    size of `src/index.css`. Its startup script in `index.html` reads the
+    copy's storage key: `__APP_ID__` becomes the app's ID, as in
+    `${app.id}:preferences`. Check both entry points with the keyboard, at
+    375px light and dark, a language change beside an unsaved edit, larger
+    text on the app's own root size, and a reload with an appearance
+    opposite to the system.
+
+19. An app with a combined view that names an entry's source its own way
     keeps it. Offer the owner the skeleton's `src/examples/SourceBadge.tsx`
     where the source shows in several places, so the title, details,
     confirmations and the destination control read alike. Where the app
