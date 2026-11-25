@@ -296,7 +296,12 @@ SDK 0.9.0-dev.4:
   **Sign in** and **Remove from this device** for a remembered Pod;
   **Connect another Pod** is a step of the dialog and **Read and write**
   reads **Can edit** (sempods/sempods-typescript#386). The app workflow
-  describes the dialog that way.
+  describes the dialog that way and has an app that reads every connected
+  Pod pass `podView="combined"`.
+- `pod.find` returns its nodes normalized: `@id` stays the IRI string,
+  `@type` and every other value become arrays
+  (sempods/sempods-typescript#418); upgrade note 16 says what an app that
+  reads them checks.
 - Several tabs of an app share their sessions instead of reporting the
   second one busy, and a failed **Change sharing** keeps the session
   (sempods/sempods-typescript#374, #393).
@@ -322,12 +327,12 @@ Ticks in the list example (sempods/sempods-apps-template#188):
   confirmed write (`saved`) moves a row there, after a 180 ms collapse that
   a list read during it does not end early, at once with reduced motion;
   focus moves on to the next usable checkbox, also across groups, or the
-  one before. A refused, conflicting,
-  unconfirmed or unsent write drops the tick and leaves the row's notice
-  and recovery. The ticks are presentation only, in the example's
-  `useTicks`, per target and mounted screen: the SDK's confirmed data and
-  outcomes stay the evidence (sempods/sempods-typescript#104), and nothing
-  is retried. The app workflow says so.
+  one before. A refused, conflicting, unconfirmed or unsent write drops the
+  tick and leaves the row's notice and recovery. The ticks are
+  presentation only, in the example's `useTicks`, per target and mounted
+  screen: the SDK's confirmed data and outcomes stay the evidence
+  (sempods/sempods-typescript#104), and nothing is retried. The app
+  workflow says so.
 - The self-test drives these ticks in a browser at 375px, light and dark
   and with reduced motion: delayed confirmation, refusal and uncertainty,
   two rows at once, a tick back from Done, a list read during the exit, an
@@ -529,13 +534,21 @@ and installed-device limits.
     guide's new 0.9.0 sections; its tests are what most often changes
     ("Pods & sharing grouped by Pod", "ResourceEditor actions in
     confirmation order", "The shared delete icon", "Confirmed modification
-    time on list rows"). Its copy of `NewVersionNotice.tsx` keeps working as
-    a paragraph. Offer the owner the skeleton's version: render
-    `<Notices />` once beneath `SempodsProvider` beside `AppAccess` and
-    publish the update with `useNotice`, as the SDK's migration guide
-    describes ("App notices in the shared host"). Then check that the
-    notice and the access prompts appear at the bottom, also before
-    sign-in, and that tests find a prompt by `[data-sempods-ui="prompt"]`.
+    time on list rows"). An app that calls `pod.find` reads the hits' nodes
+    in their new normalized form even without the new options: `@id` stays
+    the IRI string, while `@type` and every other value are arrays (a name
+    is `[{ "@value": … }]`), so a label read as a string goes missing ("Find
+    observations, the flat form and a type filter"). An app that shows
+    several Pods at once passes `podView="combined"` to `AppAccess`. Its
+    copy of `NewVersionNotice.tsx` keeps working as a paragraph. Offer the
+    owner the skeleton's version: render `<Notices />` once beneath
+    `SempodsProvider` beside `AppAccess` and publish the update with
+    `useNotice`, as the SDK's migration guide describes ("App notices in
+    the shared host"). Then check each in its own state: a waiting update
+    shows inside the open sign-in gate, which holds back the access prompts;
+    an access prompt shows at the bottom once signed in, for example after
+    cancelling **Change sharing**, and tests find it by
+    `[data-sempods-ui="prompt"]`.
 
 17. An app with a copy of the list example keeps its rows, whose checkbox
     shows a tick only once the Pod confirms it. Where the owner wants an
