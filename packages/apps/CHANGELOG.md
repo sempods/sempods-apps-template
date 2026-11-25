@@ -298,7 +298,8 @@ SDK 0.9.0-dev.4:
   reads **Can edit** (sempods/sempods-typescript#386). The app workflow
   describes the dialog that way and has an app that reads every connected
   Pod pass `podView="combined"`.
-- `pod.find` returns its nodes normalized, every value an array
+- `pod.find` returns its nodes normalized: `@id` stays the IRI string,
+  `@type` and every other value become arrays
   (sempods/sempods-typescript#418); upgrade note 16 says what an app that
   reads them checks.
 - Several tabs of an app share their sessions instead of reporting the
@@ -514,8 +515,9 @@ and installed-device limits.
     ("Pods & sharing grouped by Pod", "ResourceEditor actions in
     confirmation order", "The shared delete icon", "Confirmed modification
     time on list rows"). An app that calls `pod.find` reads the hits' nodes
-    in their new normalized form even without the new options: every value
-    is an array, so a label read as a string goes missing ("Find
+    in their new normalized form even without the new options: `@id` stays
+    the IRI string, while `@type` and every other value are arrays (a name
+    is `[{ "@value": … }]`), so a label read as a string goes missing ("Find
     observations, the flat form and a type filter"). An app that shows
     several Pods at once passes `podView="combined"` to `AppAccess`. Its
     copy of `NewVersionNotice.tsx` keeps working as a paragraph. Offer the
