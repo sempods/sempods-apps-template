@@ -318,6 +318,28 @@ SDK 0.9.0-dev.4:
   connected Pods (#408), and Find observations, `findFlat` and a type filter
   (#418).
 
+Ticks in the list example (sempods/sempods-apps-template#188):
+
+- A press on a row's checkbox shows the tick at once, with a spinner in
+  Delete's place and a spoken "Saving: …"; the box keeps its focus and takes
+  no second press until the SDK settles the write, and other rows stay
+  usable. Done items follow the open ones under a "Done" heading. Only a
+  confirmed write (`saved`) moves a row there, after a 180 ms collapse that
+  a list read during it does not end early, at once with reduced motion;
+  focus moves on to the next usable checkbox, also across groups, or the
+  one before; alone in the list, the row takes it back in its new group. A
+  refused, conflicting, unconfirmed or unsent write drops the tick and
+  leaves the row's notice and recovery. The ticks are
+  presentation only, in the example's `useTicks`, per target and mounted
+  screen: the SDK's confirmed data and outcomes stay the evidence
+  (sempods/sempods-typescript#104), and nothing is retried. The app
+  workflow says so.
+- The self-test drives these ticks in a browser at 375px, light and dark
+  and with reduced motion: delayed confirmation, refusal and uncertainty,
+  two rows at once, a tick back from Done, a list read during the exit,
+  focus by keyboard also in a one-item list, an unmounted screen and a
+  changed target.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Tooling Playwright is 1.65.1, the version of the SDK's browser gate. The
@@ -546,6 +568,18 @@ and installed-device limits.
     an access prompt shows at the bottom once signed in, for example after
     cancelling **Change sharing**, and tests find it by
     `[data-sempods-ui="prompt"]`.
+
+17. An app with a copy of the list example keeps its rows, whose checkbox
+    shows a tick only once the Pod confirms it. Where the owner wants an
+    immediate tick, for example while shopping, offer the skeleton's
+    composition from `src/examples/ListScreen.tsx`: its `useTicks` hook,
+    the checkbox's `isSelected`, `isReadOnly` and `isDisabled`, the spinner
+    and status in Delete's place, and the row's collapse in a `grid` with
+    `inert` while it leaves. Group or filter rows by the tick while it is
+    shown, as the example's `isDone` does, so the row leaves only after
+    `saved`. Keep it presentation only: no own copy of the data, no retry.
+    Check a slow, a refused and an unconfirmed tick at 375px, light and
+    dark, and once with reduced motion.
 
 ## 0.10.0
 
