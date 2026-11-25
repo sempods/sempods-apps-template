@@ -118,6 +118,7 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
     // new group; it takes no presses while it leaves.
     <li
       key={entry.iri}
+      ref={ticks.rowRef(entry.iri)}
       data-item={entry.iri}
       inert={tick?.leaving}
       className={`grid transition-[grid-template-rows,opacity] duration-180 ease-out motion-reduce:transition-none ${tick?.leaving ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr]'}`}
@@ -278,11 +279,14 @@ type Tick = { readonly done: boolean; readonly leaving: boolean };
 function useTicks(target: string | undefined) {
   const live = useRef(new Map<string, Tick>());
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  // The item that left with the focus and found no other checkbox for it.
+  const refocus = useRef<string | null>(null);
   const [ticks, setTicks] = useState<ReadonlyMap<string, Tick>>(new Map());
   useEffect(() => {
     const own = live.current;
     const pending = timers.current;
     return () => {
+      refocus.current = null;
       own.clear();
       pending.forEach(clearTimeout);
       pending.clear();
@@ -317,7 +321,8 @@ function useTicks(target: string | undefined) {
     }
     if (live.current.get(iri) !== pending) return;
     // Focus in the leaving row moves to the next usable checkbox, also in
-    // the other group, or else to the one before it.
+    // the other group, or else to the one before it; without one, the row
+    // takes it back in its new group (`rowRef`).
     const from = document.activeElement?.closest('li');
     if (from instanceof HTMLElement && from.dataset.item === iri) {
       const others = [
@@ -329,7 +334,9 @@ function useTicks(target: string | undefined) {
         (box) =>
           from.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
       );
-      (next ?? others.at(-1))?.focus();
+      const to = next ?? others.at(-1);
+      if (to) to.focus();
+      else refocus.current = iri;
     }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       settle(iri, pending);
@@ -343,7 +350,21 @@ function useTicks(target: string | undefined) {
     }, leaveMs);
     timers.current.add(timer);
   };
-  return { of: (iri: string) => ticks.get(iri), tick };
+  // For a row's `ref`: once the row that left with the focus shows in its
+  // new group, and the focus was not put elsewhere meanwhile, its checkbox
+  // takes it, or its link while the checkbox is locked until the list reads
+  // the item again.
+  const rowRef = (iri: string) => (row: HTMLElement | null) => {
+    if (!row || ticks.has(iri) || refocus.current !== iri) return;
+    refocus.current = null;
+    const focused = document.activeElement;
+    if (focused && focused !== document.body) return;
+    (
+      row.querySelector<HTMLElement>('input:not(:disabled)') ??
+      row.querySelector('a')
+    )?.focus();
+  };
+  return { of: (iri: string) => ticks.get(iri), tick, rowRef };
 }
 
 /**

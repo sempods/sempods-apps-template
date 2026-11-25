@@ -635,6 +635,8 @@ Object.assign(window, {
         }));
       });
     },
+    // Only this item stays listed.
+    keep: (iri: string) => change(() => (rows = rows.filter((row) => row.snapshot.iri === iri))),
     target: (next: string) => change(() => (key = next)),
     mount: (next: boolean) => change(() => (mounted = next)),
   },
@@ -826,7 +828,8 @@ async function examplesCheck(repo) {
  * write moves the row to Done, after a short exit that a list read does not
  * end early (at once with reduced motion); a refused or unconfirmed write
  * drops the tick and shows its notice; rows tick side by side, back and
- * forth; focus moves on from a leaving row; and a tick of an earlier target
+ * forth; focus moves on from a leaving row, or stays with it when it is
+ * alone in the list; and a tick of an earlier target
  * or an unmounted screen ends without effect.
  */
 async function tickCheck(page, where, reduced) {
@@ -928,6 +931,17 @@ async function tickCheck(page, where, reduced) {
   await expect('Bread', { group: 1, leaving: false, ticked: true }, 'the last open row');
   if (!(await row('Milk').getByRole('checkbox').evaluate((input) => input === document.activeElement)))
     throw new Error(`${where}: the focus did not move on from the last open row`);
+  // Alone in the list, the row takes the focus back in its new group: on
+  // its link while its checkbox waits for the list to read it again.
+  await refresh();
+  await page.evaluate((iri) => window.sdkCheck.keep(iri), iris.Bread);
+  await row('Bread').getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await answer('Bread', { kind: 'saved' });
+  await settled();
+  await expect('Bread', { group: 0, leaving: false, ticked: false }, 'the only row');
+  if (!(await row('Bread').getByRole('link').evaluate((link) => link === document.activeElement)))
+    throw new Error(`${where}: the only row lost the focus when it moved`);
 }
 
 /**

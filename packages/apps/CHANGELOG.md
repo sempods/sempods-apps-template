@@ -327,16 +327,18 @@ Ticks in the list example (sempods/sempods-apps-template#188):
   confirmed write (`saved`) moves a row there, after a 180 ms collapse that
   a list read during it does not end early, at once with reduced motion;
   focus moves on to the next usable checkbox, also across groups, or the
-  one before. A refused, conflicting, unconfirmed or unsent write drops the
-  tick and leaves the row's notice and recovery. The ticks are
+  one before; alone in the list, the row takes it back in its new group. A
+  refused, conflicting, unconfirmed or unsent write drops the tick and
+  leaves the row's notice and recovery. The ticks are
   presentation only, in the example's `useTicks`, per target and mounted
   screen: the SDK's confirmed data and outcomes stay the evidence
   (sempods/sempods-typescript#104), and nothing is retried. The app
   workflow says so.
 - The self-test drives these ticks in a browser at 375px, light and dark
   and with reduced motion: delayed confirmation, refusal and uncertainty,
-  two rows at once, a tick back from Done, a list read during the exit, an
-  unmounted screen and a changed target.
+  two rows at once, a tick back from Done, a list read during the exit,
+  focus by keyboard also in a one-item list, an unmounted screen and a
+  changed target.
 
 Tooling (sempods/sempods-apps-template#153):
 
