@@ -371,6 +371,21 @@ Ticks in the list example (sempods/sempods-apps-template#188):
   focus by keyboard also in a one-item list, an unmounted screen and a
   changed target.
 
+Source badge for combined views (sempods/sempods-apps-template#196):
+
+- A new skeleton example, `src/examples/SourceBadge.tsx`, names where an
+  entry comes from in a view that combines contexts or Pods: the UI kit's
+  outline `Badge` with the labels of `usePodContexts`, the context's label
+  in one Pod and the Pod's label added on every row once a combined view
+  has a second Pod. The text is the identity; a quiet tint derived from the
+  Pod's address and the context's IRI only decorates it and gives way in
+  forced colours. Long names wrap.
+- The app workflow shows the badge under an entry's title, in its details,
+  in a grouped confirmation and as the selected value of a destination
+  control, and keeps it passive. Because `usePodContexts` makes `AppAccess`
+  leave the context chooser to the app, an app that works in a selected
+  context mounts `ContextSwitch` beside the badge.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Tooling Playwright is 1.65.1, the version of the SDK's browser gate. The
@@ -625,6 +640,15 @@ and installed-device limits.
     375px light and dark, a language change beside an unsaved edit, larger
     text on the app's own root size, and a reload with an appearance
     opposite to the system.
+
+19. An app with a combined view that names an entry's source its own way
+    keeps it. Offer the owner the skeleton's `src/examples/SourceBadge.tsx`
+    where the source shows in several places, so the title, details,
+    confirmations and the destination control read alike. Where the app
+    works in a selected context, mount `ContextSwitch` in the header with it:
+    `AppAccess` offers no chooser while the badge is mounted. Check it at
+    375px with a long name, light, dark and in forced colours, and switch
+    between two readable contexts.
 
 ## 0.10.0
 
