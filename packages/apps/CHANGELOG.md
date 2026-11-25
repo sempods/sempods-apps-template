@@ -296,7 +296,11 @@ SDK 0.9.0-dev.4:
   **Sign in** and **Remove from this device** for a remembered Pod;
   **Connect another Pod** is a step of the dialog and **Read and write**
   reads **Can edit** (sempods/sempods-typescript#386). The app workflow
-  describes the dialog that way.
+  describes the dialog that way and has an app that reads every connected
+  Pod pass `podView="combined"`.
+- `pod.find` returns its nodes normalized, every value an array
+  (sempods/sempods-typescript#418); upgrade note 16 says what an app that
+  reads them checks.
 - Several tabs of an app share their sessions instead of reporting the
   second one busy, and a failed **Change sharing** keeps the session
   (sempods/sempods-typescript#374, #393).
@@ -509,13 +513,20 @@ and installed-device limits.
     guide's new 0.9.0 sections; its tests are what most often changes
     ("Pods & sharing grouped by Pod", "ResourceEditor actions in
     confirmation order", "The shared delete icon", "Confirmed modification
-    time on list rows"). Its copy of `NewVersionNotice.tsx` keeps working as
-    a paragraph. Offer the owner the skeleton's version: render
-    `<Notices />` once beneath `SempodsProvider` beside `AppAccess` and
-    publish the update with `useNotice`, as the SDK's migration guide
-    describes ("App notices in the shared host"). Then check that the
-    notice and the access prompts appear at the bottom, also before
-    sign-in, and that tests find a prompt by `[data-sempods-ui="prompt"]`.
+    time on list rows"). An app that calls `pod.find` reads the hits' nodes
+    in their new normalized form even without the new options: every value
+    is an array, so a label read as a string goes missing ("Find
+    observations, the flat form and a type filter"). An app that shows
+    several Pods at once passes `podView="combined"` to `AppAccess`. Its
+    copy of `NewVersionNotice.tsx` keeps working as a paragraph. Offer the
+    owner the skeleton's version: render `<Notices />` once beneath
+    `SempodsProvider` beside `AppAccess` and publish the update with
+    `useNotice`, as the SDK's migration guide describes ("App notices in
+    the shared host"). Then check each in its own state: a waiting update
+    shows inside the open sign-in gate, which holds back the access prompts;
+    an access prompt shows at the bottom once signed in, for example after
+    cancelling **Change sharing**, and tests find it by
+    `[data-sempods-ui="prompt"]`.
 
 ## 0.10.0
 
