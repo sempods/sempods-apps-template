@@ -163,7 +163,9 @@ vocabulary), `resource-cards.md` (cards and pictures across Pods) and
 Ask separately where new records go and where existing records are edited:
 "Should a change update the list the entry came from, or create a separate
 copy? Where should a new entry go?" A combined view shows an entry's source
-where it matters for editing or access. It never silently falls back to a
+where it matters for editing or access, with one source badge throughout
+(`src/examples/SourceBadge.tsx`, under
+[Build the screen](#build-the-screen)). It never silently falls back to a
 writable context. Explain that deleting a shared record affects other apps
 that use it; removing it from this view may need a different operation.
 
@@ -362,6 +364,18 @@ describes, and style them with Tailwind classes on the theme's roles
   "context" ("Share lists …", "Loading lists …", "No readable lists
   shared."), in both languages from `src/texts.ts`. It only selects; see
   [sharing more](#let-the-person-share-more-or-change-access).
+- `src/examples/SourceBadge.tsx` for a view that combines contexts or Pods:
+  the kit's `Badge` naming where an entry comes from, with the labels of
+  `usePodContexts`. Show the same badge under an entry's title, in its
+  details, beside each area of a grouped confirmation and as the selected
+  value of a labelled destination control ("Save in"). In one Pod it shows
+  the context's label ("Tasks · work"); once a second Pod is connected to a
+  combined view, every badge adds the Pod's label, not only where names
+  repeat. The text is the identity; a quiet tint from the Pod's and
+  context's addresses only decorates it, stays the same when rows are
+  sorted, a context is renamed or status or access change, and gives way in
+  forced colours. The badge never acts: actions stay on the row or the control.
+  Build no label from IRIs or `name`.
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
   in the header's menu, stored on the device; the app's other open tabs

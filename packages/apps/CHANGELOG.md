@@ -313,6 +313,19 @@ SDK 0.9.0-dev.4:
   connected Pods (#408), and Find observations, `findFlat` and a type filter
   (#418).
 
+Source badge for combined views (sempods/sempods-apps-template#196):
+
+- A new skeleton example, `src/examples/SourceBadge.tsx`, names where an
+  entry comes from in a view that combines contexts or Pods: the UI kit's
+  outline `Badge` with the labels of `usePodContexts`, the context's label
+  in one Pod and the Pod's label added on every row once a combined view
+  has a second Pod. The text is the identity; a quiet tint derived from the
+  Pod's address and the context's IRI only decorates it and gives way in
+  forced colours. Long names wrap.
+- The app workflow shows the badge under an entry's title, in its details,
+  in a grouped confirmation and as the selected value of a destination
+  control, and keeps it passive.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Tooling Playwright is 1.65.1, the version of the SDK's browser gate. The
@@ -516,6 +529,12 @@ and installed-device limits.
     describes ("App notices in the shared host"). Then check that the
     notice and the access prompts appear at the bottom, also before
     sign-in, and that tests find a prompt by `[data-sempods-ui="prompt"]`.
+
+17. An app with a combined view that names an entry's source its own way
+    keeps it. Offer the owner the skeleton's `src/examples/SourceBadge.tsx`
+    where the source shows in several places, so the title, details,
+    confirmations and the destination control read alike. Check it at 375px
+    with a long name, light, dark and in forced colours.
 
 ## 0.10.0
 
