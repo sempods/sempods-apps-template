@@ -349,6 +349,28 @@ SDK 0.9.0-dev.4:
   connected Pods (#408), and Find observations, `findFlat` and a type filter
   (#418).
 
+Ticks in the list example (sempods/sempods-apps-template#188):
+
+- A press on a row's checkbox shows the tick at once, with a spinner in
+  Delete's place and a spoken "Saving: …"; the box keeps its focus and takes
+  no second press until the SDK settles the write, and other rows stay
+  usable. Done items follow the open ones under a "Done" heading. Only a
+  confirmed write (`saved`) moves a row there, after a 180 ms collapse that
+  a list read during it does not end early, at once with reduced motion;
+  focus moves on to the next usable checkbox, also across groups, or the
+  one before; alone in the list, the row takes it back in its new group. A
+  refused, conflicting, unconfirmed or unsent write drops the tick and
+  leaves the row's notice and recovery. The ticks are
+  presentation only, in the example's `useTicks`, per target and mounted
+  screen: the SDK's confirmed data and outcomes stay the evidence
+  (sempods/sempods-typescript#104), and nothing is retried. The app
+  workflow says so.
+- The self-test drives these ticks in a browser at 375px, light and dark
+  and with reduced motion: delayed confirmation, refusal and uncertainty,
+  two rows at once, a tick back from Done, a list read during the exit,
+  focus by keyboard also in a one-item list, an unmounted screen and a
+  changed target.
+
 Tooling (sempods/sempods-apps-template#153):
 
 - Tooling Playwright is 1.65.1, the version of the SDK's browser gate. The
@@ -378,6 +400,23 @@ Instructions:
   controls, and checks that end on the owner's phone. The app workflow adds
   that actions side by side that should look alike share one variant
   (sempods/sempods-apps-template#189).
+- The app workflow describes a flat list toolbar from public UI-kit
+  controls (sempods/sempods-apps-template#194): routed views underlined on
+  the strip's edge after the kit's "Views on one baseline" recipe, ghost icon
+  actions in the list header, a list-wide action outside the `nav`, kept
+  keyboard focus, and the same trash glyph for a row's `RemoveButton` and a
+  list-wide `DeleteIcon`. The visual check compares the toolbar at 375px
+  and at desktop width.
+- The app workflow describes an item with a title, draft actions and
+  optional Markdown notes from `@sempods/app-ui/markdown`
+  (sempods/sempods-apps-template#195): the optional peers added only to an
+  app that uses them, a title-first creation that names its destination
+  beside the add action, one `ResourceEditor` whose Save writes title,
+  draft actions and notes together, notes that open for reading with an
+  explicit switch to writing and a preview, `MarkdownView` wherever the
+  notes are only shown, and a check of keyboard order and long notes at
+  375px. The skeleton gains no example and no dependency: the kit's
+  README carries the compiled recipe at the installed version.
 
 ### Upgrade notes
 
@@ -561,7 +600,19 @@ and installed-device limits.
     cancelling **Change sharing**, and tests find it by
     `[data-sempods-ui="prompt"]`.
 
-17. An app with a copy of the Preferences example keeps its menu sections.
+17. An app with a copy of the list example keeps its rows, whose checkbox
+    shows a tick only once the Pod confirms it. Where the owner wants an
+    immediate tick, for example while shopping, offer the skeleton's
+    composition from `src/examples/ListScreen.tsx`: its `useTicks` hook,
+    the checkbox's `isSelected`, `isReadOnly` and `isDisabled`, the spinner
+    and status in Delete's place, and the row's collapse in a `grid` with
+    `inert` while it leaves. Group or filter rows by the tick while it is
+    shown, as the example's `isDone` does, so the row leaves only after
+    `saved`. Keep it presentation only: no own copy of the data, no retry.
+    Check a slow, a refused and an unconfirmed tick at 375px, light and
+    dark, and once with reduced motion.
+
+18. An app with a copy of the Preferences example keeps its menu sections.
     If the owner wants a Settings dialog, room for the app's own settings
     or the choices before sign-in, offer the skeleton's
     `src/examples/PreferencesDialog.tsx`: take the skeleton's
