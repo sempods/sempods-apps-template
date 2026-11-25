@@ -272,10 +272,14 @@ owner asks otherwise: `AppAccess` beside `TargetScreen`, the SDK's components,
 and a header with the app's icon and name, the app's icon actions and a menu
 button (`HeaderMenu`) whose "Pods & sharing" opens `AppAccess` as a dialog
 (`open` with `onClose`, and the menu's `ref` as `focusTarget`, so the focus
-returns to the menu button); signing out is part of that dialog. `AppAccess`
-shows sign-in as a gate above the content, lists Pods the person signed out
-of with **Sign in** and **Forget**, and shows outcomes as prompts that can be
-dismissed; the app adds no sign-in screen or loading panel of its own. The
+returns to the menu button). That dialog lists each Pod in a row whose
+**⋯** button holds its actions, signing out on this device among them, and
+connects another Pod as a step. `AppAccess` shows sign-in as a gate above the
+content, and the SDK's `<Notices />` host, rendered once beside it, shows its
+outcomes and the app's own app-wide notices (`useNotice`, as
+`NewVersionNotice.tsx` does) in one stack outside the page's flow. The app
+adds no sign-in screen or loading panel of its own and no paragraph for an
+app-wide message; a row's outcome stays at the row (below). The
 SDK owns connection, editing and recovery behavior; use the reference rather
 than rebuilding those facilities. The layout and the UI kit are the shared
 identity the SDK's `ai-app-builder.md` asks to keep; the visual direction,

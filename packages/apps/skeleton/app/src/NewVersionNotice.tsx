@@ -1,15 +1,17 @@
-// Adapted from the sempods TypeScript SDK v0.6.0 recipe
+// Adapted from the sempods TypeScript SDK v0.9.0-dev.4 recipe
 // examples/todo/pwa/register.tsx, licensed under Apache-2.0; see
 // the LICENSE and NOTICE of the @sempods/app-sdk package. Changes: this header; the
 // registration function moved to pwa.ts; the text comes from texts.ts.
 import { useEffect, useState } from 'react';
-import { useMessages } from '@sempods/app-sdk/react';
+import { useMessages, useNotice } from '@sempods/app-sdk/react';
 import { texts } from './texts.ts';
 
 /**
- * Render beneath the app's actual locale provider so notices follow its language.
- * Keep it outside target/access gates: updates also matter while signed out.
- * Announces a downloaded version. It applies once every window of the app is
+ * Render beneath the app's actual locale provider so notices follow its language,
+ * and beside the SDK's `Notices` host, which shows it outside the page's flow.
+ * Keep it outside target/access gates: updates also matter while signed out,
+ * and the host shows it inside the sign-in gate then. Announces a downloaded
+ * version once. It applies once every window of the app is
  * closed, so an update never reloads a page over unsaved drafts or unconfirmed
  * writes. App-owned recipe, not an SDK export.
  */
@@ -53,6 +55,12 @@ export function NewVersionNotice({
       stop();
     };
   }, [registration]);
-  if (!ready) return null;
-  return <p role="status">{t.newVersion}</p>;
+  // It stays until dismissed: the person did not ask for it and should
+  // learn how the new version starts. A language change updates it in place.
+  useNotice(
+    ready
+      ? { key: 'app-update', text: t.newVersion, duration: 'until-dismissed' }
+      : null,
+  );
+  return null;
 }

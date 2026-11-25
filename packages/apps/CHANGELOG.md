@@ -153,8 +153,8 @@ The overview (sempods/sempods-apps-template#46, step 4):
 
 SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
 
-- The starter installs SDK 0.9.0-dev.3, the prerelease of 0.9.0, for all
-  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.3` as its
+- The starter installs SDK 0.9.0-dev.4, the prerelease of 0.9.0, for all
+  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.4` as its
   peer.
 - List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
   two-line trigger, Contexts grouped by Pod and a **Read only** mark. It only
@@ -282,6 +282,36 @@ SDK 0.9.0-dev.3:
   `ContextView.values` for one value at a time
   (sempods/sempods-typescript#370), and `media` and `notice` on
   `SuggestField` (sempods/sempods-typescript#361).
+
+SDK 0.9.0-dev.4:
+
+- New apps render the SDK's `<Notices />` once beside `AppAccess`: the access
+  prompts and the app's own app-wide notices share one stack outside the
+  page's flow, inside the sign-in gate before sign-in
+  (sempods/sempods-typescript#385). The skeleton's `NewVersionNotice`
+  publishes through `useNotice` and stays until dismissed instead of adding a
+  paragraph to the page. The app workflow says so.
+- **Pods & sharing** lists each Pod in a row whose **⋯** button holds
+  **Change sharing**, **Use this Pod** and **Sign out on this device**, or
+  **Sign in** and **Remove from this device** for a remembered Pod;
+  **Connect another Pod** is a step of the dialog and **Read and write**
+  reads **Can edit** (sempods/sempods-typescript#386). The app workflow
+  describes the dialog that way.
+- Several tabs of an app share their sessions instead of reporting the
+  second one busy, and a failed **Change sharing** keeps the session
+  (sempods/sempods-typescript#374, #393).
+- `RemoveButton` shows the UI kit's new `DeleteIcon` (Lucide `Trash2`, 1rem)
+  and `ResourceEditor` orders its actions Delete first and Save last
+  (sempods/sempods-typescript#389, #401). The skeleton passes neither
+  children nor position-based styles, so its examples need no change.
+- The skeleton's `lucide-react` is 1.77.0, the version of the UI kit.
+- New opt-in SDK features need no template change: a Markdown view and
+  field from `@sempods/app-ui/markdown` with optional peers
+  (sempods/sempods-typescript#395), `DateChoice` with presets and a minimum
+  (#400), `InlineTextEdit` (#394), the confirmed modification time on list
+  rows (#387), several Pods read without a token (#372), overview rows across
+  connected Pods (#408), and Find observations, `findFlat` and a type filter
+  (#418).
 
 Tooling (sempods/sempods-apps-template#153):
 
@@ -474,6 +504,18 @@ and installed-device limits.
     `basis-full px-2 empty:hidden`), and `min-w-0 wrap-anywhere` on the
     name's link. Check it at 375px with a long name and an open outcome,
     light and dark.
+
+16. An app from an earlier 0.11.0 prerelease follows the SDK migration
+    guide's new 0.9.0 sections; its tests are what most often changes
+    ("Pods & sharing grouped by Pod", "ResourceEditor actions in
+    confirmation order", "The shared delete icon", "Confirmed modification
+    time on list rows"). Its copy of `NewVersionNotice.tsx` keeps working as
+    a paragraph. Offer the owner the skeleton's version: render
+    `<Notices />` once beneath `SempodsProvider` beside `AppAccess` and
+    publish the update with `useNotice`, as the SDK's migration guide
+    describes ("App notices in the shared host"). Then check that the
+    notice and the access prompts appear at the bottom, also before
+    sign-in, and that tests find a prompt by `[data-sempods-ui="prompt"]`.
 
 ## 0.10.0
 
