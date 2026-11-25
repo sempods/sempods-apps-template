@@ -342,6 +342,16 @@ Instructions:
   controls, and checks that end on the owner's phone. The app workflow adds
   that actions side by side that should look alike share one variant
   (sempods/sempods-apps-template#189).
+- The app workflow describes an item with a title, draft actions and
+  optional Markdown notes from `@sempods/app-ui/markdown`
+  (sempods/sempods-apps-template#195): the optional peers added only to an
+  app that uses them, a title-first creation that names its destination
+  beside the add action, one `ResourceEditor` whose Save writes title,
+  draft actions and notes together, notes that open for reading with an
+  explicit switch to writing and a preview, `MarkdownView` wherever the
+  notes are only shown, and a check of keyboard order and long notes at
+  375px. The skeleton gains no example and no dependency: the kit's
+  README carries the compiled recipe at the installed version.
 
 ### Upgrade notes
 

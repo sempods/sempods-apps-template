@@ -321,6 +321,40 @@ data's shape alone: waterings are a log, but in the morning the plants
 due today matter most. When no example fits
 that moment, keep their behaviour and arrange the screen for it.
 
+An item with a title and longer notes, such as a task, a recipe or a
+journal entry, can keep its notes as Markdown with the UI kit's opt-in
+entry `@sempods/app-ui/markdown`: read the kit's README, "Markdown text",
+and add its optional peers only to an app that uses it, the Tiptap packages
+at one version:
+`pnpm add --dir apps/<id> react-markdown @tiptap/core @tiptap/pm @tiptap/react @tiptap/starter-kit @tiptap/extensions`.
+Build on the collection example and the kit's recipe:
+
+- A new item starts with its title: the form asks for the title and
+  creates the item, and its notes stay empty until the person adds them. A
+  creation dialog may hold the same `MarkdownField`, which shows only
+  **Add text** while there is none. Name where the item goes beside the
+  add action, for example `useContexts().selected?.label` in an app that
+  switches contexts, so nobody creates into a list they did not mean.
+- The item's dialog is one `ResourceEditor` in a `ScreenDialog`: the title,
+  the app's own draft actions (done, a day with `DateChooser`, a priority)
+  and the `MarkdownField` change one draft, which one **Save** writes.
+  Keep these actions in the draft, not in field updates that write on
+  their own.
+- `MarkdownField` opens existing notes formatted for reading; **Edit
+  text** switches to writing and **Preview** shows the same draft as it
+  will read. A place that only shows the notes uses `MarkdownView`, the
+  renderer of that preview. An overview links each item by its title, as
+  the collection example does; drop that card's start of the text, which
+  would show Markdown's characters.
+- Declare the notes `optional` and without `trim`, as the kit's recipe
+  does, so an empty text leaves the field absent and Markdown keeps its
+  line breaks.
+- Check at 375px, light and dark, with notes longer than the screen: Tab
+  moves from the title through the draft actions and the notes to
+  **Save**, while reading and while writing; Escape asks before an unsaved
+  edit is lost; the long notes scroll inside the dialog and **Save** stays
+  reachable.
+
 Build further parts from the UI kit, `@sempods/app-ui`, as its reference
 describes, and style them with Tailwind classes on the theme's roles
 (`bg-background`, `text-muted-foreground`, `border-input`):
