@@ -68,12 +68,12 @@
     "markdown-extensions": "2.0.0",
     "remark": "15.0.1",
     "remark-validate-links": "13.1.0",
-    "unified-engine": "11.2.2"
+    "unified-engine": "12.0.0"
   },
   "peerDependencies": {
-    "@sempods/app-sdk": "^0.9.0-dev.3",
-    "@sempods/app-ui": "^0.9.0-dev.3",
-    "@sempods/client-sdk": "^0.9.0-dev.3",
+    "@sempods/app-sdk": "^0.9.0-dev.4",
+    "@sempods/app-ui": "^0.9.0-dev.4",
+    "@sempods/client-sdk": "^0.9.0-dev.4",
     "vite": ">=7.0.0",
     "vite-plugin-pwa": ">=1.0.0"
   },
