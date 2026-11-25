@@ -8,6 +8,16 @@
 //   <span>{row.data.title}</span>
 //   <SourceBadge source={source(item)} />
 //
+// useSources reads the labels through usePodContexts, which tells AppAccess
+// that the app owns the context chooser: AppAccess then offers none and
+// waits for that chooser's selection. An app that works in a selected
+// context (TargetScreen, useCreation without `context`, or
+// contextSelection="required") therefore mounts ContextSwitch in its header
+// beside the badge (./ContextSwitch.tsx), which selects and switches. An app
+// whose reads and writes all name their context (usePodList, rows written
+// where they came from, useCreation with `context`) or that has a fixed
+// preset.contextIri needs none.
+//
 // Show the same badge under an item's title, in its details, beside each
 // area of a grouped confirmation and as the selected value of a labelled
 // destination control (in the kit's SelectValue). It never acts: put
@@ -33,8 +43,8 @@ export interface Source {
  * label, unique within its Pod ("Tasks · work"). In a combined view with a
  * second Pod connected, every source also names its Pod ("Tasks · work ·
  * Alice"), so all rows read alike. Unknown until the Pod's Contexts are
- * read: null. Like any usePodContexts presentation, AppAccess then shows no
- * chooser of its own.
+ * read: null. While it is mounted, AppAccess shows no context chooser: keep
+ * ContextSwitch beside it where the app selects a context (see above).
  */
 export function useSources(options: {
   readonly combined: boolean;

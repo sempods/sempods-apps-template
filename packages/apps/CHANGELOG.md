@@ -329,7 +329,9 @@ Source badge for combined views (sempods/sempods-apps-template#196):
   forced colours. Long names wrap.
 - The app workflow shows the badge under an entry's title, in its details,
   in a grouped confirmation and as the selected value of a destination
-  control, and keeps it passive.
+  control, and keeps it passive. Because `usePodContexts` makes `AppAccess`
+  leave the context chooser to the app, an app that works in a selected
+  context mounts `ContextSwitch` beside the badge.
 
 Tooling (sempods/sempods-apps-template#153):
 
@@ -546,8 +548,11 @@ and installed-device limits.
 17. An app with a combined view that names an entry's source its own way
     keeps it. Offer the owner the skeleton's `src/examples/SourceBadge.tsx`
     where the source shows in several places, so the title, details,
-    confirmations and the destination control read alike. Check it at 375px
-    with a long name, light, dark and in forced colours.
+    confirmations and the destination control read alike. Where the app
+    works in a selected context, mount `ContextSwitch` in the header with it:
+    `AppAccess` offers no chooser while the badge is mounted. Check it at
+    375px with a long name, light, dark and in forced colours, and switch
+    between two readable contexts.
 
 ## 0.10.0
 

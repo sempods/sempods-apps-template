@@ -377,7 +377,13 @@ describes, and style them with Tailwind classes on the theme's roles
   context's addresses only decorates it, stays the same when rows are
   sorted, a context is renamed or status or access change, and gives way in
   forced colours. The badge never acts: actions stay on the row or the control.
-  Build no label from IRIs or `name`.
+  Build no label from IRIs or `name`. `usePodContexts` tells `AppAccess`
+  that the app owns the context chooser, so `AppAccess` then offers none.
+  An app that works in a selected
+  context (`TargetScreen`, `useCreation` without `context`,
+  `contextSelection="required"`) mounts `ContextSwitch` in the header beside
+  the badge; one whose reads and writes all name their context, or with a
+  fixed `preset.contextIri`, needs none.
 - `src/examples/Preferences.tsx` when the owner wants to choose light or dark
   and the language in the app instead of following the device: two sections
   in the header's menu, stored on the device; the app's other open tabs
