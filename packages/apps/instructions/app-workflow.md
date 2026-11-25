@@ -350,6 +350,26 @@ describes, and style them with Tailwind classes on the theme's roles
   with addresses of their own, such as two lists as tabs, are such links
   drawn with `buttonVariants({ variant: 'ghost' })`, which shows the current
   one as chosen. Compare no places by hand for it.
+- A flat list toolbar, when the owner wants views as tabs with the list's
+  actions on one line, follows the kit README's recipe "Views on one
+  baseline": the views stay `nav.link` links inside a `nav`, and the current
+  one is underlined on the strip's shared edge by `aria-current`, not by the
+  pointer. A list-wide action, such as deleting the done items, goes at the
+  end of the strip, outside the `nav`. The list header's icon actions (add,
+  reload, the menu) are `ActionButton variant="ghost" shape="round-sm"` with
+  a `label` and `HeaderMenu variant="ghost"`: transparent at rest, with their
+  hover, press and focus feedback. Keep the recipe's `select-none` and
+  transparent tap highlight on the links, and remove no focus outline
+  (`outline-none`), so Tab and Shift+Tab show the kit's outline, also in
+  forced colours. `ghost` on these controls leaves `data-secondary` and the
+  app's other secondary actions as they are; the palette, root font size and
+  44px targets stay the app's.
+- Deleting one row and deleting the listed items show the same trash glyph:
+  the row's `RemoveButton` without children, and `<DeleteIcon />` from the UI
+  kit in the list-wide action, both 1rem, with no icon import or size of the
+  app's own ("Delete actions" in the kit's README). The button's name and its
+  confirmation say what is deleted ("Delete: Buy milk", "Delete 3 done
+  items").
 - `WorkspacePanel` for filters or details over a canvas or a map that stays
   usable beside them, and `SuggestField` for a search or address bar with
   suggestions the app finds as the person types; `suggest={false}` keeps
