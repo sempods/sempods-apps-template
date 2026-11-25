@@ -3,6 +3,7 @@ import { createBrowserRuntime } from '@sempods/app-sdk';
 import {
   AccessNotice,
   AppAccess,
+  Notices,
   SempodsProvider,
   TargetScreen,
   useAppState,
@@ -51,6 +52,9 @@ export default function App({
       <I18nProvider locale={locale}>
         <NewVersionNotice registration={registration} />
         <Frame />
+        {/* The SDK's one stack for app-wide notices and the access prompts,
+            outside the page's flow; before sign-in it shows in the gate. */}
+        <Notices />
       </I18nProvider>
     </SempodsProvider>
   );
@@ -58,7 +62,7 @@ export default function App({
 
 // The app owns its layout: a header with the app's icon and name, its icon
 // actions and a menu. AppAccess shows sign-in as a gate above the content
-// while the app cannot work, outcomes as prompts that can be dismissed, and
+// while the app cannot work, outcomes as prompts in the Notices stack, and
 // management of Pods and sharing as a dialog from the menu. An app that
 // switches between contexts (lists) puts src/examples/ContextSwitch.tsx in
 // place of the h1.
