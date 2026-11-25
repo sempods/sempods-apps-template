@@ -291,10 +291,11 @@ name and icon it asks to choose per app come from the design conversation.
 
 Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
 SDK's quickstart screen built with the UI kit, with loading and failed reads
-(`LoadNotice`), an empty state, rows with the kit's `Checkbox`, the name
-as a link to the item's own address, which opens a `ResourceEditor` in a
-`ScreenDialog`, `RemoveButton`, open outcomes (`UpdateNotice`,
-`UnresolvedNotices`) and new items in a bar fixed at the bottom, which a list
+(`LoadNotice`), an empty state, rows with the kit's `Checkbox` that tick at
+once and move to Done once the Pod confirms, the name as a link to the
+item's own address, which opens a `ResourceEditor` in a `ScreenDialog`,
+`RemoveButton`, open outcomes (`UpdateNotice`, `UnresolvedNotices`) and new
+items in a bar fixed at the bottom, which a list
 the person can only read does not show. Copy it next to `App.tsx`, change
 its import `../places.ts` to `./places.ts`, render
 `<ListScreen nav={nav} />` in place of `Start`, declare its item address in
@@ -325,6 +326,40 @@ data's shape alone: waterings are a log, but in the morning the plants
 due today matter most. When no example fits
 that moment, keep their behaviour and arrange the screen for it.
 
+An item with a title and longer notes, such as a task, a recipe or a
+journal entry, can keep its notes as Markdown with the UI kit's opt-in
+entry `@sempods/app-ui/markdown`: read the kit's README, "Markdown text",
+and add its optional peers only to an app that uses it, the Tiptap packages
+at one version:
+`pnpm add --dir apps/<id> react-markdown @tiptap/core @tiptap/pm @tiptap/react @tiptap/starter-kit @tiptap/extensions`.
+Build on the collection example and the kit's recipe:
+
+- A new item starts with its title: the form asks for the title and
+  creates the item, and its notes stay empty until the person adds them. A
+  creation dialog may hold the same `MarkdownField`, which shows only
+  **Add text** while there is none. Name where the item goes beside the
+  add action, for example `useContexts().selected?.label` in an app that
+  switches contexts, so nobody creates into a list they did not mean.
+- The item's dialog is one `ResourceEditor` in a `ScreenDialog`: the title,
+  the app's own draft actions (done, a day with `DateChooser`, a priority)
+  and the `MarkdownField` change one draft, which one **Save** writes.
+  Keep these actions in the draft, not in field updates that write on
+  their own.
+- `MarkdownField` opens existing notes formatted for reading; **Edit
+  text** switches to writing and **Preview** shows the same draft as it
+  will read. A place that only shows the notes uses `MarkdownView`, the
+  renderer of that preview. An overview links each item by its title, as
+  the collection example does; drop that card's start of the text, which
+  would show Markdown's characters.
+- Declare the notes `optional` and without `trim`, as the kit's recipe
+  does, so an empty text leaves the field absent and Markdown keeps its
+  line breaks.
+- Check at 375px, light and dark, with notes longer than the screen: Tab
+  moves from the title through the draft actions and the notes to
+  **Save**, while reading and while writing; Escape asks before an unsaved
+  edit is lost; the long notes scroll inside the dialog and **Save** stays
+  reachable.
+
 Build further parts from the UI kit, `@sempods/app-ui`, as its reference
 describes, and style them with Tailwind classes on the theme's roles
 (`bg-background`, `text-muted-foreground`, `border-input`):
@@ -352,6 +387,26 @@ describes, and style them with Tailwind classes on the theme's roles
   with addresses of their own, such as two lists as tabs, are such links
   drawn with `buttonVariants({ variant: 'ghost' })`, which shows the current
   one as chosen. Compare no places by hand for it.
+- A flat list toolbar, when the owner wants views as tabs with the list's
+  actions on one line, follows the kit README's recipe "Views on one
+  baseline": the views stay `nav.link` links inside a `nav`, and the current
+  one is underlined on the strip's shared edge by `aria-current`, not by the
+  pointer. A list-wide action, such as deleting the done items, goes at the
+  end of the strip, outside the `nav`. The list header's icon actions (add,
+  reload, the menu) are `ActionButton variant="ghost" shape="round-sm"` with
+  a `label` and `HeaderMenu variant="ghost"`: transparent at rest, with their
+  hover, press and focus feedback. Keep the recipe's `select-none` and
+  transparent tap highlight on the links, and remove no focus outline
+  (`outline-none`), so Tab and Shift+Tab show the kit's outline, also in
+  forced colours. `ghost` on these controls leaves `data-secondary` and the
+  app's other secondary actions as they are; the palette, root font size and
+  44px targets stay the app's.
+- Deleting one row and deleting the listed items show the same trash glyph:
+  the row's `RemoveButton` without children, and `<DeleteIcon />` from the UI
+  kit in the list-wide action, both 1rem, with no icon import or size of the
+  app's own ("Delete actions" in the kit's README). The button's name and its
+  confirmation say what is deleted ("Delete: Buy milk", "Delete 3 done
+  items").
 - `WorkspacePanel` for filters or details over a canvas or a map that stays
   usable beside them, and `SuggestField` for a search or address bar with
   suggestions the app finds as the person types; `suggest={false}` keeps
@@ -436,6 +491,16 @@ Keep the screen consistent with the SDK's UI:
   the 20px box, so keep that room beside it (`mx-3`), off the row's link.
   Wrap any other native checkbox or radio in its `<label>`: the label is its
   44px touch target. Controls keep 44px targets.
+- A tick shows at once, as in the list example's `useTicks`: the box shows
+  the requested state, read-only so it keeps its focus and takes no second
+  press, a spinner and a spoken "Saving: …" stand in Delete's place, and
+  other rows stay usable. Only `saved` lets the row leave its group or view,
+  after a short collapse (180 ms, none with reduced motion) that a list
+  read does not end early; group or filter by the tick while it is shown,
+  so an empty state appears once the row is gone. Any other outcome drops
+  the tick and leaves the row's `UpdateNotice`. Keep ticks presentation
+  only, per target and screen: the SDK's data stays the confirmed state,
+  and nothing is retried or kept as data.
 - When the owner finds text or controls too small, make the whole app larger
   as the [sizing recipe](sizing.md) describes: one relative root size, the
   components' public props and a check of the real targets, not restyled SDK

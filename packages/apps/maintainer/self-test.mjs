@@ -557,7 +557,7 @@ const EXAMPLES_PAGE = {
   'main.tsx': `import '../src/index.css';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRuntime } from '@sempods/app-sdk';
-import { SempodsProvider } from '@sempods/app-sdk/react';
+import { SempodsProvider, useMounted } from '@sempods/app-sdk/react';
 import { useNav } from '@sempods/app-ui';
 import { places } from '../src/places.ts';
 import { runtimeOptions } from '../src/sempods.generated.ts';
@@ -570,36 +570,105 @@ const screens = { list: ListScreen, log: LogScreen, collection: CollectionScreen
 const Screen = screens[new URLSearchParams(location.search).get('screen') as keyof typeof screens];
 function Check() {
   const nav = useNav(places);
-  return <main className="mx-auto max-w-3xl p-4"><Screen nav={nav} /></main>;
+  const mounted = useMounted();
+  return <main className="mx-auto max-w-3xl p-4">{mounted && <Screen nav={nav} />}</main>;
 }
 createRoot(document.getElementById('root')!).render(
   <SempodsProvider runtime={runtime} language="en"><Check /></SempodsProvider>,
 );
 `,
-  'sdk.ts': `export * from 'sempods-sdk-react';
+  // The rows live in a small store the check drives through `sdkCheck`:
+  // a row update stays pending until the check answers it.
+  'sdk.ts': `import { useSyncExternalStore } from 'react';
+export * from 'sempods-sdk-react';
 const context = 'https://pod.example/lists/1/';
 const names = ['Milk', 'Geschirrspülmaschinentabs', '${'Vorratspackung'.repeat(4)}', 'Bread'];
-const items = names.map((name, n) => ({
-  iri: context + 'item-' + n,
-  data: { name, done: n === 0, day: '2026-11-16', text: 'A short text.' },
-}));
+type Data = { name: string; done: boolean; day: string; text: string };
+type Row = { snapshot: { iri: string; data: Data }; shown?: Data; asked?: Partial<Data>; canMutate: boolean; outcome: { kind: string } | null };
 const idle = { outcome: null, checked: false, current: undefined, unreadable: false, onCheck: async () => false, onAcknowledge: () => {} };
-const unconfirmed = { ...idle, outcome: { kind: 'unconfirmed', current: undefined, desiredObserved: false } };
+const unconfirmed = { kind: 'unconfirmed', current: undefined, desiredObserved: false };
 const notSent = async () => ({ kind: 'not-sent' });
-export const useAppState = () => ({ view: { contextIri: context }, changing: false });
-export const useWorkflowAccess = () => ({ write: true });
-export const useList = () => ({ state: { kind: 'ready' }, data: { items, skipped: 0 }, reload: async () => {} });
-export const useFieldUpdate = () => ({
-  unresolved: [],
-  for: (entry: (typeof items)[number]) => ({
-    data: entry.data,
-    canMutate: entry !== items[1],
-    notice: entry === items[1] ? unconfirmed : idle,
-    update: notSent,
-    remove: notSent,
-  }),
+let rows: Row[] = names.map((name, n) => ({
+  snapshot: { iri: context + 'item-' + n, data: { name, done: n === 0, day: '2026-11-16', text: 'A short text.' } },
+  canMutate: n !== 1,
+  outcome: n === 1 ? unconfirmed : null,
+}));
+let key = 'target-1';
+let mounted = true;
+let version = 0;
+const listeners = new Set<() => void>();
+const change = (apply: () => void) => {
+  apply();
+  version++;
+  listeners.forEach((listener) => listener());
+};
+const useVersion = () =>
+  useSyncExternalStore((listener) => (listeners.add(listener), () => listeners.delete(listener)), () => version);
+const set = (iri: string, patch: Partial<Row>) => {
+  rows = rows.map((row) => (row.snapshot.iri === iri ? { ...row, ...patch } : row));
+};
+const answers = new Map<string, (outcome: unknown) => void>();
+const calls: string[] = [];
+Object.assign(window, {
+  sdkCheck: {
+    calls,
+    // A confirmed update shows its values at once and spends the snapshot
+    // until the list reads again; any other outcome shows in the notice.
+    answer(iri: string, outcome: { kind: string }) {
+      const row = rows.find((row) => row.snapshot.iri === iri)!;
+      change(() =>
+        outcome.kind === 'saved'
+          ? set(iri, { shown: { ...(row.shown ?? row.snapshot.data), ...row.asked }, outcome })
+          : set(iri, { canMutate: outcome.kind === 'not-saved', outcome }),
+      );
+      answers.get(iri)!(outcome);
+      answers.delete(iri);
+    },
+    // The list reads again: fresh snapshots, spent rows usable again.
+    refresh() {
+      change(() => {
+        rows = rows.map((row) => ({
+          ...row,
+          snapshot: { iri: row.snapshot.iri, data: row.shown ?? row.snapshot.data },
+          shown: undefined,
+          canMutate: row.canMutate || (row.outcome?.kind === 'saved' && !answers.has(row.snapshot.iri)),
+        }));
+      });
+    },
+    // Only this item stays listed.
+    keep: (iri: string) => change(() => (rows = rows.filter((row) => row.snapshot.iri === iri))),
+    target: (next: string) => change(() => (key = next)),
+    mount: (next: boolean) => change(() => (mounted = next)),
+  },
 });
-export const useCreation = () => ({ draft: items[0].data, canCreate: false, canEdit: true, busy: false, change: () => {}, create: notSent, notice: idle });
+export const useMounted = () => (useVersion(), mounted);
+export const useAppState = () => (useVersion(), { view: { contextIri: context, key }, changing: false });
+export const useWorkflowAccess = () => ({ write: true });
+export const useList = () => {
+  useVersion();
+  return { state: { kind: 'ready' }, data: { items: rows.map((row) => row.snapshot), skipped: 0 }, reload: async () => {} };
+};
+export const useFieldUpdate = () => {
+  useVersion();
+  return {
+    unresolved: [],
+    for: (entry: Row['snapshot']) => {
+      const row = rows.find((row) => row.snapshot.iri === entry.iri)!;
+      return {
+        data: row.shown ?? entry.data,
+        canMutate: row.canMutate && !row.shown,
+        notice: { ...idle, outcome: row.outcome },
+        update: (asked: Partial<Data>) => {
+          calls.push(entry.iri);
+          change(() => set(entry.iri, { canMutate: false, asked, outcome: null }));
+          return new Promise((resolve) => answers.set(entry.iri, resolve));
+        },
+        remove: notSent,
+      };
+    },
+  };
+};
+export const useCreation = () => ({ draft: rows[0].snapshot.data, canCreate: false, canEdit: true, busy: false, change: () => {}, create: notSent, notice: idle });
 export const useContextEditor = () => ({ open: async () => {}, close: async () => true, target: null, editor: null, phase: 'idle' });
 `,
   'vite.config.ts': `import tailwindcss from '@tailwindcss/vite';
@@ -653,22 +722,26 @@ async function examplesCheck(repo) {
     run('pnpm', ['exec', 'vite', 'build', '--config', 'examples-check/vite.config.ts'], app);
     const dist = join(dir, 'dist');
     const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+    const open = async (screen, options) => {
+      const context = await browser.newContext(options);
+      await context.route('**/*', async (route) => {
+        const file = join(dist, new URL(route.request().url()).pathname);
+        if (!existsSync(file)) return route.abort();
+        await route.fulfill({ body: readFileSync(file), contentType: mime[extname(file)] });
+      });
+      const page = await context.newPage();
+      page.setDefaultTimeout(5000);
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(`http://localhost/examples-check/index.html?screen=${screen}`);
+      return { context, page, errors };
+    };
     const backgrounds = new Set();
     for (const screen of ['list', 'log', 'collection'])
       for (const [width, height] of [[375, 812], [1280, 800]])
         for (const colorScheme of ['light', 'dark']) {
           const where = `${screen} at ${width}px, ${colorScheme}`;
-          const context = await browser.newContext({ viewport: { width, height }, colorScheme });
-          await context.route('**/*', async (route) => {
-            const file = join(dist, new URL(route.request().url()).pathname);
-            if (!existsSync(file)) return route.abort();
-            await route.fulfill({ body: readFileSync(file), contentType: mime[extname(file)] });
-          });
-          const page = await context.newPage();
-          page.setDefaultTimeout(5000);
-          const errors = [];
-          page.on('pageerror', (error) => errors.push(error.message));
-          await page.goto(`http://localhost/examples-check/index.html?screen=${screen}`);
+          const { context, page, errors } = await open(screen, { viewport: { width, height }, colorScheme });
           const check = page.getByRole('button', { name: 'Check current version' });
           await check.waitFor();
           const shown = await page.evaluate(() => {
@@ -735,10 +808,140 @@ async function examplesCheck(repo) {
         }
     if (backgrounds.size !== 2) throw new Error('the examples do not follow light and dark');
     console.log('✓ example screens: full-width row notices with long names at 375px and on desktop, light and dark');
+    for (const options of [{ colorScheme: 'light' }, { colorScheme: 'dark' }, { colorScheme: 'light', reducedMotion: 'reduce' }]) {
+      const where = `list ticks at 375px, ${options.colorScheme}${options.reducedMotion ? ', reduced motion' : ''}`;
+      const { context, page, errors } = await open('list', { viewport: { width: 375, height: 812 }, ...options });
+      await tickCheck(page, where, Boolean(options.reducedMotion));
+      if (errors.length) throw new Error(`${where}: ${errors.join('; ')}`);
+      await context.close();
+    }
+    console.log('✓ list example: immediate ticks, a confirmed exit, other outcomes and unmounting at 375px, light and dark, also with reduced motion');
   } finally {
     await browser.close();
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * The list example's ticks (#188) against the synthetic hooks of
+ * EXAMPLES_PAGE: a tick shows at once and is sent once; only a confirmed
+ * write moves the row to Done, after a short exit that a list read does not
+ * end early (at once with reduced motion); a refused or unconfirmed write
+ * drops the tick and shows its notice; rows tick side by side, back and
+ * forth; focus moves on from a leaving row, or stays with it when it is
+ * alone in the list; and a tick of an earlier target
+ * or an unmounted screen ends without effect.
+ */
+async function tickCheck(page, where, reduced) {
+  const long = 'Vorratspackung'.repeat(4);
+  const row = (name) => page.locator('li', { has: page.getByRole('link', { name, exact: true }) });
+  const press = (name) => row(name).locator('[data-slot="checkbox"]').click();
+  // Items by name, as the rows show them before the screen unmounts.
+  const iris = {};
+  for (const name of ['Bread', long]) iris[name] = await row(name).getAttribute('data-item');
+  const answer = (name, outcome) =>
+    page.evaluate(([iri, outcome]) => window.sdkCheck.answer(iri, outcome), [iris[name], outcome]);
+  const refresh = () => page.evaluate(() => window.sdkCheck.refresh());
+  const calls = () => page.evaluate(() => window.sdkCheck.calls.length);
+  // Where a row is: its group (0 open, 1 done), whether it is leaving,
+  // ticked and saving, and its buttons.
+  const state = (name) =>
+    page.evaluate((name) => {
+      const li = [...document.querySelectorAll('li')].find((li) => li.querySelector('a')?.textContent === name);
+      return {
+        group: [...document.querySelectorAll('ul')].indexOf(li.parentElement),
+        leaving: li.inert,
+        ticked: li.querySelector('input[type="checkbox"]').checked,
+        saving: li.querySelector('[role="status"]').textContent,
+        buttons: [...li.querySelectorAll('button')].map((button) => button.textContent || button.getAttribute('aria-label')),
+      };
+    }, name);
+  // Waits up to 150 ms (less than the exit) for a row to show `expected`.
+  const expect = async (name, expected, step) => {
+    for (let tries = 0; ; tries++) {
+      const shown = await state(name);
+      const wrong = Object.keys(expected).find((key) => JSON.stringify(shown[key]) !== JSON.stringify(expected[key]));
+      if (!wrong) return;
+      if (tries === 15)
+        throw new Error(`${where}, ${step}: ${name} has ${wrong} ${JSON.stringify(shown[wrong])}, expected ${JSON.stringify(expected[wrong])}`);
+      await page.waitForTimeout(10);
+    }
+  };
+  // Waits out the exit, then a frame.
+  const settled = () => page.waitForTimeout(400);
+
+  // A press ticks at once, saves once and leaves the other rows usable.
+  await press('Bread');
+  await expect('Bread', { group: 0, leaving: false, ticked: true, saving: 'Saving: Bread', buttons: [] }, 'pending');
+  await press('Bread');
+  await expect('Bread', { ticked: true, saving: 'Saving: Bread' }, 'pressed again');
+  await press(long);
+  if ((await calls()) !== 2) throw new Error(`${where}: a pending tick was sent again`);
+  await expect(long, { ticked: true, saving: `Saving: ${long}` }, 'a second row');
+  // A refusal drops the tick and shows the row's notice.
+  await answer(long, { kind: 'not-saved', reason: 'refused', problem: { kind: 'refused', status: 403 } });
+  await expect(long, { group: 0, leaving: false, ticked: false, saving: '' }, 'refused');
+  if (!(await row(long).locator('section').count())) throw new Error(`${where}: a refused tick shows no notice`);
+  await expect('Bread', { ticked: true, saving: 'Saving: Bread' }, 'beside a refusal');
+  // A confirmed tick leaves, also while the list reads again.
+  await answer('Bread', { kind: 'saved' });
+  await refresh();
+  if (!reduced) await expect('Bread', { group: 0, leaving: true, ticked: true, saving: '' }, 'leaving');
+  else await expect('Bread', { group: 1, leaving: false, ticked: true }, 'saved without motion');
+  await settled();
+  await expect('Bread', { group: 1, leaving: false, ticked: true, saving: '' }, 'saved');
+  // Back again from Done, by keyboard: the focus stays while it saves and
+  // moves on to the next usable checkbox when the row leaves.
+  await row('Bread').getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await expect('Bread', { group: 1, ticked: false, saving: 'Saving: Bread' }, 'unticked');
+  if (!(await row('Bread').getByRole('checkbox').evaluate((input) => input === document.activeElement)))
+    throw new Error(`${where}: a pending tick lost the focus`);
+  await answer('Bread', { kind: 'saved' });
+  await settled();
+  await expect('Bread', { group: 0, leaving: false, ticked: false }, 'unticked and saved');
+  if (!(await row('Milk').getByRole('checkbox').evaluate((input) => input === document.activeElement)))
+    throw new Error(`${where}: the focus did not move on from a leaving row`);
+  await refresh();
+  // An unconfirmed write drops the tick and keeps its recovery.
+  await press(long);
+  await answer(long, { kind: 'unconfirmed', current: undefined, desiredObserved: false });
+  await expect(long, { group: 0, leaving: false, ticked: false, saving: '' }, 'unconfirmed');
+  if (!(await row(long).getByRole('button', { name: 'Check current version' }).count()))
+    throw new Error(`${where}: an unconfirmed tick hides its recovery`);
+  // A tick of an unmounted screen or an earlier target ends without effect.
+  await press('Bread');
+  await page.evaluate(() => window.sdkCheck.mount(false));
+  await answer('Bread', { kind: 'saved' });
+  await page.evaluate(() => window.sdkCheck.mount(true));
+  await expect('Bread', { group: 1, leaving: false, ticked: true, saving: '' }, 'saved while unmounted');
+  await refresh();
+  await press('Bread');
+  await page.evaluate(() => window.sdkCheck.target('target-2'));
+  await expect('Bread', { group: 1, ticked: true, saving: '' }, 'another target');
+  await answer('Bread', { kind: 'saved' });
+  await expect('Bread', { group: 0, leaving: false, ticked: false }, 'saved for an earlier target');
+  await settled();
+  // The only usable open row passes the focus on to the Done group.
+  await refresh();
+  await row('Bread').getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await answer('Bread', { kind: 'saved' });
+  await settled();
+  await expect('Bread', { group: 1, leaving: false, ticked: true }, 'the last open row');
+  if (!(await row('Milk').getByRole('checkbox').evaluate((input) => input === document.activeElement)))
+    throw new Error(`${where}: the focus did not move on from the last open row`);
+  // Alone in the list, the row takes the focus back in its new group: on
+  // its link while its checkbox waits for the list to read it again.
+  await refresh();
+  await page.evaluate((iri) => window.sdkCheck.keep(iri), iris.Bread);
+  await row('Bread').getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await answer('Bread', { kind: 'saved' });
+  await settled();
+  await expect('Bread', { group: 0, leaving: false, ticked: false }, 'the only row');
+  if (!(await row('Bread').getByRole('link').evaluate((link) => link === document.activeElement)))
+    throw new Error(`${where}: the only row lost the focus when it moved`);
 }
 
 /**

@@ -63,6 +63,15 @@ them as checked.
   above it; a `ScreenDialog` adds no safe-area inset of the app's own.
 - An item or action screen (`ScreenDialog`) fills the phone's screen and
   closes with Back, Escape and Close; with an unsaved edit, each asks first.
+- A flat list toolbar looks the same at 375px and at desktop width: the
+  current view's underline sits on the strip's shared edge, the strip and its
+  ghost actions show no surface at rest, a count wraps below its label instead
+  of scrolling sideways, and the actions keep their 44px targets at the
+  strip's end. On a phone a tap paints no highlight and selects no label; on
+  desktop a hover changes only the text or the action's feedback. Tab and
+  Shift+Tab show the focus outline on every view and action, also with
+  forced colours emulated where the browser tool can. A row's delete and the
+  list-wide delete show the same trash glyph at the same size.
 - Menus, dialogs and the date chooser work by keyboard: arrows move, Escape
   closes one level, and focus returns to what opened them, also from Pods &
   sharing to the menu button.
