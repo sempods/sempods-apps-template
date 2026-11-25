@@ -888,7 +888,7 @@ async function tickCheck(page, where, reduced) {
   await settled();
   await expect('Bread', { group: 1, leaving: false, ticked: true, saving: '' }, 'saved');
   // Back again from Done, by keyboard: the focus stays while it saves and
-  // moves on to the neighbour when the row leaves.
+  // moves on to the next usable checkbox when the row leaves.
   await row('Bread').getByRole('checkbox').focus();
   await page.keyboard.press('Space');
   await expect('Bread', { group: 1, ticked: false, saving: 'Saving: Bread' }, 'unticked');
@@ -919,6 +919,15 @@ async function tickCheck(page, where, reduced) {
   await answer('Bread', { kind: 'saved' });
   await expect('Bread', { group: 0, leaving: false, ticked: false }, 'saved for an earlier target');
   await settled();
+  // The only usable open row passes the focus on to the Done group.
+  await refresh();
+  await row('Bread').getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await answer('Bread', { kind: 'saved' });
+  await settled();
+  await expect('Bread', { group: 1, leaving: false, ticked: true }, 'the last open row');
+  if (!(await row('Milk').getByRole('checkbox').evaluate((input) => input === document.activeElement)))
+    throw new Error(`${where}: the focus did not move on from the last open row`);
 }
 
 /**

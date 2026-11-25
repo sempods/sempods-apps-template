@@ -316,12 +316,21 @@ function useTicks(target: string | undefined) {
       return;
     }
     if (live.current.get(iri) !== pending) return;
-    // Focus in the leaving row moves to its neighbour's checkbox.
+    // Focus in the leaving row moves to the next usable checkbox, also in
+    // the other group, or else to the one before it.
     const from = document.activeElement?.closest('li');
-    if (from instanceof HTMLElement && from.dataset.item === iri)
-      (from.nextElementSibling ?? from.previousElementSibling)
-        ?.querySelector('input')
-        ?.focus();
+    if (from instanceof HTMLElement && from.dataset.item === iri) {
+      const others = [
+        ...document.querySelectorAll<HTMLInputElement>(
+          'li[data-item]:not([inert]) input[type="checkbox"]:not(:disabled)',
+        ),
+      ].filter((box) => !from.contains(box));
+      const next = others.find(
+        (box) =>
+          from.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      (next ?? others.at(-1))?.focus();
+    }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       settle(iri, pending);
       return;

@@ -321,7 +321,8 @@ Ticks in the list example (sempods/sempods-apps-template#188):
   usable. Done items follow the open ones under a "Done" heading. Only a
   confirmed write (`saved`) moves a row there, after a 180 ms collapse that
   a list read during it does not end early, at once with reduced motion;
-  focus moves on to the neighbouring checkbox. A refused, conflicting,
+  focus moves on to the next usable checkbox, also across groups, or the
+  one before. A refused, conflicting,
   unconfirmed or unsent write drops the tick and leaves the row's notice
   and recovery. The ticks are presentation only, in the example's
   `useTicks`, per target and mounted screen: the SDK's confirmed data and
