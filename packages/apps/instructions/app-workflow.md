@@ -287,10 +287,11 @@ name and icon it asks to choose per app come from the design conversation.
 
 Most apps show a list. Start one from `src/examples/ListScreen.tsx`: the
 SDK's quickstart screen built with the UI kit, with loading and failed reads
-(`LoadNotice`), an empty state, rows with the kit's `Checkbox`, the name
-as a link to the item's own address, which opens a `ResourceEditor` in a
-`ScreenDialog`, `RemoveButton`, open outcomes (`UpdateNotice`,
-`UnresolvedNotices`) and new items in a bar fixed at the bottom, which a list
+(`LoadNotice`), an empty state, rows with the kit's `Checkbox` that tick at
+once and move to Done once the Pod confirms, the name as a link to the
+item's own address, which opens a `ResourceEditor` in a `ScreenDialog`,
+`RemoveButton`, open outcomes (`UpdateNotice`, `UnresolvedNotices`) and new
+items in a bar fixed at the bottom, which a list
 the person can only read does not show. Copy it next to `App.tsx`, change
 its import `../places.ts` to `./places.ts`, render
 `<ListScreen nav={nav} />` in place of `Start`, declare its item address in
@@ -414,6 +415,16 @@ Keep the screen consistent with the SDK's UI:
   the 20px box, so keep that room beside it (`mx-3`), off the row's link.
   Wrap any other native checkbox or radio in its `<label>`: the label is its
   44px touch target. Controls keep 44px targets.
+- A tick shows at once, as in the list example's `useTicks`: the box shows
+  the requested state, read-only so it keeps its focus and takes no second
+  press, a spinner and a spoken "Saving: …" stand in Delete's place, and
+  other rows stay usable. Only `saved` lets the row leave its group or view,
+  after a short collapse (180 ms, none with reduced motion) that a list
+  read does not end early; group or filter by the tick while it is shown,
+  so an empty state appears once the row is gone. Any other outcome drops
+  the tick and leaves the row's `UpdateNotice`. Keep ticks presentation
+  only, per target and screen: the SDK's data stays the confirmed state,
+  and nothing is retried or kept as data.
 - When the owner finds text or controls too small, make the whole app larger
   as the [sizing recipe](sizing.md) describes: one relative root size, the
   components' public props and a check of the real targets, not restyled SDK

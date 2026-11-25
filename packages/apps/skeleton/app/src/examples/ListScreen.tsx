@@ -7,13 +7,14 @@
 // and texts to the app's own. Keep App.tsx's runtime,
 // provider and frame; take behaviour from the SDK's examples, never their
 // runtime, provider or styles.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   LoadNotice,
   RemoveButton,
   ResourceEditor,
   UnresolvedNotices,
   UpdateNotice,
+  type FieldUpdateRow,
   useAppState,
   useContextEditor,
   useCreation,
@@ -31,7 +32,7 @@ import {
   ScreenDialog,
   type Nav,
 } from '@sempods/app-ui';
-import { PlusIcon } from 'lucide-react';
+import { LoaderCircleIcon, PlusIcon } from 'lucide-react';
 import type { Place } from '../places.ts';
 
 const schema = 'https://schema.org/';
@@ -47,12 +48,15 @@ const item = fields(
   },
   { type: `${schema}Action` },
 );
+type Item = ReturnType<typeof item.read>;
 
 // In an app these belong in src/texts.ts.
 const en = {
   empty: 'Nothing here yet. Add the first item below.',
   emptyReadOnly: 'Nothing in this list.',
   done: (name: string) => `Done: ${name}`,
+  saving: (name: string) => `Saving: ${name}`,
+  doneItems: 'Done',
   remove: (name: string) => `Delete: ${name}`,
   edit: 'Edit item',
   name: 'Name',
@@ -65,6 +69,8 @@ const listTexts: { readonly en: typeof en; readonly de: typeof en } = {
     empty: 'Noch nichts hier. Füge unten den ersten Eintrag hinzu.',
     emptyReadOnly: 'Nichts in dieser Liste.',
     done: (name) => `Erledigt: ${name}`,
+    saving: (name) => `Wird gespeichert: ${name}`,
+    doneItems: 'Erledigt',
     remove: (name) => `Löschen: ${name}`,
     edit: 'Eintrag bearbeiten',
     name: 'Name',
@@ -82,6 +88,8 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
   const items = list.data?.items;
   // One hook for the list; each row gets its part with `mutate.for(row)`.
   const mutate = useFieldUpdate(item);
+  // The ticks asked for and not yet settled, for this list's target only.
+  const ticks = useTicks(view?.key);
   const creation = useCreation(item, {
     initial: { name: '', done: false },
     collection: 'items',
@@ -95,6 +103,79 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
     subject,
     context: view.contextIri,
   });
+  const rows = items?.map((entry) => ({
+    entry,
+    row: mutate.for(entry),
+    tick: ticks.of(entry.iri),
+  }));
+  type Row = NonNullable<typeof rows>[number];
+  // A ticked row stays in its group until its confirmed tick has left it.
+  const isDone = ({ row, tick }: Row) => (tick ? !tick.done : row.data.done);
+  const open = rows?.filter((shown) => !isDone(shown));
+  const done = rows?.filter(isDone);
+  const rowView = ({ entry, row, tick }: Row) => (
+    // After a confirmed tick the row collapses (`leaving`), then moves to its
+    // new group; it takes no presses while it leaves.
+    <li
+      key={entry.iri}
+      data-item={entry.iri}
+      inert={tick?.leaving}
+      className={`grid transition-[grid-template-rows,opacity] duration-180 ease-out motion-reduce:transition-none ${tick?.leaving ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr]'}`}
+    >
+      <div className={`min-h-0 ${tick?.leaving ? 'overflow-hidden' : ''}`}>
+        {/* The row wraps, so a notice gets its own full-width line below. */}
+        <div className="flex min-h-14 flex-wrap items-center gap-1">
+          {/* The kit's Checkbox, named for its row: its 44px target reaches
+              12px beyond the box, so the margin keeps it off the link. A
+              tick shows at once; until the SDK settles it the box keeps its
+              focus and takes no second press. */}
+          <Checkbox
+            className="mx-3"
+            aria-label={t.done(row.data.name)}
+            isSelected={tick?.done ?? row.data.done}
+            isReadOnly={tick !== undefined}
+            isDisabled={!tick && !row.canMutate}
+            onChange={(checked) => void ticks.tick(entry.iri, row, checked)}
+          />
+          {/* The item's own address: a plain click opens its dialog, a
+              modified click a new tab. */}
+          <a
+            {...nav.link(itemPlace(entry.iri))}
+            className="flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 wrap-anywhere hover:bg-muted"
+          >
+            {row.data.name}
+          </a>
+          {tick ? (
+            // Saving, in Delete's place, until the SDK settles the tick.
+            <span className="flex size-11 shrink-0 items-center justify-center text-muted-foreground">
+              {!tick.leaving && (
+                <LoaderCircleIcon
+                  aria-hidden="true"
+                  className="size-4 motion-safe:animate-spin"
+                />
+              )}
+            </span>
+          ) : (
+            // Asks in the SDK's dialog before it deletes.
+            <RemoveButton
+              disabled={!row.canMutate}
+              onRemove={row.remove}
+              label={t.remove(row.data.name)}
+            />
+          )}
+          {/* Mounted before its text changes, so it is announced. */}
+          <span role="status" className="sr-only">
+            {tick && !tick.leaving ? t.saving(row.data.name) : ''}
+          </span>
+          {/* The changed row is the confirmation; problems show here, across
+              the row's full width. */}
+          <div className="basis-full pb-2 empty:hidden">
+            <UpdateNotice {...row.notice} quiet />
+          </div>
+        </div>
+      </div>
+    </li>
+  );
 
   return (
     // Room below the rows for the bar fixed at the bottom.
@@ -108,48 +189,16 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
             {write ? t.empty : t.emptyReadOnly}
           </p>
         )}
-      <ul className="divide-y">
-        {items?.map((entry) => {
-          const row = mutate.for(entry);
-          return (
-            // The row wraps, so a notice gets its own full-width line below.
-            <li
-              key={entry.iri}
-              className="flex min-h-14 flex-wrap items-center gap-1"
-            >
-              {/* The kit's Checkbox, named for its row: its 44px target
-                  reaches 12px beyond the box, so the margin keeps it off
-                  the link. */}
-              <Checkbox
-                className="mx-3"
-                aria-label={t.done(row.data.name)}
-                isSelected={row.data.done}
-                isDisabled={!row.canMutate}
-                onChange={(done) => void row.update({ done })}
-              />
-              {/* The item's own address: a plain click opens its dialog, a
-                  modified click a new tab. */}
-              <a
-                {...nav.link(itemPlace(entry.iri))}
-                className="flex min-h-11 min-w-0 flex-1 items-center rounded-md px-2 wrap-anywhere hover:bg-muted"
-              >
-                {row.data.name}
-              </a>
-              {/* Asks in the SDK's dialog before it deletes. */}
-              <RemoveButton
-                disabled={!row.canMutate}
-                onRemove={row.remove}
-                label={t.remove(row.data.name)}
-              />
-              {/* The changed row is the confirmation; problems show here,
-                  across the row's full width. */}
-              <div className="basis-full pb-2 empty:hidden">
-                <UpdateNotice {...row.notice} quiet />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <ul className="divide-y">{open?.map(rowView)}</ul>
+      {/* Done items below, under a heading, once there are some. */}
+      {done && done.length > 0 && (
+        <>
+          <h2 className="mt-6 px-3 pb-1 text-sm font-medium text-muted-foreground">
+            {t.doneItems}
+          </h2>
+          <ul className="divide-y">{done.map(rowView)}</ul>
+        </>
+      )}
       {/* Recovery for a row with an open write that is no longer listed. */}
       <UnresolvedNotices of={mutate} shown={items} />
       <ItemDialog
@@ -194,7 +243,8 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
               // its keyboard when a focused field becomes read-only.
               disabled={!creation.canEdit && !creation.busy}
               onChange={(event) => {
-                if (!creation.busy) creation.change({ name: event.target.value });
+                if (!creation.busy)
+                  creation.change({ name: event.target.value });
               }}
             />
             <ActionButton
@@ -211,6 +261,80 @@ export function ListScreen({ nav }: { readonly nav: Nav<Place> }) {
       )}
     </div>
   );
+}
+
+/** How long a confirmed row takes to leave its group, as `duration-180`. */
+const leaveMs = 180;
+type Tick = { readonly done: boolean; readonly leaving: boolean };
+
+/**
+ * The ticks the person asked for, until the SDK settles them. Presentation
+ * only: the rows keep the SDK's confirmed data, notices and recovery. Only a
+ * confirmed write (`saved`) lets a row leave its group, briefly and without
+ * motion when the person asks for less; every other outcome drops the tick
+ * and the row's notice shows what happened. Another target or leaving the
+ * screen drops every tick, and a late outcome or timer changes nothing.
+ */
+function useTicks(target: string | undefined) {
+  const live = useRef(new Map<string, Tick>());
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const [ticks, setTicks] = useState<ReadonlyMap<string, Tick>>(new Map());
+  useEffect(() => {
+    const own = live.current;
+    const pending = timers.current;
+    return () => {
+      own.clear();
+      pending.forEach(clearTimeout);
+      pending.clear();
+      setTicks(new Map());
+    };
+  }, [target]);
+  // Replaces a tick that is still current; false once it was dropped.
+  const settle = (iri: string, from: Tick, to?: Tick) => {
+    if (live.current.get(iri) !== from) return false;
+    if (to) live.current.set(iri, to);
+    else live.current.delete(iri);
+    setTicks(new Map(live.current));
+    return true;
+  };
+  const tick = async (
+    iri: string,
+    row: Pick<FieldUpdateRow<Item>, 'canMutate' | 'update'>,
+    done: boolean,
+  ) => {
+    if (!target || !row.canMutate || live.current.has(iri)) return;
+    const pending: Tick = { done, leaving: false };
+    live.current.set(iri, pending);
+    setTicks(new Map(live.current));
+    const outcome = await row.update({ done }).catch((error: unknown) => {
+      settle(iri, pending);
+      throw error;
+    });
+    // Only a confirmed write leaves; any other outcome shows the row's notice.
+    if (outcome.kind !== 'saved') {
+      settle(iri, pending);
+      return;
+    }
+    if (live.current.get(iri) !== pending) return;
+    // Focus in the leaving row moves to its neighbour's checkbox.
+    const from = document.activeElement?.closest('li');
+    if (from instanceof HTMLElement && from.dataset.item === iri)
+      (from.nextElementSibling ?? from.previousElementSibling)
+        ?.querySelector('input')
+        ?.focus();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      settle(iri, pending);
+      return;
+    }
+    const leaving: Tick = { done, leaving: true };
+    settle(iri, pending, leaving);
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      settle(iri, leaving);
+    }, leaveMs);
+    timers.current.add(timer);
+  };
+  return { of: (iri: string) => ticks.get(iri), tick };
 }
 
 /**
