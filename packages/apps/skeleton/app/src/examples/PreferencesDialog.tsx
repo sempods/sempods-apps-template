@@ -5,7 +5,11 @@
 // sign-in screen blocks, AppAccess's settings above it. To use it:
 // 1. Copy Preferences.tsx and this file next to App.tsx, change their imports
 //    of '../…' to './…' and wire in Preferences.tsx as its first lines say,
-//    without its menu entries.
+//    without its menu entries. So larger text grows from the app's own size,
+//    give src/index.css's `@layer base` one root size that takes its factor:
+//      html { font-size: calc(100% * var(--text-scale, 1)); }
+//    An app made larger with the sizing recipe keeps its percentage there,
+//    such as calc(112.5% * var(--text-scale, 1)).
 // 2. In Frame, next to its other hooks, importing what they name:
 //      const [showSettings, setShowSettings] = useState(false);
 //      const label = useMessages(preferenceTexts).settings;
@@ -23,7 +27,7 @@
 //        const root = document.documentElement.style;
 //        if (appearance === 'light' || appearance === 'dark')
 //          root.colorScheme = appearance;
-//        if (largeText === true) root.fontSize = '112.5%';
+//        if (largeText === true) root.setProperty('--text-scale', '1.125');
 //      } catch {}
 //    </script>
 // The choices live in App, above the provider, the dialog and the gate: both

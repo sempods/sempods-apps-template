@@ -91,9 +91,15 @@ function apply(appearance: Appearance) {
   syncBrowserTheme();
 }
 
-/** Larger text: one relative root size, as the sizing recipe has it. */
+/**
+ * Larger text: a factor on the app's own root size, which src/index.css
+ * multiplies by `--text-scale` (PreferencesDialog.tsx says how), so an app
+ * already made larger grows from its size.
+ */
 function enlarge(largeText: boolean) {
-  document.documentElement.style.fontSize = largeText ? '112.5%' : '';
+  const root = document.documentElement.style;
+  if (largeText) root.setProperty('--text-scale', '1.125');
+  else root.removeProperty('--text-scale');
 }
 
 // Before the first render, so a reload shows no flash of the other mode;

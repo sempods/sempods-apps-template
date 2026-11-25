@@ -19,6 +19,10 @@ Raise the root font size as a percentage, in `@layer base` of the app's
 }
 ```
 
+An app with the larger-text setting of `src/examples/PreferencesDialog.tsx`
+keeps this one rule and lets it take that setting's factor:
+`font-size: calc(112.5% * var(--text-scale, 1))`.
+
 A percentage keeps the browser's font setting: 112.5% turns the default 16px
 into 18px, and a person who chose larger text gets 112.5% of theirs. Do not
 use a pixel size, `zoom` or `transform: scale()`, and do not target a

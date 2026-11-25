@@ -32,13 +32,31 @@ export function startupScript(example) {
   return lines[0].replace(/^\/\/ {4}/gm, '');
 }
 
-const page = (script) => ({
+/**
+ * The root size that step 1 gives src/index.css, as a page style, at the
+ * app's own percentage: 100%, or another from the sizing recipe.
+ */
+export function rootSize(example, percent) {
+  const rule = readFileSync(example, 'utf8').match(
+    /^\/\/ +(html \{ font-size: calc\(100% \* var\(--text-scale, 1\)\); \})$/m,
+  );
+  if (!rule) throw new Error('PreferencesDialog.tsx has no root size');
+  return `<style>${rule[1].replace('100%', `${percent}%`)}</style>`;
+}
+
+const page = (script, root, larger) => ({
   'index.html': `<!doctype html>
 <html lang="en" data-actions="inverted" data-secondary="text">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    ${root}
+    <script>
+      // ?base=125: an app made larger with the sizing recipe.
+      if (location.search.includes('base=125'))
+        document.querySelector('style').outerHTML = ${JSON.stringify(larger)};
+    </script>
     ${script}
   </head>
   <body><div id="root"></div><script type="module" src="./main.tsx"></script></body>
@@ -142,7 +160,7 @@ const shown = (page) =>
   });
 
 /** Checks one presentation: choices, keyboard, language, larger text. */
-async function exercise(page, where, returnTo, settingsLabel) {
+async function exercise(page, where, returnTo, settingsLabel, sizes) {
   const dialog = page.getByRole('dialog', { name: settingsLabel.en });
   await dialog.waitFor();
   const appearance = dialog.getByRole('radiogroup', { name: 'Appearance' });
@@ -154,6 +172,7 @@ async function exercise(page, where, returnTo, settingsLabel) {
   assert.equal(before.overflow <= 0, true, `${where}: the page scrolls sideways`);
   assert.equal(before.dialog.x >= 0 && before.dialog.right <= 375, true, `${where}: the dialog leaves the screen`);
   assert.deepEqual(before.small, [], `${where}: targets below 44px or off screen`);
+  assert.equal(before.fontSize, sizes.base, `${where}: the app's root size`);
   // Arrow keys move within the group, Space chooses; a choice cannot be emptied.
   await appearance.getByRole('radio', { name: 'System' }).focus();
   await page.keyboard.press('ArrowRight');
@@ -177,7 +196,7 @@ async function exercise(page, where, returnTo, settingsLabel) {
   const large = german.getByRole('button', { name: 'Größere Schrift' });
   await large.click();
   assert.equal(await large.getAttribute('aria-pressed'), 'true', `${where}: larger text pressed`);
-  assert.equal((await shown(page)).fontSize, '18px', `${where}: larger text`);
+  assert.equal((await shown(page)).fontSize, sizes.large, `${where}: larger text`);
   await page.keyboard.press('Escape');
   await german.waitFor({ state: 'hidden' });
   assert.equal(
@@ -189,10 +208,12 @@ async function exercise(page, where, returnTo, settingsLabel) {
 }
 
 export async function settingsCheck({ app, site, fixture, chromium }) {
-  const script = startupScript(join(app, 'src/examples/PreferencesDialog.tsx'));
+  const example = join(app, 'src/examples/PreferencesDialog.tsx');
+  const script = startupScript(example);
   const dir = join(app, 'settings-check');
   mkdirSync(dir);
-  for (const [file, source] of Object.entries(page(script)))
+  const files = page(script, rootSize(example, 100), rootSize(example, 125));
+  for (const [file, source] of Object.entries(files))
     writeFileSync(join(dir, file), source);
   const browser = await chromium.launch();
   try {
@@ -218,11 +239,18 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
       return { context, page: tab, errors };
     };
     const label = { en: 'Settings', de: 'Einstellungen' };
-    for (const colorScheme of ['light', 'dark']) {
+    // Light and dark on the default root size; larger text also on a 125%
+    // root, where it grows from 20px instead of setting a size of its own.
+    const runs = [
+      ['light', 100, { base: '16px', large: '18px' }],
+      ['dark', 100, { base: '16px', large: '18px' }],
+      ['light', 125, { base: '20px', large: '22.5px' }],
+    ];
+    for (const [colorScheme, base, sizes] of runs) {
       // From the header's menu, with the keyboard.
-      let where = `menu dialog, ${colorScheme}`;
+      let where = `menu dialog, ${colorScheme}, ${base}% root`;
       let { context, page: tab, errors } = await open(colorScheme);
-      await tab.goto(url);
+      await tab.goto(`${url}?base=${base}`);
       const draft = tab.getByRole('textbox', { name: 'Draft' });
       await draft.fill('Unsaved milk');
       await tab.getByRole('button', { name: 'Menu' }).focus();
@@ -230,7 +258,7 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
       await tab.getByRole('menuitem', { name: label.en }).waitFor();
       await tab.keyboard.press('Enter');
       const menu = () => tab.getByRole('button', { name: 'Menu' });
-      const reopened = await exercise(tab, where, menu, label);
+      const reopened = await exercise(tab, where, menu, label, sizes);
       await tab.keyboard.press('Enter');
       await tab.getByRole('menuitem', { name: label.de }).click();
       await reopened.waitFor();
@@ -245,11 +273,12 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
       const reloaded = await shown(tab);
       assert.deepEqual(
         [reloaded.dark, reloaded.lang, reloaded.fontSize],
-        [true, 'de', '18px'],
+        [true, 'de', sizes.large],
         `${where}: the choices after a reload`,
       );
       if (errors.length) throw new Error(`${where}: ${errors.join('; ')}`);
       await context.close();
+      if (base !== 100) continue;
 
       // Above the sign-in gate: its settings button opens the same content.
       where = `gate settings, ${colorScheme}`;
@@ -260,7 +289,7 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
       await button.focus();
       await tab.keyboard.press('Enter');
       const gateButton = () => tab.getByRole('button', { name: label.de });
-      const again = await exercise(tab, where, gateButton, label);
+      const again = await exercise(tab, where, gateButton, label, sizes);
       await tab.keyboard.press('Enter');
       await again.waitFor();
       assert.equal(await again.getByRole('button', { name: 'Größere Schrift' }).getAttribute('aria-pressed'), 'true', `${where}: larger text after reopening`);
@@ -278,10 +307,6 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
     assert.ok(html.includes('<style>'), 'the published index.html has no <style>');
     const splashRoot = join(dir, 'splash');
     mkdirSync(join(splashRoot, fixture), { recursive: true });
-    writeFileSync(
-      join(splashRoot, fixture, 'index.html'),
-      html.replace('<style>', `${script}\n    <style>`),
-    );
     const key = `${fixture}:preferences`;
     const cases = [
       ['dark stored, light system', 'light', { [key]: '{"appearance":"dark"}' }, true, '16px'],
@@ -290,8 +315,15 @@ export async function settingsCheck({ app, site, fixture, chromium }) {
       ['invalid storage', 'dark', { [key]: '{"appearance":' }, true, '16px'],
       ['another app', 'light', { 'other:preferences': '{"appearance":"dark"}' }, false, '16px'],
       ['blocked storage', 'light', null, false, '16px'],
+      ['125% root', 'light', { [key]: '{"appearance":"light"}' }, false, '20px', 125],
+      ['larger text on a 125% root', 'light', { [key]: '{"largeText":true}' }, false, '22.5px', 125],
     ];
-    for (const [where, colorScheme, stored, dark, fontSize] of cases) {
+    for (const [where, colorScheme, stored, dark, fontSize, base = 100] of cases) {
+      // The app's root size as its src/index.css would set it, then the script.
+      writeFileSync(
+        join(splashRoot, fixture, 'index.html'),
+        html.replace('<style>', `${rootSize(example, base)}\n    ${script}\n    <style>`),
+      );
       const context = await browser.newContext({ colorScheme, serviceWorkers: 'block' });
       await context.addInitScript((stored) => {
         if (!stored)
