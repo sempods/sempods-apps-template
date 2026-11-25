@@ -342,6 +342,13 @@ Instructions:
   controls, and checks that end on the owner's phone. The app workflow adds
   that actions side by side that should look alike share one variant
   (sempods/sempods-apps-template#189).
+- The app workflow describes a flat list toolbar from public UI-kit
+  controls (sempods/sempods-apps-template#194): routed views underlined on
+  the strip's edge after the kit's "Views on one baseline" recipe, ghost icon
+  actions in the list header, a list-wide action outside the `nav`, kept
+  keyboard focus, and the same trash glyph for a row's `RemoveButton` and a
+  list-wide `DeleteIcon`. The visual check compares the toolbar at 375px
+  and at desktop width.
 
 ### Upgrade notes
 
