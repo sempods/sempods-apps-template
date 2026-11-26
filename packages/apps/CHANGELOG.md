@@ -564,6 +564,14 @@ and installed-device limits.
     set `aria-current` or a chosen look on its view links drops that, as the
     SDK's migration guide describes ("Current view links from the router").
 
+14. An app with a copy of the list, log or collection example keeps its
+    rows. Where its `UpdateNotice` sits beside the row's controls, offer
+    the owner the skeleton's composition: `flex-wrap` on the row, the notice
+    in `<div className="basis-full pb-2 empty:hidden">` (in a card,
+    `basis-full px-2 empty:hidden`), and `min-w-0 wrap-anywhere` on the
+    name's link. Check it at 375px with a long name and an open outcome,
+    light and dark.
+
 15. An app from an earlier 0.11.0 prerelease whose ContextSwitch passes
     `texts.shareMore` renames it to `shareContexts` with the shorter wording
     ("Share lists …") and drops `showAddresses` and `addresses`. Sharing
@@ -574,14 +582,6 @@ and installed-device limits.
     the answer. The SDK's migration guide describes each ("One row of
     actions in DialogFooter", "Change sharing shows the Pod's consent
     page").
-
-14. An app with a copy of the list, log or collection example keeps its
-    rows. Where its `UpdateNotice` sits beside the row's controls, offer
-    the owner the skeleton's composition: `flex-wrap` on the row, the notice
-    in `<div className="basis-full pb-2 empty:hidden">` (in a card,
-    `basis-full px-2 empty:hidden`), and `min-w-0 wrap-anywhere` on the
-    name's link. Check it at 375px with a long name and an open outcome,
-    light and dark.
 
 16. An app from an earlier 0.11.0 prerelease follows the SDK migration
     guide's new 0.9.0 sections; its tests are what most often changes
