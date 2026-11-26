@@ -6,26 +6,6 @@ configuration choices and the SDK migration.
 
 ## 0.11.0
 
-Prerelease `0.11.0-dev.4` for acceptance testing against SDK `0.9.0-dev.4`.
-Since `0.11.0-dev.3` (SDK `0.9.0-dev.3`) it adds SDK `0.9.0-dev.4`, with the
-shared `<Notices />` host in new apps and **Pods & sharing** grouped by Pod
-(sempods/sempods-apps-template#201), an immediate tick and a confirmed row
-exit in the list example (sempods/sempods-apps-template#188), a settings
-dialog variant of the Preferences example
-(sempods/sempods-apps-template#187), a source badge for combined views
-(sempods/sempods-apps-template#196), and app-workflow recipes for a flat list
-toolbar with underlined views (sempods/sempods-apps-template#194) and for
-items with optional Markdown notes (sempods/sempods-apps-template#195), plus
-patch updates of the skeleton's dependencies. `0.11.0-dev.3` had added SDK
-`0.9.0-dev.3`, whose `ContextSwitch` only selects and whose **Change
-sharing** asks for the Pod's consent page, and the app workflow's section on
-sharing more with an app (sempods/sempods-apps-template#186).
-`0.11.0-dev.2` had added the shared implementation in the
-tooling (sempods/sempods-apps-template#177), the Preferences example across
-tabs (sempods/sempods-apps-template#178), row notices on narrow screens
-(sempods/sempods-apps-template#180) and SDK `0.9.0-dev.2`, which lifts the
-Playwright pin planned for 0.10.1, which was not released.
-
 ### Changes
 
 Shared login appearance (sempods/sempods-apps-template#169):
@@ -162,9 +142,8 @@ The overview (sempods/sempods-apps-template#46, step 4):
 
 SDK 0.9.0 and the shared Context chooser (sempods/sempods-apps-template#155):
 
-- The starter installs SDK 0.9.0-dev.4, the prerelease of 0.9.0, for all
-  three SDK packages, and the tooling accepts 0.9 from `0.9.0-dev.4` as its
-  peer.
+- The starter installs SDK 0.9.0 for all three SDK packages, and the tooling
+  accepts `^0.9.0` as its peer.
 - List apps use the shared `ContextSwitch` from `@sempods/app-ui`: a spacious
   two-line trigger, Contexts grouped by Pod and a **Read only** mark. It only
   selects; changing what is shared stays in `AppAccess`. The SDK owns generic
